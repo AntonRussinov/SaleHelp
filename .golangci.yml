@@ -1,0 +1,115 @@
+# ref https://golangci-lint.run/jsonschema/golangci.jsonschema.json
+run:
+  timeout: 20m
+  modules-download-mode: readonly
+output:
+  formats:
+    - format: tab
+      path: stderr
+  uniq-by-line: false
+  sort-results: true
+linters:
+  # disable-all: true
+  # enable:
+  #   - nlreturn
+  enable-all: true
+  disable:
+  ### deprecated
+  - gomnd
+  - execinquery
+  ### other
+  - godot           # conflicts with swagger doc comments
+  - lll             # triggers on struct tags, urls and other valid long lines
+  - nonamedreturns  # named returns are ok
+  - gci             # conflicts with gofumpt
+  - exhaustruct     # structures from external packages often designed to have empty fields
+  - nolintlint      # gives false positives on `//nolint` comments
+  - wrapcheck       # often wrapping errors is not needed
+  - ireturn         # returning interface is ok sometimes, should be managed manually
+  - dupl            # gives false positives
+  ### consider enabling
+  - godox           # warning about TODO comments. 
+  - depguard
+  ### disable slow linters
+  - revive
+  - misspell
+
+
+linters-settings:
+  decorder:
+    # If true, order of declarations is not checked at all.
+    # Default: true (disabled)
+    disable-dec-order-check: false
+    # If true, `init` func can be anywhere in file (does not have to be declared before all other functions).
+    # Default: true (disabled)
+    disable-init-func-first-check: false
+    # If true, multiple global `type`, `const` and `var` declarations are allowed.
+    # Default: true (disabled)
+    disable-dec-num-check: false
+  errcheck:
+    check-type-assertions: true
+    check-blank: false # consider enabling
+    disable-default-exclusions: true # wrong text in documentation (true/false works in opposite way)
+  errchkjson:
+    report-no-exported: true
+    check-error-free-encoding: true
+  funlen:
+    ignore-comments: true
+  wsl:
+    allow-cuddle-declarations: true
+  nlreturn:
+    block-size: 2
+  revive:
+    enable-all-rules: true
+    rules:
+      - name: blank-imports
+        disabled: true
+      - name: line-length-limit
+        disabled: true
+      - name: add-constant
+        disabled: true
+      - name: max-public-structs
+        disabled: true
+      - name: cognitive-complexity # consider enabling
+        arguments: [15]
+      - name: function-length # consider enabling
+        disabled: true
+  perfsprint:
+    sprintf1: false
+    strconcat: false
+  varnamelen:
+    max-distance: 6
+    ignore-type-assert-ok: true
+    ignore-map-index-ok: true
+    ignore-chan-recv-ok: true
+    ignore-names:
+      - id
+      - i
+      - db
+      - tt
+      - ok
+      - err
+      - tx
+      - in
+      - out
+      - op
+      - fn
+      - to
+    ignore-decls:
+      - wg sync.WaitGroup
+      - c echo.Context
+      - e *echo.Group
+      - e *echo.Echo
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+  ## disabled for tests
+  exclude-rules:
+    - path: (.+)_test.go
+      linters:
+        - containedctx ## allow context in structs for tests
+        - funlen ## test definitions make test functions hard to make shorter
+        - gochecknoglobals ## globals can be used to test unimported functions
+        - revive
