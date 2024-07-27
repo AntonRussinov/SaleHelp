@@ -1,0 +1,18 @@
+all: True
+dir: "mocks/{{replaceAll .PackagePath `/internal/` `/int/`}}_mocks"
+mockname: "Mock{{.InterfaceName}}"
+filename: "{{.InterfaceName}}_mock.go"
+outpkg: "{{.PackageName}}_mocks"
+inpackage: False
+with-expecter: true
+packages:
+    #salehelp/internal/handler/application:
+    #salehelp/internal/middleware:    
+    #salehelp/internal/service/aisearch:
+    salehelp/pkg/auth:
+    salehelp/internal/access: 
+    github.com/casbin/casbin/v2:
+      config:
+        all: false
+      interfaces:
+        IEnforcer:

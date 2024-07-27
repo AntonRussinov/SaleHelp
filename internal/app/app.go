@@ -3,99 +3,74 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"salehelp/internal/db"
-	"salehelp/internal/db/gormdb"
-	"salehelp/pkg/logger/sl"
-	"time"
+	"salehelp/internal/config"
+	"sync/atomic"
 
 	"github.com/labstack/echo/v4"
 )
 
 type (
-	Config struct {
-		Listen         string
-		Environment    string
-		DB             db.Config
-		AllowedOrigins []string
-		//GCS         gcs.Config
+	Provider interface {
+		Init(ctx context.Context) error
+		GetRouter() *echo.Echo
 	}
 
-	Service struct {
-		cfg      *Config
-		router   *echo.Echo
-		log      *slog.Logger
-		services *Services
+	APP struct {
+		prov       Provider
+		cfg        *config.ServiceConfig
+		log        *slog.Logger
+		inShutdown atomic.Bool
 	}
 )
 
-const shutdownTimeout = 10 * time.Second
+var ErrAppStopped = errors.New("app is stopped")
 
-func NewService(ctx context.Context, cfg *Config, log *slog.Logger) (*Service, error) {
-	const op = "app.NewService"
-
-	sqlDB, err := db.ConnectWithConfig(log, &cfg.DB)
-	if err != nil {
-		return nil, fmt.Errorf("failed db connection %s: %w", op, err)
+func New(cfg *config.ServiceConfig, log *slog.Logger, prov Provider) *APP {
+	return &APP{
+		cfg:  cfg,
+		log:  log,
+		prov: prov,
 	}
-
-	gormDB, err := gormdb.New(cfg.DB.DriverName, sqlDB)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create gorm connector %s: %w", op, err)
-	}
-
-	repositories := NewRepository(log, gormDB)
-	services := NewServices(log, repositories)
-	presenters := NewPreseneter()
-
-	handlers, err := NewHandler(cfg, log, services, presenters)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize handlers: %w", err)
-	}
-	//nolint:contextcheck
-	service := &Service{
-		cfg:      cfg,
-		log:      log,
-		router:   NewRouter(cfg, log, handlers),
-		services: services,
-	}
-
-	return service, nil
 }
 
-func (s *Service) Run() {
-	s.log.Info("Starting application http service")
+func (app *APP) Run(ctx context.Context) error {
+	if app.isShuttingDown() {
+		return ErrAppStopped
+	}
 
-	// InitBackgroundJobs(s.log, s.services)
+	appCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	if err := s.router.Start(s.cfg.Listen); err != nil {
+	err := app.prov.Init(appCtx)
+	if err != nil {
+		return err
+	}
+
+	if err := app.prov.GetRouter().Start(app.cfg.Listen); err != nil {
 		if errors.Is(err, http.ErrServerClosed) {
-			s.log.Info("Server closed under request")
+			app.log.Info("Server closed under request")
 		} else {
-			s.log.Error("Server closed unexpect")
+			app.log.Error("Server closed unexpect")
 		}
 	}
+
+	<-appCtx.Done()
+
+	return appCtx.Err()
 }
 
-func (s *Service) Stop() error {
-	if s.router == nil {
-		s.log.Error("Server Close: ", sl.Err(http.ErrServerClosed))
+func (app *APP) Shutdown(ctx context.Context) error {
+	if app.isShuttingDown() {
+		return ErrAppStopped
 	}
 
-	s.log.Info("Shutdown service",
-		slog.Duration("timeout", shutdownTimeout),
-	)
-
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-
-	if err := s.router.Shutdown(ctx); err != nil {
-		cancel()
-		return fmt.Errorf("failed to shutdown server: %w", err)
-	}
-
-	cancel()
+	app.inShutdown.Store(true)
 
 	return nil
+}
+
+func (app *APP) isShuttingDown() bool {
+	return app.inShutdown.Load()
 }
