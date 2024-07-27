@@ -2,15 +2,29 @@ package config
 
 import (
 	"fmt"
-	"salehelp/internal/app"
+	"salehelp/internal/db"
+	"salehelp/pkg/auth"
 
 	"github.com/spf13/viper"
 )
 
-type Config struct {
-	Environment string
-	Service     app.Config
-}
+type (
+	ServiceConfig struct {
+		Listen         string
+		Environment    string
+		GormLogLevel   int
+		ClientSecret   string
+		AllowedOrigins []string
+		Auth           auth.Config
+		DB             db.Config
+		//	GCS            gcs.Config
+	}
+
+	Config struct {
+		Environment string
+		Service     *ServiceConfig
+	}
+)
 
 func Read(file string) (*Config, error) {
 	const op = "config.Read"
