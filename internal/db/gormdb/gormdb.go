@@ -15,7 +15,7 @@ const defaultLogLevel = logger.LogLevel(4)
 
 var ErrUnknownDriverType = errors.New("unknown driver type")
 
-func New(driver string, conn *sql.DB) (*gorm.DB, error) {
+func New(driver string, conn *sql.DB, logLevel int) (*gorm.DB, error) {
 	var dialector gorm.Dialector
 
 	switch driver {
@@ -27,8 +27,13 @@ func New(driver string, conn *sql.DB) (*gorm.DB, error) {
 		return nil, ErrUnknownDriverType
 	}
 
+	level := defaultLogLevel
+	if logLevel > 0 {
+		level = logger.LogLevel(logLevel)
+	}
+
 	config := gorm.Config{
-		Logger: logger.Default.LogMode(defaultLogLevel),
+		Logger: logger.Default.LogMode(level),
 	}
 
 	db, err := gorm.Open(dialector, &config)
