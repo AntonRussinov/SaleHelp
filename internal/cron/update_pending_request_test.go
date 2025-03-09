@@ -1,7 +1,7 @@
 package cron_test
 
 import (
-	"salehelp/internal/storage/cron"
+	"salehelp/internal/cron"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -29,8 +29,8 @@ func TestCronUpdateRequest(t *testing.T) {
 	//duration := time.Now().AddDate(0, 0, -3).Truncate(time.Minute) // 3 days ago
 
 	// Expect the logs
-	//mockLogger.On("Info", "UpdateOldPendingRequests started for model", mock.Anything).Once()
-	//mockLogger.On("Info", "Old pending requests updated successfully for model.LimitRequest", mock.Anything).Once()
+	// mockLogger.On("Info", "UpdateOldPendingRequests started for model", mock.Anything).Once()
+	// mockLogger.On("Info", "Old pending requests updated successfully for model.LimitRequest", mock.Anything).Once()
 
 	// Expect the SQL queries with transaction
 	// mockDB.ExpectBegin()

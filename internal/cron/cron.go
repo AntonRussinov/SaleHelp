@@ -20,15 +20,15 @@ func NewCronRunner(ctx context.Context, db *gorm.DB, log logger) (*cron.Cron, er
 	crn := cron.New()
 
 	// Start cron job every day at 00:00:00 (min, hour, day, month, day of week)
-	_, err := crn.AddFunc("0 0 * * *", func() { DeleteOldSoftDeletedRecords(db, log) })
-	if err != nil {
-		return nil, err
-	}
+	// _, err := crn.AddFunc("*/5 * * * *", func() { GetOrders(ctx, db, log) })
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	_, err = crn.AddFunc("1 0 * * *", func() { CronUpdateRequest(db, log) })
-	if err != nil {
-		return nil, err
-	}
+	// _, err = crn.AddFunc("1 0 * * *", func() { CronUpdateRequest(db, log) })
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return crn, nil
 }

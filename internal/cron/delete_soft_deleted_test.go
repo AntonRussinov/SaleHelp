@@ -2,7 +2,7 @@ package cron_test
 
 import (
 	"errors"
-	"salehelp/internal/storage/cron"
+	"salehelp/internal/cron"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -35,7 +35,7 @@ func TestDeleteOldSoftDeletedRecords(t *testing.T) {
 
 	// Expect the logs
 	mockLogger.On("Info", "DeleteOldSoftDeletedRecords started", mock.Anything).Once()
-	//mockLogger.On("Info", "Old soft deleted records deleted successfully", mock.Anything).Once()
+	// mockLogger.On("Info", "Old soft deleted records deleted successfully", mock.Anything).Once()
 
 	// Expect the SQL queries
 	// mockDB.ExpectBegin()
@@ -74,7 +74,7 @@ func TestDeleteOldSoftDeletedRecordsWithError(t *testing.T) {
 	require.NoError(t, err)
 
 	mockLogger := new(MockLogger)
-	//duration := time.Now().AddDate(0, 0, -7).Truncate(time.Minute) // 7 days ago, truncated to seconds
+	// duration := time.Now().AddDate(0, 0, -7).Truncate(time.Minute) // 7 days ago, truncated to seconds
 
 	// Expect the logs
 	mockLogger.On("Info", "DeleteOldSoftDeletedRecords started", mock.Anything).Once()

@@ -18,7 +18,6 @@ func (prov *Provider) InitHandlers() error {
 
 	// prov.Handlerss.Auth = authHandlers
 
-	//prov.Handlerss.UserQuota = quota.NewHandlers(prov.Services.Quota, prov.Presenters.Quota)
-
+	// prov.Handlerss.UserQuota = quota.NewHandlers(prov.Services.Quota, prov.Presenters.Quota)
 	return nil
 }

@@ -1,11 +1,11 @@
 package di
 
 type Presenters struct {
-	//Application     *application.Presenters
+	// Application     *application.Presenters
 }
 
 func (prov *Provider) InitPresenters() *Presenters {
 	return &Presenters{
-		//Application:     application.NewPresenters(),
+		// Application:     application.NewPresenters(),
 	}
 }

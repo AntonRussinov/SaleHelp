@@ -3,7 +3,7 @@ package cron_test
 import (
 	"context"
 	"log/slog"
-	"salehelp/internal/storage/cron"
+	"salehelp/internal/cron"
 	"salehelp/pkg/logger/handlers/slogdiscard"
 	"testing"
 
