@@ -6,10 +6,10 @@ import (
 	"salehelp/internal/adapter/kaspi/portal/models"
 )
 
-type Portal interface {
+type PortalAPI interface {
 	GetAllProducts(ctx context.Context, merchantID string) (*models.Products, error)
 }
 
-func New(mcsid, mcsession string) Portal {
-	return client.New(mcsid, mcsession)
+func New() PortalAPI {
+	return client.New()
 }

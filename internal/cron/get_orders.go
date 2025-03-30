@@ -29,10 +29,10 @@ import (
 func GetOrders(ctx context.Context, db *gorm.DB, log logger) {
 	log.Info("GetOrders started")
 
-	session := "1741341843.102.12897.790894|825e5f3659dba1ed7b5d7b2cbf5f1012"
-	sid := "cfeb3fe1-141f-4f02-bb37-72cf61adf722"
+	// session := "1741341843.102.12897.790894|825e5f3659dba1ed7b5d7b2cbf5f1012"
+	// sid := "cfeb3fe1-141f-4f02-bb37-72cf61adf722"
 
-	api := connector.New(sid, session)
+	api := connector.New()
 
 	// orderRequest := models.GetOrdersRequest{
 	// 	PageNumber: 0,

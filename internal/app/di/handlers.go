@@ -2,10 +2,11 @@ package di
 
 import (
 	"errors"
+	"salehelp/internal/handler/product"
 )
 
 type Handlers struct {
-	// LLMModel *llmmodel.Handlers
+	Product *product.Handler
 }
 
 var ErrInitHandlerss = errors.New("failed to initialize Handlerss")
@@ -18,6 +19,6 @@ func (prov *Provider) InitHandlers() error {
 
 	// prov.Handlerss.Auth = authHandlers
 
-	// prov.Handlerss.UserQuota = quota.NewHandlers(prov.Services.Quota, prov.Presenters.Quota)
+	prov.Handlers.Product = product.NewHandler(*prov.Services.Product, prov.Presenters.Product)
 	return nil
 }

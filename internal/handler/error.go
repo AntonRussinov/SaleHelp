@@ -95,7 +95,7 @@ func handlerServiceError(c echo.Context, err *domain.ServiceError) error {
 
 	var forbiddenErr *domain.ForbiddenError
 	if errors.As(err, &forbiddenErr) {
-		apiErr := NewError(http.StatusForbidden, forbiddenErr.Msg)
+		apiErr := NewError(http.StatusForbidden, forbiddenErr.Message)
 		return c.JSON(http.StatusForbidden, apiErr)
 	}
 

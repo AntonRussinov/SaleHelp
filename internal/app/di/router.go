@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"salehelp/internal/handler"
+	"salehelp/internal/handler/product"
+	"salehelp/internal/middleware"
 
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo/v4"
@@ -121,7 +123,7 @@ func RegisterValidator(echo *echo.Echo) {
 // 	}
 
 // 	apiGroup := router.Group("/api")
-// 	registerPublicRootRoutes(apiGroup)
+// 	//registerPublicRootRoutes(apiGroup)
 
 // 	v1Group := apiGroup.Group("/v1")
 // 	registerV1Routes(v1Group, handlers)
@@ -141,16 +143,18 @@ func (cv *CustomValidator) Validate(i any) error {
 }
 
 func (prov *Provider) registerV1Routes(group *echo.Group) {
-	//handlers := prov.Handlers
+	handlers := prov.Handlers
 	group.Static("/assets", "assets")
 
-	//registerTagRoutes(protected, handlers.Tag)
+	//protected := group.Group("", handlers.Auth.HeaderMiddleware())
+
+	registerTagRoutes(group, handlers.Product)
 }
 
-// func registerTagRoutes(e *echo.Group, tagHandler *tag.Handler) {
-// 	e.GET("/tags", tagHandler.GeTags,
-// 		middleware.Pagination(),
-// 		middleware.OrderBy(),
-// 		middleware.QueryString(),
-// 	)
-// }
+func registerTagRoutes(e *echo.Group, tagHandler *product.Handler) {
+	e.GET("/products", tagHandler.GetProductByMerchantID,
+		middleware.Pagination(),
+		middleware.OrderBy(),
+		middleware.QueryString(),
+	)
+}

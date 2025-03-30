@@ -8,7 +8,7 @@ import (
 
 func (a *Client) GetCities(ctx context.Context) (*models.CitiesResponse, error) {
 	var response models.CitiesResponse
-	if err := a.Do(ctx, GET, "cities", nil, &response); err != nil {
+	if err := a.Do(ctx, GET, "cities", nil, "authToken", &response); err != nil {
 		return nil, err
 	}
 	return &response, nil
@@ -16,7 +16,7 @@ func (a *Client) GetCities(ctx context.Context) (*models.CitiesResponse, error) 
 
 func (a *Client) GetCityByPointOfServiceId(ctx context.Context, pointOfServiceId string) (*models.CityResponse, error) {
 	var response models.CityResponse
-	if err := a.Do(ctx, GET, fmt.Sprintf("pointofservices/%s/city", pointOfServiceId), nil, &response); err != nil {
+	if err := a.Do(ctx, GET, fmt.Sprintf("pointofservices/%s/city", pointOfServiceId), nil, "authToken", &response); err != nil {
 		return nil, err
 	}
 	return &response, nil

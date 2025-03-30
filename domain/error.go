@@ -1,12 +1,26 @@
 package domain
 
+import "fmt"
+
+const (
+	ErrorCodeValidation   = 400 // Request in invalid
+	ErrorCodeDuplicate    = 409 // Trying to save duplicate entity
+	ErrorCodeForbidden    = 403 // No access to requested resource
+	ErrorCodeNotFound     = 404 // Requested resource not found
+	ErrorCodeNotProcessed = 422 // Request can not be processed
+	ErrorCodeUnexpected   = 500 // Unexpected server error
+)
+
 type (
 	ServiceError struct {
 		Fn  string
 		Err error
 		Msg string
 	}
-
+	APPError struct {
+		Err  error
+		Code int
+	}
 	NotFoundError struct {
 		Entity     string
 		ParamName  string
@@ -19,11 +33,6 @@ type (
 		Entity     string
 		ParamName  string
 		ParamValue string
-	}
-
-	ForbiddenError struct {
-		Msg string
-		Err error
 	}
 
 	DuplicateError struct {
@@ -66,17 +75,6 @@ func (e *ServiceError) Error() string {
 }
 
 func (e *ServiceError) Unwrap() error { return e.Err }
-
-func (e *ForbiddenError) Error() string {
-	errMsg := ""
-	if e.Err != nil {
-		errMsg = e.Err.Error()
-	}
-
-	return e.Msg + ": " + errMsg
-}
-
-func (e *ForbiddenError) Unwrap() error { return e.Err }
 
 func NewNotFoundError(fn, entity, paramName, paramValue string, err error) *ServiceError {
 	return &ServiceError{
@@ -122,8 +120,8 @@ func NewForbiddenError(fn, msg string, err error) *ServiceError {
 	return &ServiceError{
 		Fn: fn,
 		Err: &ForbiddenError{
-			Msg: msg,
-			Err: err,
+			Message: msg,
+			Err:     err,
 		},
 	}
 }
@@ -158,4 +156,12 @@ func NewApplicationLogicError(fn, msg string) *ServiceError {
 
 func (e *ApplicationLogicError) Error() string {
 	return e.Msg
+}
+
+func (e *APPError) Error() string {
+	return fmt.Sprintf("application error: %v", e.Err)
+}
+
+func (e *APPError) Unwrap() error {
+	return e.Err
 }
