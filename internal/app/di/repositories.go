@@ -1,11 +1,13 @@
 package di
 
+import "salehelp/internal/storage/pggorm/repository/product"
+
 type Repositories struct {
-	// Application *application.Repositories
+	Product *product.Repository
 }
 
 func (prov *Provider) InitRepositories() *Repositories {
 	return &Repositories{
-		// Application:            application.NewRepositories(log, db),
+		Product: product.NewRepository(prov.log, prov.Database.GormDB),
 	}
 }

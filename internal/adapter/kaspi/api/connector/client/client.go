@@ -22,11 +22,11 @@ const (
 	POST method = "POST"
 )
 
-func New(authToken string) *Client {
-	return &Client{authToken: authToken}
+func New() *Client {
+	return &Client{}
 }
 
-func (a *Client) Do(ctx context.Context, method method, path string, params url.Values, result interface{}) error {
+func (a *Client) Do(ctx context.Context, method method, path string, params url.Values, authToken string, result interface{}) error {
 	req, err := http.NewRequestWithContext(ctx, string(method), fmt.Sprintf("%s/%s", "https://kaspi.kz/shop/api/v2", path), nil)
 	if err != nil {
 		return err
@@ -38,7 +38,7 @@ func (a *Client) Do(ctx context.Context, method method, path string, params url.
 
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Content-Type", "application/vnd.api+json")
-	req.Header.Set("X-Auth-Token", a.authToken)
+	req.Header.Set("X-Auth-Token", authToken)
 
 	httpClient := &http.Client{}
 

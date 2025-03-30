@@ -1,11 +1,13 @@
 package di
 
+import "salehelp/internal/presenter/product"
+
 type Presenters struct {
-	// Application     *application.Presenters
+	Product *product.Presenter
 }
 
 func (prov *Provider) InitPresenters() *Presenters {
 	return &Presenters{
-		// Application:     application.NewPresenters(),
+		Product: product.NewPresenter(),
 	}
 }

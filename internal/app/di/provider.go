@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"salehelp/internal/access"
+	kaspiAPI "salehelp/internal/adapter/kaspi/api/connector"
+	portalAPI "salehelp/internal/adapter/kaspi/portal/connector"
 	"salehelp/internal/config"
 	"salehelp/pkg/extendedvalidator"
 
@@ -12,17 +14,19 @@ import (
 )
 
 type Provider struct {
-	cfg           *config.ServiceConfig
-	log           *slog.Logger
-	Cron          *cron.Cron
-	Database      Database
-	Repositories  Repositories
-	Services      Services
-	Presenters    Presenters
-	Handlers      Handlers
-	Router        *echo.Echo
-	Validator     *extendedvalidator.Validator
-	AccessManager *access.Manager
+	cfg            *config.ServiceConfig
+	log            *slog.Logger
+	Cron           *cron.Cron
+	Database       Database
+	Repositories   Repositories
+	Services       Services
+	Presenters     Presenters
+	Handlers       Handlers
+	Router         *echo.Echo
+	Validator      *extendedvalidator.Validator
+	AccessManager  *access.Manager
+	KaspiAPI       kaspiAPI.API
+	KaspiPortalAPI portalAPI.PortalAPI
 }
 
 func NewProvider(log *slog.Logger, cfg *config.ServiceConfig) *Provider {
@@ -50,6 +54,9 @@ func (prov *Provider) Init(ctx context.Context) error {
 	// if err != nil {
 	// 	return err
 	// }
+
+	prov.InitKaspiAPI()
+	prov.InitKaspiPortalAPI()
 
 	prov.InitRepositories()
 	prov.InitServices()

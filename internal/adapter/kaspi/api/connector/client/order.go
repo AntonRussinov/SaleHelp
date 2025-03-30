@@ -13,7 +13,7 @@ func (a *Client) GetOrders(ctx context.Context, req models.GetOrdersRequest) (*m
 	}
 
 	var response models.OrdersResponse
-	if err = a.Do(ctx, GET, "orders", reqParams, &response); err != nil {
+	if err = a.Do(ctx, GET, "orders", reqParams, "authToken", &response); err != nil {
 		return nil, err
 	}
 	return &response, nil
@@ -21,7 +21,7 @@ func (a *Client) GetOrders(ctx context.Context, req models.GetOrdersRequest) (*m
 
 func (a *Client) GetOrderByCode(ctx context.Context, code string) (*models.OrderByCodeResponse, error) {
 	var response models.OrderByCodeResponse
-	if err := a.Do(ctx, GET, "orders", url.Values{"filter[orders][code]": []string{code}}, &response); err != nil {
+	if err := a.Do(ctx, GET, "orders", url.Values{"filter[orders][code]": []string{code}}, "authToken", &response); err != nil {
 		return nil, err
 	}
 	return &response, nil

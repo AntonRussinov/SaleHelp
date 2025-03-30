@@ -27,6 +27,6 @@ type API interface {
 	GetReviewByOrderId(ctx context.Context, orderId string) (*models.ReviewResponse, error)
 }
 
-func New(authToken string) API {
-	return client.New(authToken)
+func New() API {
+	return client.New()
 }
