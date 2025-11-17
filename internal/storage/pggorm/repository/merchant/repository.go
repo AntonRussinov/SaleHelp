@@ -14,7 +14,7 @@ type Repository struct {
 
 func NewRepository(log *slog.Logger, db *gorm.DB) *Repository {
 	repo := &Repository{}
-	repo.Log = log.With(sl.Module("LimitRepository"))
+	repo.Log = log.With(sl.Module("MerchantRepository"))
 	repo.DB = db
 
 	return repo

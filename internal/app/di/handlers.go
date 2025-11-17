@@ -19,6 +19,7 @@ func (prov *Provider) InitHandlers() error {
 
 	// prov.Handlerss.Auth = authHandlers
 
-	prov.Handlers.Product = product.NewHandler(*prov.Services.Product, prov.Presenters.Product)
+	// temporary
+	// prov.Handlers.Product = product.NewHandler(prov.Services.Product, prov.Presenters.Product)
 	return nil
 }
