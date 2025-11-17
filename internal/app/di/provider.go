@@ -55,13 +55,11 @@ func (prov *Provider) Init(ctx context.Context) error {
 	// 	return err
 	// }
 
-	prov.InitKaspiAPI()
-	prov.InitKaspiPortalAPI()
-
 	prov.InitRepositories()
 	prov.InitServices()
 	prov.InitPresenters()
-
+	prov.InitKaspiAPI()
+	prov.InitKaspiPortalAPI(prov.Repositories.Merchant)
 	err = prov.InitCronRunner(ctx)
 	if err != nil {
 		return err

@@ -3,7 +3,9 @@ package cron
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"salehelp/internal/adapter/kaspi/portal/connector"
+	"salehelp/internal/storage/pggorm/repository/merchant"
 
 	"gorm.io/gorm"
 )
@@ -26,13 +28,13 @@ import (
 // 	}
 // }
 
-func GetOrders(ctx context.Context, db *gorm.DB, log logger) {
+func GetOrders(ctx context.Context, db *gorm.DB, log *slog.Logger) {
 	log.Info("GetOrders started")
 
 	// session := "1741341843.102.12897.790894|825e5f3659dba1ed7b5d7b2cbf5f1012"
 	// sid := "cfeb3fe1-141f-4f02-bb37-72cf61adf722"
-
-	api := connector.New()
+	merchRepo := merchant.NewRepository(log, db)
+	api := connector.New(merchRepo)
 
 	// orderRequest := models.GetOrdersRequest{
 	// 	PageNumber: 0,

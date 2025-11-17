@@ -1,7 +1,7 @@
 package view
 
 import (
-	"salehelp/internal/adapter/kaspi/portal/models"
+	"salehelp/internal/adapter/kaspi/portal/portal_models"
 )
 
 type ProductView struct {
@@ -47,7 +47,7 @@ type OfferView struct {
 	MinPrice                float64                        `json:"minPrice"`
 	MaxPrice                float64                        `json:"maxPrice"`
 	Points                  []string                       `json:"points"`
-	UpdatedAt               models.CustomTime              `json:"updatedAt"`
+	UpdatedAt               portal_models.CustomTime       `json:"updatedAt"`
 	AnyPickup               bool                           `json:"anyPickup"`
 	AnyKaspiDelivery        bool                           `json:"anyKaspiDelivery"`
 	AnyKaspiDeliveryLocal   bool                           `json:"anyKaspiDeliveryLocal"`
@@ -84,9 +84,9 @@ type RangePriceView struct {
 
 // Структура для updates
 type UpdateView struct {
-	OperationType string            `json:"operationType"`
-	UploadedBy    string            `json:"uploadedBy"`
-	UploadedDate  models.CustomTime `json:"uploadedDate"`
+	OperationType string                   `json:"operationType"`
+	UploadedBy    string                   `json:"uploadedBy"`
+	UploadedDate  portal_models.CustomTime `json:"uploadedDate"`
 }
 
 // Структура для allCityPrices – цены по городам, представленные в виде мапы
