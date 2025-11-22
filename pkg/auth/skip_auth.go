@@ -1,57 +1,49 @@
 package auth
 
-import (
-	"context"
-	"net/http"
-	"salehelp/domain"
+// type SkipAuthenticator struct{}
 
-	"github.com/google/uuid"
-)
+// func NewSkipAuthenticator() *SkipAuthenticator {
+// 	return &SkipAuthenticator{}
+// }
 
-type SkipAuthenticator struct{}
+// func DevUser() *domain.User {
+// 	userdata := DevUserData()
 
-func NewSkipAuthenticator() *SkipAuthenticator {
-	return &SkipAuthenticator{}
-}
+// 	return &domain.User{
+// 		ID:    userdata.ID,
+// 		Name:  userdata.Name,
+// 		Email: userdata.Email,
+// 		Roles: userdata.Roles,
+// 	}
+// }
 
-func DevUser() *domain.User {
-	userdata := DevUserData()
+// func DevUserContext(ctx context.Context) context.Context {
+// 	return SetUserToContext(ctx, DevUser())
+// }
 
-	return &domain.User{
-		ID:    userdata.ID,
-		Name:  userdata.Name,
-		Email: userdata.Email,
-		Roles: userdata.Roles,
-	}
-}
+// func DevUserData() *UserData {
+// 	return &UserData{
+// 		ID:    uuid.MustParse("4f7cd908-c2ab-4e19-8a57-959b4e59d367"),
+// 		Name:  "Dev User",
+// 		Email: "dev-user@test.test",
+// 		Roles: []domain.UserRole{domain.UserRoleSuperAdmin},
+// 	}
+// }
 
-func DevUserContext(ctx context.Context) context.Context {
-	return SetUserToContext(ctx, DevUser())
-}
+// func (*SkipAuthenticator) Authenticate(_ context.Context, _ string) (*UserData, string, error) {
+// 	user := DevUserData()
 
-func DevUserData() *UserData {
-	return &UserData{
-		ID:    uuid.MustParse("4f7cd908-c2ab-4e19-8a57-959b4e59d367"),
-		Name:  "Dev User",
-		Email: "dev-user@test.test",
-		Roles: []domain.UserRole{domain.UserRoleSuperAdmin},
-	}
-}
+// 	return user, "", nil
+// }
 
-func (*SkipAuthenticator) Authenticate(_ context.Context, _ string) (*UserData, string, error) {
-	user := DevUserData()
+// func (s *SkipAuthenticator) AuthenticateWithHeader(_ *http.Request) (*UserData, string, error) {
+// 	return s.Authenticate(context.TODO(), "")
+// }
 
-	return user, "", nil
-}
+// func (s *SkipAuthenticator) AuthenticateWithQuery(_ *http.Request) (*UserData, string, error) {
+// 	return s.Authenticate(context.TODO(), "")
+// }
 
-func (s *SkipAuthenticator) AuthenticateWithHeader(_ *http.Request) (*UserData, string, error) {
-	return s.Authenticate(context.TODO(), "")
-}
-
-func (s *SkipAuthenticator) AuthenticateWithQuery(_ *http.Request) (*UserData, string, error) {
-	return s.Authenticate(context.TODO(), "")
-}
-
-func (s *SkipAuthenticator) AuthenticateWithCookie(_ *http.Request) (*UserData, string, error) {
-	return s.Authenticate(context.TODO(), "")
-}
+// func (s *SkipAuthenticator) AuthenticateWithCookie(_ *http.Request) (*UserData, string, error) {
+// 	return s.Authenticate(context.TODO(), "")
+// }

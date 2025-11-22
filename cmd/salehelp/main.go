@@ -60,11 +60,11 @@ func main() {
 	// 	applogger.Error("Server Close: ", sl.Err(err))
 	// }
 
-	// // Инициализация базы данных
-	// // err = db.InitDatabase(cfg.Service.DB)
-	// // if err != nil {
-	// // 	log.Fatalf("Failed to connect to database: %v", err)
-	// // }
+	// Инициализация базы данных
+	// err = db.InitDatabase(cfg.Service.DB)
+	// if err != nil {
+	// 	log.Fatalf("Failed to connect to database: %v", err)
+	// }
 
 	// // Запуск планировщика задач
 	// scheduler.StartScheduler()

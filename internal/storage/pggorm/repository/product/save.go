@@ -2,30 +2,21 @@ package product
 
 import (
 	"context"
+	"fmt"
 	"salehelp/domain"
-	"salehelp/internal/storage/pggorm/model"
-
-	"gorm.io/gorm/clause"
 )
 
-func (repo *Repository) Save(ctx context.Context, product *domain.Product) error {
-	const fn = "ProductRepository.Save"
+func (r *Repository) Create(ctx context.Context, p *domain.Product) error {
+	m := toModel(p)
 
-	entity := model.Product{
-		ID:               product.ID,
-		MasterSKU:        product.MasterSKU,
-		Model:            product.Model,
-		Brand:            product.Brand,
-		MasterTitle:      product.MasterTitle,
-		Title:            product.Title,
-		VerticalCategory: product.VerticalCategory,
-		MasterCategory:   product.MasterCategory,
+	if err := r.DB.WithContext(ctx).Create(m).Error; err != nil {
+		return fmt.Errorf("product create: %w", err)
 	}
 
-	err := repo.DB.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(&entity).Error
-	if err != nil {
-		return repo.HandleError(fn, err)
-	}
+	// пробрасываем обратно ID и timestamps в доменную модель
+	p.ID = m.ID
+	p.CreatedAt = m.CreatedAt
+	p.UpdatedAt = m.UpdatedAt
 
 	return nil
 }

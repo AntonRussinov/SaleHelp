@@ -16,17 +16,17 @@ type (
 		// Save(ctx context.Context, product *domain.Products) error
 	}
 
-	StockRepo interface {
-		Save(ctx context.Context, stock *domain.Stock) error
-	}
+	// StockRepo interface {
+	// 	Save(ctx context.Context, stock *domain.Stock) error
+	// }
 
 	ProductRepo interface {
 		Save(ctx context.Context, product *domain.Product) error
 	}
 
-	OfferRepo interface {
-		Save(ctx context.Context, offer *domain.Offer) error
-	}
+	// OfferRepo interface {
+	// 	Save(ctx context.Context, offer *domain.Offer) error
+	// }
 
 	MerchantRepo interface {
 		Save(ctx context.Context, merchant *domain.Merchant) error
@@ -36,40 +36,35 @@ type (
 		Save(ctx context.Context, iamge *domain.Image) error
 	}
 
-	CityPriceRepo interface {
-		Save(ctx context.Context, cityPrice *domain.CityPrice) error
-	}
+	// CityPriceRepo interface {
+	// 	Save(ctx context.Context, cityPrice *domain.CityPrice) error
+	// }
 	PortalAPI interface {
 		GetAllProducts(ctx context.Context, merchantID string) (*portal_models.Products, error)
 	}
 
 	Service struct {
-		log           *slog.Logger
-		StockRepo     StockRepo
-		ProductRepo   ProductRepo
-		CityPriceRepo CityPriceRepo
-		OfferRepo     OfferRepo
-		MerchantRepo  MerchantRepo
-		ImageRepo     ImageRepo
-		portalAPI     PortalAPI
+		log          *slog.Logger
+		ProductRepo  ProductRepo
+		MerchantRepo MerchantRepo
+		ImageRepo    ImageRepo
+		portalAPI    PortalAPI
 	}
 )
 
 func NewService(log *slog.Logger,
-	StockRepo StockRepo, ProductRepo ProductRepo,
-	CityPriceRepo CityPriceRepo, OfferRepo OfferRepo,
+	ProductRepo ProductRepo,
 	MerchantRepo MerchantRepo, ImageRepo ImageRepo,
 	portalAPI PortalAPI,
 ) *Service {
 	return &Service{
-		log:           log.With(sl.Module("ProductsService")),
-		StockRepo:     StockRepo,
-		ProductRepo:   ProductRepo,
-		CityPriceRepo: CityPriceRepo,
-		OfferRepo:     OfferRepo,
-		MerchantRepo:  MerchantRepo,
-		ImageRepo:     ImageRepo,
-		portalAPI:     portalAPI,
+		log: log.With(sl.Module("ProductsService")),
+
+		ProductRepo: ProductRepo,
+
+		MerchantRepo: MerchantRepo,
+		ImageRepo:    ImageRepo,
+		portalAPI:    portalAPI,
 	}
 }
 

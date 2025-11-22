@@ -1,32 +1,25 @@
 package access
 
-import (
-	"context"
-	"salehelp/domain"
+// func WithModel(model string) Option {
+// 	return func(m *Manager) {
+// 		m.model = model
+// 	}
+// }
 
-	"github.com/casbin/casbin/v2"
-)
+// func WithAdapter(adapter any) Option {
+// 	return func(m *Manager) {
+// 		m.adapter = adapter
+// 	}
+// }
 
-func WithModel(model string) Option {
-	return func(m *Manager) {
-		m.model = model
-	}
-}
+// func WithUserFunc(userFunc func(ctx context.Context) *domain.User) Option {
+// 	return func(m *Manager) {
+// 		m.userFunc = userFunc
+// 	}
+// }
 
-func WithAdapter(adapter any) Option {
-	return func(m *Manager) {
-		m.adapter = adapter
-	}
-}
-
-func WithUserFunc(userFunc func(ctx context.Context) *domain.User) Option {
-	return func(m *Manager) {
-		m.userFunc = userFunc
-	}
-}
-
-func WithCustomEnforcer(enforcer casbin.IEnforcer) Option {
-	return func(m *Manager) {
-		m.enforcer = enforcer
-	}
-}
+// func WithCustomEnforcer(enforcer casbin.IEnforcer) Option {
+// 	return func(m *Manager) {
+// 		m.enforcer = enforcer
+// 	}
+// }

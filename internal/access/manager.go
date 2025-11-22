@@ -1,199 +1,187 @@
 package access
 
-import (
-	"context"
-	"fmt"
-	"log/slog"
-	"salehelp/domain"
+// type (
+// 	Manager struct {
+// 		model    string
+// 		adapter  any
+// 		enforcer casbin.IEnforcer
+// 		userFunc func(ctx context.Context) *domain.User
+// 	}
 
-	"github.com/casbin/casbin/v2"
-	gormadapter "github.com/casbin/gorm-adapter/v3"
-	"github.com/labstack/echo/v4"
-	"gorm.io/gorm"
-)
+// 	IManager interface {
+// 		GetUserRoles(user *domain.User) ([]domain.UserRole, error)
+// 		UpdateUserRole(user *domain.User) error
+// 		Allowed(user *domain.User, res Resource, action Action) (bool, error)
+// 		AddPolicy(role domain.UserRole, res Resource, act Action) error
+// 		Middleware(res Resource, action Action) echo.MiddlewareFunc
+// 	}
 
-type (
-	Manager struct {
-		model    string
-		adapter  any
-		enforcer casbin.IEnforcer
-		userFunc func(ctx context.Context) *domain.User
-	}
+// 	Config struct {
+// 		Model       string
+// 		Adapter     any
+// 		GetUserFunc func(ctx context.Context) *domain.User
+// 	}
 
-	IManager interface {
-		GetUserRoles(user *domain.User) ([]domain.UserRole, error)
-		UpdateUserRole(user *domain.User) error
-		Allowed(user *domain.User, res Resource, action Action) (bool, error)
-		AddPolicy(role domain.UserRole, res Resource, act Action) error
-		Middleware(res Resource, action Action) echo.MiddlewareFunc
-	}
+// 	Option func(m *Manager)
+// )
 
-	Config struct {
-		Model       string
-		Adapter     any
-		GetUserFunc func(ctx context.Context) *domain.User
-	}
+// func GormAdapter(db *gorm.DB) (*gormadapter.Adapter, error) {
+// 	const op = "access.GormAdapter"
 
-	Option func(m *Manager)
-)
+// 	adapter, err := gormadapter.NewAdapterByDB(db)
+// 	if err != nil {
+// 		return nil, wrapError(op, err)
+// 	}
 
-func GormAdapter(db *gorm.DB) (*gormadapter.Adapter, error) {
-	const op = "access.GormAdapter"
+// 	return adapter, nil
+// }
 
-	adapter, err := gormadapter.NewAdapterByDB(db)
-	if err != nil {
-		return nil, wrapError(op, err)
-	}
+// func NewManager(log *slog.Logger, opts ...Option) (*Manager, error) {
+// 	const fn = "Access.NewManager"
 
-	return adapter, nil
-}
+// 	manager := &Manager{}
 
-func NewManager(log *slog.Logger, opts ...Option) (*Manager, error) {
-	const fn = "Access.NewManager"
+// 	for _, opt := range opts {
+// 		opt(manager)
+// 	}
 
-	manager := &Manager{}
+// 	log.Debug("initializing casbin enforcer with model",
+// 		slog.String("fn", fn),
+// 		slog.String("model", manager.model))
 
-	for _, opt := range opts {
-		opt(manager)
-	}
+// 	if manager.enforcer == nil {
+// 		enforcer, err := casbin.NewEnforcer(manager.model, manager.adapter)
+// 		if err != nil {
+// 			return nil, wrapError(fn, err)
+// 		}
 
-	log.Debug("initializing casbin enforcer with model",
-		slog.String("fn", fn),
-		slog.String("model", manager.model))
+// 		manager.enforcer = enforcer
+// 	}
 
-	if manager.enforcer == nil {
-		enforcer, err := casbin.NewEnforcer(manager.model, manager.adapter)
-		if err != nil {
-			return nil, wrapError(fn, err)
-		}
+// 	err := manager.initPolicies()
+// 	if err != nil {
+// 		return nil, wrapError(fn, err)
+// 	}
 
-		manager.enforcer = enforcer
-	}
+// 	return manager, nil
+// }
 
-	err := manager.initPolicies()
-	if err != nil {
-		return nil, wrapError(fn, err)
-	}
+// func (m *Manager) initPolicies() error {
+// 	m.enforcer.ClearPolicy()
 
-	return manager, nil
-}
+// 	err := m.enforcer.SavePolicy()
+// 	if err != nil {
+// 		return fmt.Errorf("failed to save policies: %w", err)
+// 	}
 
-func (m *Manager) initPolicies() error {
-	m.enforcer.ClearPolicy()
+// 	if err := m.enforcer.LoadPolicy(); err != nil {
+// 		return err
+// 	}
 
-	err := m.enforcer.SavePolicy()
-	if err != nil {
-		return fmt.Errorf("failed to save policies: %w", err)
-	}
+// 	policies := DefaultPolicies()
 
-	if err := m.enforcer.LoadPolicy(); err != nil {
-		return err
-	}
+// 	for _, policy := range policies {
+// 		err := m.AddPolicy(policy.Role, policy.Res, policy.Act)
+// 		if err != nil {
+// 			return fmt.Errorf("failed to add policy: %w", err)
+// 		}
+// 	}
 
-	policies := DefaultPolicies()
+// 	return nil
+// }
 
-	for _, policy := range policies {
-		err := m.AddPolicy(policy.Role, policy.Res, policy.Act)
-		if err != nil {
-			return fmt.Errorf("failed to add policy: %w", err)
-		}
-	}
+// func (m *Manager) GetUserRoles(user *domain.User) ([]domain.UserRole, error) {
+// 	id := user.ID.String()
 
-	return nil
-}
+// 	roles, err := m.enforcer.GetRolesForUser(id)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-func (m *Manager) GetUserRoles(user *domain.User) ([]domain.UserRole, error) {
-	id := user.ID.String()
+// 	domainRoles := make([]domain.UserRole, len(roles))
+// 	for i, r := range roles {
+// 		domainRoles[i] = domain.UserRole(r)
+// 	}
 
-	roles, err := m.enforcer.GetRolesForUser(id)
-	if err != nil {
-		return nil, err
-	}
+// 	return domainRoles, nil
+// }
 
-	domainRoles := make([]domain.UserRole, len(roles))
-	for i, r := range roles {
-		domainRoles[i] = domain.UserRole(r)
-	}
+// func (m *Manager) UpdateUserRole(user *domain.User) error {
+// 	id := user.ID.String()
 
-	return domainRoles, nil
-}
+// 	newRole := string(user.Role)
 
-func (m *Manager) UpdateUserRole(user *domain.User) error {
-	id := user.ID.String()
+// 	currentRoles, err := m.enforcer.GetRolesForUser(id)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	newRole := string(user.Role)
+// 	hasRole := false
 
-	currentRoles, err := m.enforcer.GetRolesForUser(id)
-	if err != nil {
-		return err
-	}
+// 	for _, r := range currentRoles {
+// 		if r == newRole {
+// 			hasRole = true
+// 			continue
+// 		}
 
-	hasRole := false
+// 		_, err := m.enforcer.DeleteRoleForUser(id, r)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
 
-	for _, r := range currentRoles {
-		if r == newRole {
-			hasRole = true
-			continue
-		}
+// 	if !hasRole {
+// 		_, err = m.enforcer.AddRoleForUser(id, newRole)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
 
-		_, err := m.enforcer.DeleteRoleForUser(id, r)
-		if err != nil {
-			return err
-		}
-	}
+// 	return nil
+// }
 
-	if !hasRole {
-		_, err = m.enforcer.AddRoleForUser(id, newRole)
-		if err != nil {
-			return err
-		}
-	}
+// func (m *Manager) Allowed(user *domain.User, res Resource, action Action) (bool, error) {
+// 	return m.enforcer.Enforce(user.ID.String(), string(res), string(action))
+// }
 
-	return nil
-}
+// func (m *Manager) AddPolicy(role domain.UserRole, res Resource, act Action) error {
+// 	hasPolicy, err := m.enforcer.HasPolicy(string(role), string(res), string(act))
+// 	if err != nil {
+// 		return err
+// 	}
 
-func (m *Manager) Allowed(user *domain.User, res Resource, action Action) (bool, error) {
-	return m.enforcer.Enforce(user.ID.String(), string(res), string(action))
-}
+// 	if !hasPolicy {
+// 		_, err := m.enforcer.AddPolicy(string(role), string(res), string(act))
+// 		if err != nil {
+// 			return fmt.Errorf("failed to add policy: %w", err)
+// 		}
+// 	}
 
-func (m *Manager) AddPolicy(role domain.UserRole, res Resource, act Action) error {
-	hasPolicy, err := m.enforcer.HasPolicy(string(role), string(res), string(act))
-	if err != nil {
-		return err
-	}
+// 	return nil
+// }
 
-	if !hasPolicy {
-		_, err := m.enforcer.AddPolicy(string(role), string(res), string(act))
-		if err != nil {
-			return fmt.Errorf("failed to add policy: %w", err)
-		}
-	}
+// func (m *Manager) Middleware(res Resource, action Action) echo.MiddlewareFunc {
+// 	return func(next echo.HandlerFunc) echo.HandlerFunc {
+// 		return func(c echo.Context) error {
+// 			user := m.userFunc(c.Request().Context())
+// 			if user == nil {
+// 				return echo.ErrUnauthorized
+// 			}
 
-	return nil
-}
+// 			ok, err := m.Allowed(user, res, action)
+// 			if err != nil {
+// 				return echo.ErrInternalServerError
+// 			}
 
-func (m *Manager) Middleware(res Resource, action Action) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			user := m.userFunc(c.Request().Context())
-			if user == nil {
-				return echo.ErrUnauthorized
-			}
+// 			if !ok {
+// 				return echo.ErrForbidden
+// 			}
 
-			ok, err := m.Allowed(user, res, action)
-			if err != nil {
-				return echo.ErrInternalServerError
-			}
+// 			return next(c)
+// 		}
+// 	}
+// }
 
-			if !ok {
-				return echo.ErrForbidden
-			}
-
-			return next(c)
-		}
-	}
-}
-
-func wrapError(fn string, err error) error {
-	return fmt.Errorf("%s: %w", fn, err)
-}
+// func wrapError(fn string, err error) error {
+// 	return fmt.Errorf("%s: %w", fn, err)
+// }

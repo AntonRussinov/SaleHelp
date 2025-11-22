@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql/driver"
 	"salehelp/domain"
-	"salehelp/test/dbmock"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -12,21 +11,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestProductRepositorySave(t *testing.T) {
+func TestProductRepositoryCreate(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-
 	builder := NewDataBuilder(t)
 
 	tests := []struct {
 		name    string
-		product domain.Product
 		sqlErr  error
 		wantErr bool
 	}{
-		{name: "executes insert query", product: builder.Product()},
-		{name: "returns error on sql insert error", product: builder.Product(), sqlErr: assert.AnError, wantErr: true},
+		{name: "executes insert query"},
+		{name: "returns error on sql insert error", sqlErr: assert.AnError, wantErr: true},
 	}
 
 	for _, tt := range tests {
@@ -35,9 +32,16 @@ func TestProductRepositorySave(t *testing.T) {
 
 			repo, mock := setupRepo(t)
 
+			product := builder.Product()
+
+			// аргументы insert в том порядке, как GORM их передаст
+			args := saveProductSQLArgs(product)
+
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "products"(.+)`).WithArgs(saveProductSQLArgs(tt.product)...).
-				WillReturnResult(sqlmock.NewResult(1, 1)).WillReturnError(tt.sqlErr)
+			mock.ExpectExec(`INSERT INTO "products"(.+)`).
+				WithArgs(args...).
+				WillReturnResult(sqlmock.NewResult(1, 1)).
+				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {
 				mock.ExpectCommit()
@@ -45,9 +49,10 @@ func TestProductRepositorySave(t *testing.T) {
 				mock.ExpectRollback()
 			}
 
-			productParam := tt.product
+			productParam := product
 
-			err := repo.Save(ctx, &productParam)
+			err := repo.Create(ctx, &productParam)
+
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -58,20 +63,16 @@ func TestProductRepositorySave(t *testing.T) {
 }
 
 func saveProductSQLArgs(product domain.Product) []driver.Value {
-	values := []driver.Value{
-		product.ID,
-
-		product.MasterSKU,
-		product.Model,
-		product.Brand,
-		product.MasterTitle,
+	return []driver.Value{
+		product.ShopID,
+		product.ExternalID,
+		product.SKU,
 		product.Title,
-		product.VerticalCategory,
-		product.MasterCategory,
-		dbmock.MatchTime(),
-		dbmock.MatchTime(),
-		nil,
+		product.URL,
+		product.ImageURL,
+		product.Brand,
+		product.Category,
+		product.CreatedAt,
+		product.UpdatedAt,
 	}
-
-	return values
 }
