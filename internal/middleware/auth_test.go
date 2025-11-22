@@ -9,7 +9,6 @@ import (
 	"salehelp/pkg/auth"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -87,8 +86,8 @@ func TestAuthenticationQuery(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	userData := &auth.UserData{ID: uuid.New()}
-	user := &domain.User{ID: uuid.New()}
+	userData := &auth.UserData{ID: 1}
+	user := &domain.User{ID: 1}
 	token := "test-token"
 
 	authenticator.On("AuthenticateWithQuery", req).Return(userData, token, nil)
@@ -129,8 +128,8 @@ func TestAuthenticationHeader(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	userData := &auth.UserData{ID: uuid.New()}
-	user := &domain.User{ID: uuid.New()}
+	userData := &auth.UserData{ID: 1}
+	user := &domain.User{ID: 1}
 	token := "test-token"
 
 	authenticator.On("AuthenticateWithHeader", req).Return(userData, token, nil)
@@ -167,8 +166,8 @@ func TestAuthenticationCookie(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	userData := &auth.UserData{ID: uuid.New()}
-	user := &domain.User{ID: uuid.New()}
+	userData := &auth.UserData{ID: 1}
+	user := &domain.User{ID: 1}
 
 	authenticator.On("AuthenticateWithCookie", req).Return(userData, "", nil)
 	userService.On("Login", mock.Anything, userData).Return(user, nil)

@@ -34,6 +34,7 @@ CREATE TABLE products (
     image_url       TEXT,
     brand           TEXT,
     category        TEXT,
+    description     TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (shop_id, external_id)
@@ -125,6 +126,19 @@ CREATE TABLE telegram_accounts (
     UNIQUE (user_id)
 );
 
+CREATE TABLE alerts_triggered (
+    id          BIGSERIAL PRIMARY KEY,
+    alert_id    BIGINT NOT NULL REFERENCES alerts(id) ON DELETE CASCADE,
+    product_id  BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    snapshot_id BIGINT NOT NULL REFERENCES product_snapshots(id) ON DELETE CASCADE,
+    message     TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_alerts_triggered_alert ON alerts_triggered(alert_id);
+CREATE INDEX idx_alerts_triggered_product ON alerts_triggered(product_id);
+CREATE INDEX idx_alerts_triggered_snapshot ON alerts_triggered(snapshot_id);
+
 -- +goose StatementEnd
 
 -- +goose Down
@@ -146,5 +160,9 @@ DROP INDEX idx_shops_marketplace_external;
 DROP INDEX idx_shops_user_id;
 DROP TABLE shops;
 DROP TABLE users;
+DROP INDEX idx_alerts_triggered_snapshot;
+DROP INDEX idx_alerts_triggered_product;
+DROP INDEX idx_alerts_triggered_alert;
+DROP TABLE alerts_triggered;
 
 -- +goose StatementEnd

@@ -7,8 +7,6 @@ import (
 	"salehelp/domain"
 	"salehelp/pkg/auth/azure"
 	"slices"
-
-	"github.com/google/uuid"
 )
 
 type (
@@ -19,10 +17,10 @@ type (
 	}
 
 	UserData struct {
-		ID    uuid.UUID
+		ID    int
 		Name  string
 		Email string
-		Roles []domain.UserRole
+		// Roles []domain.UserRole
 	}
 	Authenticator interface {
 		AuthenticateWithQuery(req *http.Request) (*UserData, string, error)
@@ -184,54 +182,46 @@ func GetUserFromClaims(claims map[string]any) (*UserData, error) {
 		return nil, InvalidClaimsError("could not parse email")
 	}
 
-	id, ok := claims["oid"].(string)
-	if !ok {
-		return nil, InvalidClaimsError("could not parse user id")
-	}
+	userID := 1
 
-	userID, err := uuid.Parse(id)
-	if err != nil {
-		return nil, InvalidClaimsError("could not parse user id")
-	}
+	// userRoles := extractUserRoles(claims)
 
-	userRoles := extractUserRoles(claims)
-
-	if len(userRoles) == 0 {
-		return nil, InvalidClaimsError("no user roles provided")
-	}
+	// if len(userRoles) == 0 {
+	// 	return nil, InvalidClaimsError("no user roles provided")
+	// }
 
 	user := &UserData{
 		ID:    userID,
 		Name:  name,
 		Email: email,
-		Roles: userRoles,
+		// Roles: userRoles,
 	}
 
 	return user, nil
 }
 
-func extractUserRoles(claims map[string]any) []domain.UserRole {
-	userRoles := []domain.UserRole{}
+// func extractUserRoles(claims map[string]any) []domain.UserRole {
+// 	userRoles := []domain.UserRole{}
 
-	tokenRoles, ok := claims["roles"].([]any)
-	if !ok {
-		return userRoles
-	}
+// 	tokenRoles, ok := claims["roles"].([]any)
+// 	if !ok {
+// 		return userRoles
+// 	}
 
-	for _, r := range tokenRoles {
-		role, ok := r.(string)
-		if !ok {
-			continue
-		}
+// 	for _, r := range tokenRoles {
+// 		role, ok := r.(string)
+// 		if !ok {
+// 			continue
+// 		}
 
-		userRole := domain.UserRole(role)
-		if userRole.IsValid() {
-			userRoles = append(userRoles, userRole)
-		}
-	}
+// 		userRole := domain.UserRole(role)
+// 		if userRole.IsValid() {
+// 			userRoles = append(userRoles, userRole)
+// 		}
+// 	}
 
-	return userRoles
-}
+// 	return userRoles
+// }
 
 func GetUserFromContext(ctx context.Context) *domain.User {
 	user, ok := ctx.Value(userContextKey).(*domain.User)

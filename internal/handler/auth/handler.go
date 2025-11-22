@@ -24,7 +24,7 @@ func NewHandler(cfg auth.Config, userService middleware.UserService) (*Handler, 
 		authenticator, err = auth.NewAzureAuthenticator(&cfg)
 		cookieUpdateFn = secureCookieUpdate()
 	} else {
-		authenticator = auth.NewSkipAuthenticator()
+		//authenticator = auth.NewSkipAuthenticator()
 		cookieUpdateFn = insecureCookieUpdate()
 	}
 

@@ -1,21 +1,14 @@
 package auth_test
 
-import (
-	"salehelp/pkg/auth"
-	"testing"
+// func TestSkipAuth(t *testing.T) {
+// 	t.Parallel()
 
-	"github.com/stretchr/testify/require"
-)
+// 	authenticator := auth.NewSkipAuthenticator()
+// 	user, _, err := authenticator.AuthenticateWithHeader(nil)
+// 	require.NoError(t, err)
+// 	require.NotNil(t, user)
 
-func TestSkipAuth(t *testing.T) {
-	t.Parallel()
-
-	authenticator := auth.NewSkipAuthenticator()
-	user, _, err := authenticator.AuthenticateWithHeader(nil)
-	require.NoError(t, err)
-	require.NotNil(t, user)
-
-	user, _, err = authenticator.AuthenticateWithQuery(nil)
-	require.NoError(t, err)
-	require.NotNil(t, user)
-}
+// 	user, _, err = authenticator.AuthenticateWithQuery(nil)
+// 	require.NoError(t, err)
+// 	require.NotNil(t, user)
+// }

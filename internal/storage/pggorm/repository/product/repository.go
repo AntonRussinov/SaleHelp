@@ -2,7 +2,11 @@ package product
 
 import (
 	"log/slog"
-	"salehelp/internal/storage/pggorm"
+
+	"salehelp/domain"
+
+	"salehelp/internal/storage/pggorm" // твой базовый репозиторий
+	"salehelp/internal/storage/pggorm/model"
 	"salehelp/pkg/logger/sl"
 
 	"gorm.io/gorm"
@@ -18,4 +22,25 @@ func NewRepository(log *slog.Logger, db *gorm.DB) *Repository {
 	repo.DB = db
 
 	return repo
+}
+
+// helper: domain → model
+func toModel(p *domain.Product) *model.Product {
+	if p == nil {
+		return nil
+	}
+
+	return &model.Product{
+		ID:         p.ID,
+		ShopID:     p.ShopID,
+		ExternalID: p.ExternalID,
+		SKU:        p.SKU,
+		Title:      p.Title,
+		URL:        p.URL,
+		ImageURL:   p.ImageURL,
+		Brand:      p.Brand,
+		Category:   p.Category,
+		CreatedAt:  p.CreatedAt,
+		UpdatedAt:  p.UpdatedAt,
+	}
 }

@@ -50,24 +50,24 @@ func (b *DataBuilder) Product() domain.Product {
 	var product domain.Product
 
 	err := b.faker.Struct(&product)
-
 	require.NoError(b.t, err)
 
 	return product
 }
 
+// порядок значений должен совпадать с model.ProductColumns()
 func (b *DataBuilder) ProductRowValues(product domain.Product) []driver.Value {
 	return []driver.Value{
 		product.ID,
-		product.MasterSKU,
-		product.Model,
-		product.Brand,
-		product.MasterTitle,
+		product.ShopID,
+		product.ExternalID,
+		product.SKU,
 		product.Title,
-		product.VerticalCategory,
-		product.MasterCategory,
-		b.faker.Date(),
-		b.faker.Date(),
-		nil,
+		product.URL,
+		product.ImageURL,
+		product.Brand,
+		product.Category,
+		product.CreatedAt,
+		product.UpdatedAt,
 	}
 }
