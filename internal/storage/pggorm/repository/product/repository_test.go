@@ -61,12 +61,12 @@ func (b *DataBuilder) ProductRowValues(product domain.Product) []driver.Value {
 		product.ID,
 		product.ShopID,
 		product.ExternalID,
-		product.SKU,
 		product.Title,
 		product.URL,
 		product.ImageURL,
 		product.Brand,
 		product.Category,
+		product.Description,
 		product.CreatedAt,
 		product.UpdatedAt,
 	}

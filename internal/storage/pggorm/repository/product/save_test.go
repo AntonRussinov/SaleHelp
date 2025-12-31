@@ -66,12 +66,12 @@ func saveProductSQLArgs(product domain.Product) []driver.Value {
 	return []driver.Value{
 		product.ShopID,
 		product.ExternalID,
-		product.SKU,
 		product.Title,
 		product.URL,
 		product.ImageURL,
 		product.Brand,
 		product.Category,
+		product.Description,
 		product.CreatedAt,
 		product.UpdatedAt,
 	}

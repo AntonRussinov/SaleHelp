@@ -1,0 +1,16 @@
+# docker-compose.yml
+services:
+  salehelp-postgres:
+    image: postgres:16
+    container_name: salehelp-postgres
+    environment:
+      POSTGRES_USER: salehelp
+      POSTGRES_PASSWORD: salehelp
+      POSTGRES_DB: salehelp
+    ports:
+      - "5432:5432"
+    volumes:
+      - salehelp_pgdata:/var/lib/postgresql/data
+
+volumes:
+  salehelp_pgdata:

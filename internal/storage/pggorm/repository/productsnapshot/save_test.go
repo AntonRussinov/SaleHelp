@@ -33,7 +33,7 @@ func TestProductSnapshotRepositoryCreate(t *testing.T) {
 			repo, mock := setupRepo(t)
 			snap := builder.Snapshot()
 
-			args := saveSnapshotSQLArgs(snap)
+			args := saveProductSnapshotSQLArgs(snap)
 
 			mock.ExpectBegin()
 			mock.ExpectExec(`INSERT INTO "product_snapshots"`).
@@ -59,19 +59,26 @@ func TestProductSnapshotRepositoryCreate(t *testing.T) {
 	}
 }
 
-func saveSnapshotSQLArgs(s domain.ProductSnapshot) []driver.Value {
+func saveProductSnapshotSQLArgs(s domain.ProductSnapshot) []driver.Value {
 	return []driver.Value{
 		s.ProductID,
 		s.SnapshotTime,
-		s.Price,
-		s.OldPrice,
+		s.CurrencyCode,
+		s.BasePrice,
+		s.FinalPrice,
+		s.ClubPrice,
 		s.Discount,
+		s.ClubDiscount,
+		s.OldPrice,
 		s.StockTotal,
+		s.StockInWay,
 		s.Rating,
 		s.ReviewsCount,
 		s.Sales24h,
 		s.Sales7d,
 		s.PositionSearch,
+		s.IsBadTurnover,
+		s.EditableSizePrice,
 		s.Extra,
 		s.CreatedAt,
 	}

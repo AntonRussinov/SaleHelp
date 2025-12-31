@@ -12,6 +12,7 @@ type (
 	ServiceConfig struct {
 		Listen         string
 		Environment    string
+		TelegramToken  string
 		GormLogLevel   int
 		ClientSecret   string
 		AllowedOrigins []string

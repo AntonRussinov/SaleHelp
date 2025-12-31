@@ -71,13 +71,13 @@ migrate-create: ### create new migration, call make migrate create name=your_mig
 .PHONY: migrate-create
 
 migrate-down: ### run migrations
-	goose -dir db/migrations postgres "host=192.168.58.2 port=32034 user=postgres password=postgres dbname=salehelp sslmode=disable" down
+	goose -dir db/migrations postgres "host=localhost port=5432 user=postgres password=postgres dbname=salehelp sslmode=disable" down
 
 migrate-reset: ### rollback all migrations
-	goose -dir db/migrations postgres "host=192.168.58.2 port=32034 user=postgres password=postgres dbname=salehelp sslmode=disable" reset 
+	goose -dir db/migrations postgres "host=localhost port=5432 user=postgres password=postgres dbname=salehelp sslmode=disable" reset 
 
 migrate-up: ### run migrations
-	goose -dir db/migrations postgres "host=192.168.58.2 port=32034 user=postgres password=postgres dbname=salehelp sslmode=disable" up
+	goose -dir db/migrations postgres "host=localhost port=5432 user=postgres password=postgres dbname=salehelp sslmode=disable" up
 	
 db-forward:
 	kubectl port-forward service/postgres-salehelp 5432:5432

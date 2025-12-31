@@ -56,6 +56,7 @@ func (b *DataBuilder) AlertTriggeredRowValues(a domain.AlertTriggered) []driver.
 		a.AlertID,
 		a.ProductID,
 		a.SnapshotID,
+		a.ShopID,
 		a.Message,
 		a.CreatedAt,
 	}

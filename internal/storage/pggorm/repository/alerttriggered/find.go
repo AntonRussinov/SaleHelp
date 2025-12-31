@@ -76,3 +76,24 @@ func (r *Repository) ListByProductID(ctx context.Context, productID int, limit, 
 
 	return out, nil
 }
+
+func (r *Repository) ListUnsent(ctx context.Context, limit int) ([]*domain.AlertTriggered, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	var rows []model.AlertTriggered
+	if err := r.DB.WithContext(ctx).
+		Where("sent_at IS NULL").
+		Order("created_at ASC").
+		Limit(limit).
+		Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("alerts_triggered list unsent: %w", err)
+	}
+
+	out := make([]*domain.AlertTriggered, 0, len(rows))
+	for i := range rows {
+		out = append(out, rows[i].ToDomain())
+	}
+	return out, nil
+}

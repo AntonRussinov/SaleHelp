@@ -76,3 +76,41 @@ func (r *Repository) ListByUser(
 
 	return result, nil
 }
+
+func (r *Repository) ListAll(ctx context.Context) ([]*domain.Shop, error) {
+	var m []model.Shop
+
+	if err := r.DB.WithContext(ctx).Find(&m).Error; err != nil {
+		return nil, err
+	}
+
+	result := make([]*domain.Shop, 0, len(m))
+	for i := range m {
+		result = append(result, m[i].ToDomain())
+	}
+
+	return result, nil
+}
+
+func (r *Repository) ListActiveIDs(ctx context.Context, limit, offset int) ([]int, error) {
+	var ids []int
+
+	q := r.DB.WithContext(ctx).
+		Model(&model.Shop{}).
+		Select("id").
+		Where("is_active = true").
+		Order("id ASC")
+
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+	if offset > 0 {
+		q = q.Offset(offset)
+	}
+
+	if err := q.Pluck("id", &ids).Error; err != nil {
+		return nil, fmt.Errorf("shop list active ids: %w", err)
+	}
+
+	return ids, nil
+}

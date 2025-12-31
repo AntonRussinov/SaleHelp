@@ -40,25 +40,25 @@ func (app *APP) Run(ctx context.Context) error {
 		return ErrAppStopped
 	}
 
-	appCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	// старт сервера в горутине
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- app.prov.GetRouter().Start(app.cfg.Listen)
+	}()
 
-	err := app.prov.Init(appCtx)
-	if err != nil {
+	// ждём либо ctx.Done(), либо ошибку сервера
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errCh:
+		// сервер упал сам
+		if errors.Is(err, http.ErrServerClosed) {
+			app.log.Info("Server closed")
+			return nil
+		}
+		app.log.Error("Server stopped unexpectedly", slog.Any("error", err))
 		return err
 	}
-
-	if err := app.prov.GetRouter().Start(app.cfg.Listen); err != nil {
-		if errors.Is(err, http.ErrServerClosed) {
-			app.log.Info("Server closed under request")
-		} else {
-			app.log.Error("Server closed unexpect")
-		}
-	}
-
-	<-appCtx.Done()
-
-	return appCtx.Err()
 }
 
 func (app *APP) Shutdown(ctx context.Context) error {
@@ -67,6 +67,14 @@ func (app *APP) Shutdown(ctx context.Context) error {
 	}
 
 	app.inShutdown.Store(true)
+
+	// graceful shutdown HTTP сервера
+	if err := app.prov.GetRouter().Shutdown(ctx); err != nil {
+		return err
+	}
+
+	// если есть ресурсы: db, clients — можно закрывать тут
+	// _ = app.prov.Close()
 
 	return nil
 }

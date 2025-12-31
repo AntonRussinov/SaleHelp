@@ -42,20 +42,27 @@ func (b *DataBuilder) Snapshot() domain.ProductSnapshot {
 	return s
 }
 
-func (b *DataBuilder) SnapshotRowValues(s domain.ProductSnapshot) []driver.Value {
+func (b *DataBuilder) ProductSnapshotRowValues(s domain.ProductSnapshot) []driver.Value {
 	return []driver.Value{
 		s.ID,
 		s.ProductID,
 		s.SnapshotTime,
-		s.Price,
-		s.OldPrice,
+		s.CurrencyCode,
+		s.BasePrice,
+		s.FinalPrice,
+		s.ClubPrice,
 		s.Discount,
+		s.ClubDiscount,
+		s.OldPrice,
 		s.StockTotal,
+		s.StockInWay,
 		s.Rating,
 		s.ReviewsCount,
 		s.Sales24h,
 		s.Sales7d,
 		s.PositionSearch,
+		s.IsBadTurnover,
+		s.EditableSizePrice,
 		s.Extra,
 		s.CreatedAt,
 	}

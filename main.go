@@ -1,103 +1,67 @@
-// Implement a part of a web-crowler program that concurrently sends HTTP GET requests to different endpoints and returns the results and errors into the main function.
-// Apply a limitation on a number of simultaneously running HTTP requests.
-// The order of results doesn't matter.
-// The goal is to build a program that is capable of efficiently managing the execution of external requests in parallel, leveraging Go's concurrency features.
-
-
 package main
 
 import (
+	"context"
 	"fmt"
-	"io"
+	"log"
 	"net/http"
-	"sync"
+	"time"
+
+	wbclient "salehelp/internal/adapter/wb/client"
+	"salehelp/internal/adapter/wb/dto"
 )
 
-// concurrentRequests function takes a slice of URLs,
-// fetches data from each URL concurrently, and prints the results.
-// The order of results is not important.
-
-func concurrentRequests(urls []string, maxGR int) []Result {
-	if maxGR <= 0 {
-		maxGR = 10
-	}
-
-	var wg sync.WaitGroup
-	ch := make(chan Result, len(urls))
-	sem := make(chan struct{}, maxGR) 
-	
-	
-	for _, u := range urls {
-		wg.Add(1)
-		sem <- struct{}{}
-		
-		go func(u string, wg *sync.WaitGroup){
-			defer wg.Done()
-			defer func(){<-sem}()
-			
-			resp, err := http.Get(u)
-			if err != nil {
-				ch <- Result{
-					URL: u,
-					Err: err,
-				}
-				return
-			}
-			
-			defer resp.Body.Close()
-			
-			b, err := io.ReadAll(resp.Body)
-			if err != nil {
-				ch <- Result{
-					URL: u,
-					Err: err,
-				}
-				return
-			}
-
-			ch <- Result{
-				URL: u,
-				Body: string(b),
-				Err: nil,
-			}
- 			
-		}(u, &wg)
-	}
-
-	wg.Wait()
-	close(ch)
-	results := make([]Result, 0, len(urls))
-	for result := range ch {
-		results = append(results, result)
-		fmt.Println(result)
-	}
-	
-	return results
- 
-}
-
 func main() {
-    
-	urls := []string{
-		"https://example.com",
-		"https://httpbin.org/get",
-		"https://jsonplaceholder.typicode.com/posts/1",
+	apiKey := "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ"
+	if apiKey == "" {
+		log.Fatal("WB_API_KEY is not set")
 	}
 
-    results := concurrentRequests(urls, 10)
+	httpClient := &http.Client{
+		Timeout: 15 * time.Second,
+	}
 
-	for _, r := range results {
-		if r.Err != nil {
-			fmt.Printf("%s -> error: %v\n", r.URL, r.Err)
-			continue
+	client := wbclient.New(httpClient)
+
+	// минимальный запрос — можно потом усложнять
+	req := dto.GetCardsRequest{
+		Settings: dto.Settings{
+			Cursor: dto.Cursor{
+				Limit: 10,
+			},
+			Filter: dto.Filter{
+				TextSearch:            "",
+				AllowedCategoriesOnly: false,
+				TagIDs:                []int{},
+				ObjectIDs:             []int{},
+				Brands:                []string{},
+				ImtID:                 0,
+				WithPhoto:             -1,
+			},
+		},
+	}
+
+	ctx := context.Background()
+	resp, err := client.GetCards(ctx, apiKey, req)
+	if err != nil {
+		log.Fatalf("GetCards error: %v", err)
+	}
+
+	fmt.Printf("Total: %d\n", resp.Cursor.Total)
+	fmt.Printf("Cards returned: %d\n", len(resp.Cards))
+
+	for i, card := range resp.Cards {
+		fmt.Printf("\n--- Card #%d ---\n", i+1)
+		fmt.Printf("nmID: %d\n", card.NmID)
+		fmt.Printf("vendorCode: %s\n", card.VendorCode)
+		fmt.Printf("brand: %s\n", card.Brand)
+		fmt.Printf("title: %s\n", card.Title)
+		fmt.Printf("createdAt: %s\n", card.CreatedAt)
+		if len(card.Sizes) > 0 {
+			fmt.Printf("sizes[0].chrtID: %d\n", card.Sizes[0].ChrtID)
 		}
-		fmt.Printf("%s -> %d bytes\n", r.URL, len(r.Body))
+		if i >= 4 { // чтобы не спамить консоль
+			break
+		}
 	}
-}
-
-
-type Result struct {
-	URL  string
-	Body string
-	Err  error
 }

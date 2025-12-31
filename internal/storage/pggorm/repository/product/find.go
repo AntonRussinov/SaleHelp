@@ -77,3 +77,22 @@ func (r *Repository) ListByShop(
 
 	return result, nil
 }
+
+func (r *Repository) ListIDsByShopID(ctx context.Context, shopID int) ([]int, error) {
+	type row struct {
+		ID int `gorm:"column:id"`
+	}
+
+	var rows []row
+	if err := r.DB.WithContext(ctx).
+		Raw(`SELECT id FROM products WHERE shop_id = ? ORDER BY id`, shopID).
+		Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("product list ids by shop_id: %w", err)
+	}
+
+	out := make([]int, 0, len(rows))
+	for _, rr := range rows {
+		out = append(out, rr.ID)
+	}
+	return out, nil
+}

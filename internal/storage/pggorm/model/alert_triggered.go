@@ -10,6 +10,7 @@ type AlertTriggered struct {
 	AlertID    int       `gorm:"column:alert_id;not null"`
 	ProductID  int       `gorm:"column:product_id;not null"`
 	SnapshotID int       `gorm:"column:snapshot_id"`
+	ShopID     int       `gorm:"column:shop_id;not null"`
 	Message    string    `gorm:"column:message;type:text"`
 	CreatedAt  time.Time `gorm:"column:created_at;autoCreateTime"`
 }
@@ -20,6 +21,7 @@ func AlertTriggeredColumns() []string {
 		"alert_id",
 		"product_id",
 		"snapshot_id",
+		"shop_id",
 		"message",
 		"created_at",
 	}
@@ -35,11 +37,11 @@ func (at *AlertTriggered) ToDomain() *domain.AlertTriggered {
 		AlertID:    at.AlertID,
 		ProductID:  at.ProductID,
 		SnapshotID: at.SnapshotID,
+		ShopID:     at.ShopID,
 		Message:    at.Message,
 		CreatedAt:  at.CreatedAt,
 	}
 }
-
 func (*AlertTriggered) TableName() string {
 	return "alerts_triggered"
 }

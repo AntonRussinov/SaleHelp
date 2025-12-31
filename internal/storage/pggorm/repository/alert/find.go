@@ -76,3 +76,41 @@ func (r *Repository) ListByProduct(ctx context.Context, productID int, limit, of
 
 	return out, nil
 }
+
+func (r *Repository) ListActiveByShop(ctx context.Context, shopID int) ([]*domain.Alert, error) {
+	var rows []model.Alert
+
+	if err := r.DB.WithContext(ctx).
+		Where("shop_id = ?", shopID).
+		Where("status IN ?", []string{"active", "new"}).
+		Order("id ASC").
+		Find(&rows).Error; err != nil {
+
+		return nil, fmt.Errorf("alert list active by shop: %w", err)
+	}
+
+	out := make([]*domain.Alert, 0, len(rows))
+	for i := range rows {
+		out = append(out, rows[i].ToDomain()) // если ToDomain() возвращает *domain.Alert
+	}
+	return out, nil
+}
+
+func (r *Repository) ListActiveByShopAndType(ctx context.Context, shopID int, alertType string) ([]*domain.Alert, error) {
+	var rows []model.Alert
+
+	if err := r.DB.WithContext(ctx).
+		Where("shop_id = ?", shopID).
+		Where("type = ?", alertType).
+		Where("status IN ?", []string{"active", "new"}).
+		Order("id ASC").
+		Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("alert list active by shop and type: %w", err)
+	}
+
+	out := make([]*domain.Alert, 0, len(rows))
+	for i := range rows {
+		out = append(out, rows[i].ToDomain())
+	}
+	return out, nil
+}

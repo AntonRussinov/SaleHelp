@@ -7,6 +7,7 @@ type AlertTriggered struct {
 	AlertID    int
 	ProductID  int
 	SnapshotID int
+	ShopID     int
 	Message    string
 	CreatedAt  time.Time
 }

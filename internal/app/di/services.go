@@ -1,11 +1,24 @@
 package di
 
-import "salehelp/internal/services/product"
+import (
+	"os"
+	"salehelp/internal/services/alert"
+	"salehelp/internal/services/monitoring"
+	notifications "salehelp/internal/services/notification"
+	"salehelp/internal/services/product"
+	"salehelp/pkg/notify"
+	"salehelp/pkg/notify/telegram"
+	"time"
+)
 
 type Services struct {
 	//User *user.Service
 	//Limit         *limit.Service
-	Product *product.Service
+	Alert       *alert.AlertEngine
+	Monitoring  *monitoring.Service
+	Notifier    *notifications.Service //Dispatcher
+	AlertWorker *alert.Worker
+	Product     *product.Service
 }
 
 func (prov *Provider) InitServices() {
@@ -14,13 +27,75 @@ func (prov *Provider) InitServices() {
 }
 
 func (prov *Provider) initIndependentServices() {
+	prov.Services.Monitoring = monitoring.NewMonitoringService(
+		prov.Repositories.Shop,
+		prov.Repositories.Product,
+		prov.Repositories.ProductSnapshot,
+		prov.Repositories.ProductSizeSnapshot,
+		prov.Repositories.ProductSizePriceSnapshot,
+		prov.Repositories.ProductSize,
+		prov.Repositories.ProductSizesku,
+		prov.Repositories.WBWarehouse,
+		prov.Repositories.SellerWarehouse,
+		prov.WBClient,
+		prov.log,
+	)
+	prov.Services.Alert = alert.NewAlertEngine(
+		prov.Repositories.Alert,
+		prov.Repositories.AlertTriggered,
+		prov.Repositories.Product,
+		prov.Repositories.ProductSnapshot,
+		prov.Repositories.AlertTriggeredDelivery,
+	)
+	prov.Services.AlertWorker = alert.NewWorker(
+		prov.Repositories.Shop, // должен реализовать ListActiveIDs
+		prov.Services.Alert,
+		3*time.Minute,
+	)
 
 }
 
 func (prov *Provider) initDependentServices() {
+
+	// 1) senders registry
+	tgSender, err := telegram.NewSender(prov.cfg.TelegramToken)
+	if err != nil {
+		panic(err) // или вернуть ошибку из InitServices
+	}
+	senders := []notify.Sender{
+		tgSender,
+	}
+
+	registry := notifications.NewSenderRegistry(senders)
+
+	dispatcher := notifications.NewDispatcher(
+		prov.Repositories.AlertTriggeredDelivery, // deliveries repo
+		prov.Repositories.AlertTriggered,         // triggered repo
+		prov.Repositories.NotificationEndpoint,   // endpoints repo
+		registry,
+		getWorkerID(),
+	)
+
+	prov.Services.Notifier = notifications.NewService(dispatcher, 5*time.Second)
 	// prov.Services.Product = product.NewService(
 	// 	prov.log, prov.Repositories.Stock, prov.Repositories.Product,
 	// 	prov.Repositories.CityPrice, prov.Repositories.Offer,
 	// 	prov.Repositories.Merchant, prov.Repositories.Image,
 	// 	prov.KaspiPortalAPI)
+}
+
+// Настроить поулчение корректного worker ID
+// когда будет запускаться несколько воркеров
+// (например, в k8s/azure)
+func getWorkerID() string {
+	// 1) из env (лучше всего в k8s/azure)
+	if v := os.Getenv("WORKER_ID"); v != "" {
+		return v
+	}
+	// 2) hostname
+	if h, err := os.Hostname(); err == nil && h != "" {
+		return h
+	}
+	// 3) fallback
+	return "worker-unknown"
 }

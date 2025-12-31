@@ -38,7 +38,7 @@ func TestProductSnapshotRepositoryGetLastByProductID(t *testing.T) {
 
 			rows := sqlmock.NewRows(JoinedColumns())
 			if tt.found {
-				rows.AddRow(builder.SnapshotRowValues(snap)...)
+				rows.AddRow(builder.ProductSnapshotRowValues(snap)...)
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "product_snapshots" WHERE product_id = \$1 ORDER BY snapshot_time DESC LIMIT 1`).
@@ -83,8 +83,8 @@ func TestProductSnapshotRepositoryListByProductID(t *testing.T) {
 	s2.ProductID = productID
 
 	rows := sqlmock.NewRows(JoinedColumns()).
-		AddRow(builder.SnapshotRowValues(s1)...).
-		AddRow(builder.SnapshotRowValues(s2)...)
+		AddRow(builder.ProductSnapshotRowValues(s1)...).
+		AddRow(builder.ProductSnapshotRowValues(s2)...)
 
 	mock.ExpectQuery(`SELECT (.+) FROM "product_snapshots" WHERE product_id = \$1 ORDER BY snapshot_time DESC`).
 		WithArgs(productID).

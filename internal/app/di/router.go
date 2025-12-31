@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"salehelp/internal/handler"
 	"salehelp/internal/handler/product"
+	"salehelp/internal/handler/shop"
 	"salehelp/internal/middleware"
 
 	"github.com/go-playground/validator"
@@ -149,6 +150,11 @@ func (prov *Provider) registerV1Routes(group *echo.Group) {
 	//protected := group.Group("", handlers.Auth.HeaderMiddleware())
 
 	registerTagRoutes(group, handlers.Product)
+	registerUserShopRoutes(group, handlers.Shop)
+}
+
+func registerUserShopRoutes(e *echo.Group, shopHandler *shop.Handler) {
+	e.POST("/shop/:id/sync", shopHandler.SyncShopByID)
 }
 
 func registerTagRoutes(e *echo.Group, tagHandler *product.Handler) {

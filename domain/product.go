@@ -6,7 +6,6 @@ type Product struct {
 	ID          int
 	ShopID      int
 	ExternalID  string
-	SKU         string
 	Title       string
 	URL         string
 	ImageURL    string
