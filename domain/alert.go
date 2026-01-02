@@ -13,5 +13,7 @@ type Alert struct {
 	Payload            []byte
 	TriggeredAt        time.Time
 	ResolvedAt         *time.Time
+	Scope              string // "auto" | "product" | "size"
+	ProductSizeID      *int   // nullable
 	AIRecommendationID *int
 }

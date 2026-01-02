@@ -2,6 +2,7 @@ package alert
 
 import (
 	"context"
+	"salehelp/domain"
 )
 
 func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
@@ -21,6 +22,29 @@ func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
 		productIDs = append(productIDs, p.ID)
 	}
 
+	sizes, err := e.productSizesRepo.ListByProductIDs(ctx, productIDs)
+	if err != nil {
+		return err
+	}
+
+	sizesByProduct := make(map[int][]*domain.ProductSize, len(products))
+	for _, s := range sizes {
+		sizesByProduct[s.ProductID] = append(sizesByProduct[s.ProductID], s)
+	}
+
+	sizeIDs := make([]int, 0, len(sizes))
+	for _, s := range sizes {
+		sizeIDs = append(sizeIDs, s.ID)
+	}
+
+	sizeSnapsBySize := map[int][]*domain.ProductSizeSnapshot{}
+	if len(sizeIDs) > 0 {
+		sizeSnapsBySize, err = e.productSizeSnapshotsRepo.GetLatestBySizeIDsLimitMap(ctx, sizeIDs, 2)
+		if err != nil {
+			return err
+		}
+	}
+
 	snapshotsByProduct, err := e.snapshotsRepo.GetLatestByProductIDsLimit(ctx, productIDs, 2)
 	if err != nil {
 		return err
@@ -29,7 +53,11 @@ func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
 	// --- stock_low: global + overrides ---
 	globalLow, lowOverrides := buildEffectiveAlertsByProduct(alerts, AlertTypeStockLow)
 	if globalLow != nil || len(lowOverrides) > 0 {
-		if err := e.evalStockLowEffective(ctx, products, snapshotsByProduct, globalLow, lowOverrides); err != nil {
+		if err := e.evalStockLowEffective(ctx, products, sizesByProduct, snapshotsByProduct, globalLow, lowOverrides); err != nil {
+			return err
+		}
+
+		if err := e.evalStockLowSizesEffective(ctx, products, sizesByProduct, sizeSnapsBySize, globalLow, lowOverrides); err != nil {
 			return err
 		}
 	}
@@ -37,7 +65,11 @@ func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
 	// --- stock_zero: global + overrides ---
 	globalZero, zeroOverrides := buildEffectiveAlertsByProduct(alerts, AlertTypeStockZero)
 	if globalZero != nil || len(zeroOverrides) > 0 {
-		if err := e.evalStockZeroEffective(ctx, products, snapshotsByProduct, globalZero, zeroOverrides); err != nil {
+		if err := e.evalStockZeroEffective(ctx, products, sizesByProduct, snapshotsByProduct, globalZero, zeroOverrides); err != nil {
+			return err
+		}
+
+		if err := e.evalStockZeroSizesEffective(ctx, products, sizesByProduct, sizeSnapsBySize, globalZero, zeroOverrides); err != nil {
 			return err
 		}
 	}

@@ -51,7 +51,7 @@ type (
 		Upsert(ctx context.Context, ps *domain.ProductSize) error
 		FindByProductAndExternalID(ctx context.Context, productID int, externalID string) (*domain.ProductSize, error)
 		ListByProductID(ctx context.Context, productID int) ([]*domain.ProductSize, error)
-		ListByProductIDs(ctx context.Context, productIDs []int64) ([]*domain.ProductSize, error)
+		ListByProductIDs(ctx context.Context, productIDs []int) ([]*domain.ProductSize, error)
 	}
 
 	ProductSizePriceRepository interface {

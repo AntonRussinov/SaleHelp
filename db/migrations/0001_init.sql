@@ -83,6 +83,10 @@ CREATE TABLE product_snapshots (
 CREATE INDEX idx_product_snapshots_product_time
     ON product_snapshots (product_id, snapshot_time DESC);
 
+CREATE INDEX IF NOT EXISTS idx_product_snapshots_product_time_id
+ON product_snapshots (product_id, snapshot_time DESC, id DESC);
+
+
 CREATE TABLE product_sizes (
     id              BIGSERIAL PRIMARY KEY,
     product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -125,6 +129,12 @@ CREATE INDEX idx_pss_product_size
 CREATE INDEX idx_pss_sku
     ON product_size_snapshots(sku);
 
+CREATE INDEX IF NOT EXISTS idx_pss_size_created_id
+    ON product_size_snapshots (product_size_id, created_at DESC, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_pss_snapshot_size
+    ON product_size_snapshots (product_snapshot_id, product_size_id);
+
 
 
 CREATE TABLE alerts (
@@ -138,6 +148,8 @@ CREATE TABLE alerts (
     payload             JSONB,
     triggered_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     resolved_at         TIMESTAMPTZ,
+    scope               TEXT NOT NULL DEFAULT 'auto' CHECK (scope IN ('auto','product','size')),
+    product_size_id     BIGINT REFERENCES product_sizes(id) ON DELETE CASCADE,
     ai_recommendation_id BIGINT
 );
 
@@ -180,13 +192,15 @@ CREATE INDEX idx_subscriptions_user ON subscriptions(user_id, status);
 
 
 CREATE TABLE alerts_triggered (
-    id            BIGSERIAL PRIMARY KEY,
-    alert_id      BIGINT NOT NULL REFERENCES alerts(id) ON DELETE CASCADE,
-    product_id    BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    snapshot_id   BIGINT NOT NULL REFERENCES product_snapshots(id) ON DELETE CASCADE,
-    shop_id       BIGINT NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
-    message       TEXT,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    id              BIGSERIAL PRIMARY KEY,
+    alert_id        BIGINT NOT NULL REFERENCES alerts(id) ON DELETE CASCADE,
+    product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    snapshot_id     BIGINT NOT NULL REFERENCES product_snapshots(id) ON DELETE CASCADE,
+    shop_id         BIGINT NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+    message         TEXT,
+    product_size_id BIGINT REFERENCES product_sizes(id) ON DELETE CASCADE,
+    alert_type      TEXT   NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_alerts_triggered_alert ON alerts_triggered(alert_id);
@@ -194,7 +208,11 @@ CREATE INDEX idx_alerts_triggered_product ON alerts_triggered(product_id);
 CREATE INDEX idx_alerts_triggered_snapshot ON alerts_triggered(snapshot_id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_alerts_triggered_once
-ON alerts_triggered(alert_id, product_id, snapshot_id);
+    ON alerts_triggered(alert_id, product_id, product_size_id, snapshot_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_triggered_shop_created
+    ON alerts_triggered (shop_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alerts_triggered_product_created
+    ON alerts_triggered (product_id, created_at DESC);
 
 
 CREATE TABLE shop_notification_endpoints (
@@ -209,6 +227,12 @@ CREATE TABLE shop_notification_endpoints (
 
   UNIQUE (shop_id, channel, address)
 );
+
+CREATE INDEX idx_endpoints_shop_enabled ON shop_notification_endpoints(shop_id, enabled);
+CREATE INDEX idx_endpoints_channel ON shop_notification_endpoints(channel);
+CREATE INDEX IF NOT EXISTS idx_endpoints_shop_channel_enabled
+ON shop_notification_endpoints (shop_id, channel, enabled);
+
 
 CREATE TABLE alerts_triggered_deliveries (
   id           BIGSERIAL PRIMARY KEY,
@@ -232,9 +256,9 @@ CREATE TABLE alerts_triggered_deliveries (
 CREATE INDEX idx_deliveries_ready
 ON alerts_triggered_deliveries (lease_until, created_at)
 WHERE status='new';
+CREATE INDEX IF NOT EXISTS idx_deliveries_pick
+ON alerts_triggered_deliveries (status, lease_until, created_at, id);
 
-CREATE INDEX idx_endpoints_shop_enabled ON shop_notification_endpoints(shop_id, enabled);
-CREATE INDEX idx_endpoints_channel ON shop_notification_endpoints(channel);
 
 CREATE TABLE wb_warehouses (
     id               BIGSERIAL PRIMARY KEY,
@@ -309,6 +333,10 @@ CREATE TABLE product_size_price_snapshots (
 
 CREATE INDEX idx_psps_snapshot ON product_size_price_snapshots(product_snapshot_id);
 CREATE INDEX idx_psps_size ON product_size_price_snapshots(product_size_id);
+CREATE INDEX IF NOT EXISTS idx_psps_size_snapshot_id
+ON product_size_price_snapshots (product_size_id, product_snapshot_id DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_psps_snapshot_size
+ON product_size_price_snapshots (product_snapshot_id, product_size_id);
 
 
 
@@ -328,12 +356,13 @@ INSERT INTO users (
 );
 
 
-
-
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
+
+DROP TABLE IF EXISTS alerts_triggered_deliveries;
+DROP TABLE IF EXISTS shop_notification_endpoints;
 
 -- 1. Сначала зависимая таблица alerts_triggered
 DROP INDEX IF EXISTS idx_alerts_triggered_snapshot;

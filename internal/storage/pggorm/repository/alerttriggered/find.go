@@ -6,6 +6,7 @@ import (
 	"salehelp/domain"
 	"salehelp/internal/storage/pggorm/model"
 
+	"github.com/jackc/pgtype"
 	"gorm.io/gorm"
 )
 
@@ -95,5 +96,31 @@ func (r *Repository) ListUnsent(ctx context.Context, limit int) ([]*domain.Alert
 	for i := range rows {
 		out = append(out, rows[i].ToDomain())
 	}
+	return out, nil
+}
+
+func (r *Repository) GetByIDs(ctx context.Context, ids []int) (map[int]*domain.AlertTriggered, error) {
+	out := make(map[int]*domain.AlertTriggered, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+
+	arr := pgtype.Int8Array{}
+	if err := arr.Set(ids); err != nil {
+		return nil, fmt.Errorf("triggered get by ids: set array: %w", err)
+	}
+
+	var rows []model.AlertTriggered
+	if err := r.DB.WithContext(ctx).
+		Where("id = ANY(?)", &arr).
+		Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("triggered get by ids: %w", err)
+	}
+
+	for i := range rows {
+		d := rows[i].ToDomain()
+		out[d.ID] = d
+	}
+
 	return out, nil
 }

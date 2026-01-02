@@ -65,3 +65,23 @@ func derefInt(v *int) int {
 	}
 	return *v
 }
+
+func chooseStockScope(alert *domain.Alert, hasSizes bool) string {
+	// если scope пустой — считаем как auto (на всякий случай)
+	scope := alert.Scope
+	if scope == "" {
+		scope = "auto"
+	}
+
+	switch scope {
+	case "product":
+		return "product"
+	case "size":
+		return "size"
+	default: // auto
+		if hasSizes {
+			return "size"
+		}
+		return "product"
+	}
+}

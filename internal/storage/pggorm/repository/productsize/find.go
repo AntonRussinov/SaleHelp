@@ -6,6 +6,7 @@ import (
 	"salehelp/domain"
 	"salehelp/internal/storage/pggorm/model"
 
+	"github.com/jackc/pgtype"
 	"gorm.io/gorm"
 )
 
@@ -44,7 +45,7 @@ func (r *Repository) ListByProductID(ctx context.Context, productID int) ([]*dom
 
 func (r *Repository) ListByProductIDs(
 	ctx context.Context,
-	productIDs []int64,
+	productIDs []int,
 ) ([]*domain.ProductSize, error) {
 
 	if len(productIDs) == 0 {
@@ -99,5 +100,31 @@ func (r *Repository) ListByProductSizeID(ctx context.Context, productSizeID int)
 	for _, m := range rows {
 		out = append(out, m.ToDomain())
 	}
+	return out, nil
+}
+
+func (r *Repository) GetByIDs(ctx context.Context, ids []int) (map[int]*domain.ProductSize, error) {
+	out := make(map[int]*domain.ProductSize, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+
+	arr := pgtype.Int8Array{}
+	if err := arr.Set(ids); err != nil {
+		return nil, fmt.Errorf("product_size get by ids: set array: %w", err)
+	}
+
+	var rows []model.ProductSize
+	if err := r.DB.WithContext(ctx).
+		Where("id = ANY(?)", &arr).
+		Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("product_size get by ids: %w", err)
+	}
+
+	for i := range rows {
+		d := rows[i].ToDomain()
+		out[d.ID] = d
+	}
+
 	return out, nil
 }

@@ -68,6 +68,8 @@ func saveAlertTriggeredSQLArgs(a domain.AlertTriggered) []driver.Value {
 		a.SnapshotID,
 		a.ShopID,
 		a.Message,
+		a.ProductSizeID,
+		a.AlertType,
 		a.CreatedAt,
 	}
 }

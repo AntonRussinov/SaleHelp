@@ -28,11 +28,14 @@ func toModel(d *domain.AlertTriggered) *model.AlertTriggered {
 	}
 
 	return &model.AlertTriggered{
-		ID:         d.ID,
-		AlertID:    d.AlertID,
-		ProductID:  d.ProductID,
-		SnapshotID: d.SnapshotID,
-		Message:    d.Message,
-		CreatedAt:  d.CreatedAt,
+		ID:            d.ID,
+		AlertID:       d.AlertID,
+		ProductID:     d.ProductID,
+		SnapshotID:    d.SnapshotID,
+		Message:       d.Message,
+		ShopID:        d.ShopID,
+		ProductSizeID: d.ProductSizeID,
+		AlertType:     d.AlertType,
+		CreatedAt:     d.CreatedAt,
 	}
 }

@@ -9,6 +9,7 @@ import (
 func (e *AlertEngine) evalStockZeroEffective(
 	ctx context.Context,
 	products []*domain.Product,
+	sizesByProduct map[int][]*domain.ProductSize,
 	snapshotsByProduct map[int][]*domain.ProductSnapshot,
 	global *domain.Alert,
 	overrides map[int]*domain.Alert,
@@ -21,6 +22,12 @@ func (e *AlertEngine) evalStockZeroEffective(
 			a = ov
 		}
 		if a == nil {
+			continue
+		}
+
+		hasSizes := len(sizesByProduct[p.ID]) > 0
+		scope := chooseStockScope(a, hasSizes)
+		if scope != "product" {
 			continue
 		}
 
@@ -47,10 +54,11 @@ func (e *AlertEngine) evalStockZeroEffective(
 			ProductID:  p.ID,
 			SnapshotID: latest.ID,
 			ShopID:     p.ShopID,
+			AlertType:  a.Type,
 			Message:    msg,
 		}
 
-		id, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
+		_, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
 		if err != nil {
 			return err
 		}
@@ -60,10 +68,88 @@ func (e *AlertEngine) evalStockZeroEffective(
 		}
 
 		// ВОТ ТУТ fanout
-		if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, id, tr.ShopID); err != nil {
+		if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, tr.ID, tr.ShopID); err != nil {
 			return err
 		}
 
+	}
+
+	return nil
+}
+
+func (e *AlertEngine) evalStockZeroSizesEffective(
+	ctx context.Context,
+	products []*domain.Product,
+	sizesByProduct map[int][]*domain.ProductSize,
+	sizeSnapsBySize map[int][]*domain.ProductSizeSnapshot,
+	global *domain.Alert,
+	overrides map[int]*domain.Alert,
+) error {
+	for _, p := range products {
+		a := global
+		if ov, ok := overrides[p.ID]; ok && ov != nil {
+			a = ov
+		}
+		if a == nil {
+			continue
+		}
+
+		hasSizes := len(sizesByProduct[p.ID]) > 0
+		scope := chooseStockScope(a, hasSizes)
+		if scope != "size" {
+			continue
+		}
+
+		sizes := sizesByProduct[p.ID]
+		if len(sizes) == 0 {
+			continue
+		}
+
+		for _, sz := range sizes {
+			if a.ProductSizeID != nil && *a.ProductSizeID != sz.ID {
+				continue
+			}
+
+			snaps := sizeSnapsBySize[sz.ID]
+			if len(snaps) < 2 {
+				continue
+			}
+
+			latest := snaps[0]
+			prev := snaps[1]
+
+			latestStock := derefInt(latest.Stock)
+			prevStock := derefInt(prev.Stock)
+
+			if !(prevStock > 0 && latestStock == 0) {
+				continue
+			}
+
+			msg := fmt.Sprintf("Размер закончился: %d → %d", prevStock, latestStock)
+
+			tr := domain.AlertTriggered{
+				AlertID:       a.ID,
+				ShopID:        p.ShopID,
+				ProductID:     p.ID,
+				ProductSizeID: &sz.ID,
+				SnapshotID:    latest.ProductSnapshotID,
+				AlertType:     a.Type,
+				Message:       msg,
+			}
+
+			_, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
+			if err != nil {
+				return err
+			}
+			if !inserted {
+				continue
+			}
+
+			// ВОТ ТУТ fanout
+			if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, tr.ID, tr.ShopID); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

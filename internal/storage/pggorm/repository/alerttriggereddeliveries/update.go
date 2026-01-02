@@ -6,6 +6,8 @@ import (
 	"salehelp/domain"
 	"salehelp/internal/storage/pggorm/model"
 	"time"
+
+	"github.com/jackc/pgtype"
 )
 
 func (r *Repository) Update(ctx context.Context, d *domain.AlertTriggeredDelivery) error {
@@ -93,5 +95,56 @@ func (r *Repository) MarkSent(ctx context.Context, id int, sentAt time.Time) err
 		}).Error; err != nil {
 		return fmt.Errorf("deliveries mark sent (id=%d): %w", id, err)
 	}
+	return nil
+}
+
+func (r *Repository) MarkSentMany(ctx context.Context, ids []int, sentAt time.Time) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	arr := pgtype.Int8Array{}
+	if err := arr.Set(ids); err != nil {
+		return fmt.Errorf("deliveries mark sent many: set array: %w", err)
+	}
+
+	// status='sent', sent_at=..., updated_at=...
+	if err := r.DB.WithContext(ctx).
+		Model(&model.AlertTriggeredDelivery{}).
+		Where("id = ANY(?)", &arr).
+		Updates(map[string]any{
+			"status":     "sent",
+			"sent_at":    sentAt,
+			"updated_at": time.Now(),
+		}).Error; err != nil {
+
+		return fmt.Errorf("deliveries mark sent many: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Repository) MarkFailedMany(ctx context.Context, ids []int, errText string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	arr := pgtype.Int8Array{}
+	if err := arr.Set(ids); err != nil {
+		return fmt.Errorf("deliveries mark failed many: set array: %w", err)
+	}
+
+	if err := r.DB.WithContext(ctx).
+		Model(&model.AlertTriggeredDelivery{}).
+		Where("id = ANY(?)", &arr).
+		Updates(map[string]any{
+			"status":     "failed",
+			"last_error": errText,
+			"updated_at": time.Now(),
+		}).Error; err != nil {
+
+		return fmt.Errorf("deliveries mark failed many: %w", err)
+	}
+
 	return nil
 }

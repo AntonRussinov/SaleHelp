@@ -87,6 +87,7 @@ func (e *AlertEngine) evalPriceDropEffective(
 			ProductID:  p.ID,
 			SnapshotID: latest.ID,
 			ShopID:     p.ShopID,
+			AlertType:  a.Type,
 			Message:    msg,
 		}
 

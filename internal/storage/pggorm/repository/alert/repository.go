@@ -38,6 +38,8 @@ func toModel(a *domain.Alert) *model.Alert {
 		Payload:            a.Payload,
 		TriggeredAt:        a.TriggeredAt,
 		ResolvedAt:         a.ResolvedAt,
+		Scope:              a.Scope,
+		ProductSizeID:      a.ProductSizeID,
 		AIRecommendationID: a.AIRecommendationID,
 	}
 }

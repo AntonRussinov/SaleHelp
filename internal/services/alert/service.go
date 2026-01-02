@@ -16,11 +16,13 @@ type stockLowCfg struct {
 }
 
 type AlertEngine struct {
-	alertsRepo           AlertsRepo
-	alertsTriggeredRepo  AlertsTriggeredRepo
-	productsRepo         ProductsRepo
-	snapshotsRepo        ProductSnapshotsRepo
-	deliveriesFanoutRepo DeliveriesFanoutRepo
+	alertsRepo               AlertsRepo
+	alertsTriggeredRepo      AlertsTriggeredRepo
+	productsRepo             ProductsRepo
+	productSizesRepo         ProductSizesRepo
+	productSizeSnapshotsRepo ProductSizeSnapshotsRepo
+	snapshotsRepo            ProductSnapshotsRepo
+	deliveriesFanoutRepo     DeliveriesFanoutRepo
 }
 
 type AlertsRepo interface {
@@ -39,6 +41,15 @@ type ProductSnapshotsRepo interface {
 	GetLatestByProductIDsLimit(ctx context.Context, productIDs []int, limit int) (map[int][]*domain.ProductSnapshot, error)
 }
 
+type ProductSizesRepo interface {
+	ListByProductIDs(ctx context.Context, productIDs []int) ([]*domain.ProductSize, error)
+}
+
+type ProductSizeSnapshotsRepo interface {
+	// последние N снэпшотов по каждому product_size_id
+	GetLatestBySizeIDsLimitMap(ctx context.Context, sizeIDs []int, limit int) (map[int][]*domain.ProductSizeSnapshot, error)
+}
+
 type ProductsRepo interface {
 	ListByShop(ctx context.Context, shopID int, limit, offset int) ([]*domain.Product, error)
 }
@@ -51,14 +62,18 @@ func NewAlertEngine(
 	alertsRepo AlertsRepo,
 	alertsTriggeredRepo AlertsTriggeredRepo,
 	productsRepo ProductsRepo,
+	productSizesRepo ProductSizesRepo,
+	productSizeSnapshotsRepo ProductSizeSnapshotsRepo,
 	snapshotsRepo ProductSnapshotsRepo,
 	deliveriesFanoutRepo DeliveriesFanoutRepo,
 ) *AlertEngine {
 	return &AlertEngine{
-		alertsRepo:           alertsRepo,
-		alertsTriggeredRepo:  alertsTriggeredRepo,
-		productsRepo:         productsRepo,
-		snapshotsRepo:        snapshotsRepo,
-		deliveriesFanoutRepo: deliveriesFanoutRepo,
+		alertsRepo:               alertsRepo,
+		alertsTriggeredRepo:      alertsTriggeredRepo,
+		productsRepo:             productsRepo,
+		productSizesRepo:         productSizesRepo,
+		productSizeSnapshotsRepo: productSizeSnapshotsRepo,
+		snapshotsRepo:            snapshotsRepo,
+		deliveriesFanoutRepo:     deliveriesFanoutRepo,
 	}
 }

@@ -44,6 +44,8 @@ func (prov *Provider) initIndependentServices() {
 		prov.Repositories.Alert,
 		prov.Repositories.AlertTriggered,
 		prov.Repositories.Product,
+		prov.Repositories.ProductSize,
+		prov.Repositories.ProductSizeSnapshot,
 		prov.Repositories.ProductSnapshot,
 		prov.Repositories.AlertTriggeredDelivery,
 	)
@@ -71,6 +73,8 @@ func (prov *Provider) initDependentServices() {
 	dispatcher := notifications.NewDispatcher(
 		prov.Repositories.AlertTriggeredDelivery, // deliveries repo
 		prov.Repositories.AlertTriggered,         // triggered repo
+		prov.Repositories.Product,                // products repo
+		prov.Repositories.ProductSize,            // product sizes repo
 		prov.Repositories.NotificationEndpoint,   // endpoints repo
 		registry,
 		getWorkerID(),

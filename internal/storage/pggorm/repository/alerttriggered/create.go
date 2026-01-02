@@ -27,11 +27,13 @@ func (r *Repository) CreateIfNotExists(
 ) (id int, inserted bool, err error) {
 
 	m := model.AlertTriggered{
-		AlertID:    at.AlertID,
-		ShopID:     at.ShopID,
-		ProductID:  at.ProductID,
-		SnapshotID: at.SnapshotID,
-		Message:    at.Message,
+		AlertID:       at.AlertID,
+		ShopID:        at.ShopID,
+		ProductID:     at.ProductID,
+		SnapshotID:    at.SnapshotID,
+		ProductSizeID: at.ProductSizeID,
+		AlertType:     at.AlertType,
+		Message:       at.Message,
 	}
 
 	tx := r.DB.WithContext(ctx).
@@ -40,6 +42,7 @@ func (r *Repository) CreateIfNotExists(
 				{Name: "alert_id"},
 				{Name: "product_id"},
 				{Name: "snapshot_id"},
+				{Name: "product_size_id"},
 			},
 			DoNothing: true,
 		}).

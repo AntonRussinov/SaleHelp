@@ -141,7 +141,7 @@ func (s *Service) syncShopSnapshots(
 	// 1) nmID -> product, ids, productIDs
 	ids := make([]int64, 0, len(products))
 	prodByNm := make(map[int64]domain.Product, len(products))
-	productIDs := make([]int64, 0, len(products))
+	productIDs := make([]int, 0, len(products))
 
 	for _, p := range products {
 		nmID, err := strconv.ParseInt(p.ExternalID, 10, 64)
@@ -152,7 +152,7 @@ func (s *Service) syncShopSnapshots(
 		}
 		ids = append(ids, nmID)
 		prodByNm[nmID] = p
-		productIDs = append(productIDs, int64(p.ID))
+		productIDs = append(productIDs, p.ID)
 	}
 	if len(ids) == 0 {
 		return nil

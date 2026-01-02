@@ -15,6 +15,8 @@ type DeliveriesRepo interface {
 	LeaseUnsent(ctx context.Context, workerID string, limit int, leaseSeconds int) ([]*domain.AlertTriggeredDelivery, error)
 	MarkSent(ctx context.Context, id int, sentAt time.Time) error
 	MarkFailed(ctx context.Context, id int, errText string) error
+	MarkSentMany(ctx context.Context, ids []int, sentAt time.Time) error
+	MarkFailedMany(ctx context.Context, ids []int, errText string) error
 }
 
 type FanoutRepo interface {
@@ -25,6 +27,15 @@ type FanoutRepo interface {
 type TriggeredRepo interface {
 	// нужен, чтобы взять данные события и сформировать сообщение
 	GetByID(ctx context.Context, id int) (*domain.AlertTriggered, error)
+	GetByIDs(ctx context.Context, ids []int) (map[int]*domain.AlertTriggered, error)
+}
+
+type ProductsRepo interface {
+	GetByIDs(ctx context.Context, ids []int) (map[int]*domain.Product, error)
+}
+
+type ProductSizesRepo interface {
+	GetByIDs(ctx context.Context, ids []int) (map[int]*domain.ProductSize, error)
 }
 
 type EndpointsRepo interface {
