@@ -14,6 +14,7 @@ type (
 		Listen         string
 		Environment    string
 		TelegramToken  string
+		TelegramSecret string
 		GormLogLevel   int
 		ClientSecret   string
 		AllowedOrigins []string

@@ -6,6 +6,7 @@ import (
 	"salehelp/internal/services/monitoring"
 	notifications "salehelp/internal/services/notification"
 	"salehelp/internal/services/product"
+	"salehelp/internal/services/telegrambot"
 	"salehelp/pkg/notify"
 	"salehelp/pkg/notify/telegram"
 	"time"
@@ -19,6 +20,7 @@ type Services struct {
 	Notifier    *notifications.Service //Dispatcher
 	AlertWorker *alert.Worker
 	Product     *product.Service
+	TelegramBot *telegrambot.Service
 }
 
 func (prov *Provider) InitServices() {
@@ -68,6 +70,7 @@ func (prov *Provider) initDependentServices() {
 		tgSender,
 	}
 
+	tgAdapter := telegrambot.NewTelegramAdapter(tgSender)
 	registry := notifications.NewSenderRegistry(senders)
 
 	dispatcher := notifications.NewDispatcher(
@@ -86,6 +89,18 @@ func (prov *Provider) initDependentServices() {
 	// 	prov.Repositories.CityPrice, prov.Repositories.Offer,
 	// 	prov.Repositories.Merchant, prov.Repositories.Image,
 	// 	prov.KaspiPortalAPI)
+
+	prov.Services.TelegramBot = telegrambot.NewService(
+		prov.log,
+		tgAdapter,
+		prov.Repositories.TelegramChatState,
+		prov.Repositories.Shopinvitetokens,
+		prov.Repositories.User,
+		prov.Repositories.NotificationEndpoint,
+		prov.Repositories.Shop,
+		prov.Services.Monitoring,
+	)
+
 }
 
 // Настроить поулчение корректного worker ID

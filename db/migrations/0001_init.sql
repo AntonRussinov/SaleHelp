@@ -2,11 +2,12 @@
 -- +goose StatementBegin
 
 CREATE TABLE users (
-    id              BIGSERIAL PRIMARY KEY,
-    email           TEXT NOT NULL UNIQUE,
-    password_hash   TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                  BIGSERIAL PRIMARY KEY,
+    telegram_chat_id    BIGINT UNIQUE,
+    email               TEXT UNIQUE,
+    password_hash       TEXT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE shops (
@@ -348,6 +349,36 @@ CREATE TABLE shop_sync_leases (
 CREATE INDEX idx_shop_sync_leases_until ON shop_sync_leases(lease_until);
 
 
+CREATE TABLE telegram_chat_states (
+  chat_id     BIGINT PRIMARY KEY,
+  state       TEXT NOT NULL,      -- 'idle' | 'wait_wb_token' | 'wait_shop_name'
+  payload     JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_telegram_chat_states_updated
+  ON telegram_chat_states(updated_at DESC);
+
+
+CREATE TABLE shop_invite_tokens (
+  id          BIGSERIAL PRIMARY KEY,
+  shop_id     BIGINT NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+  token       TEXT NOT NULL UNIQUE,
+  role        TEXT NOT NULL DEFAULT 'member', -- member | owner (на будущее)
+  expires_at  TIMESTAMPTZ NOT NULL,
+  used_at     TIMESTAMPTZ,
+  created_by_chat_id BIGINT NOT NULL, -- кто создал (owner chat)
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_shop_invite_tokens_shop
+  ON shop_invite_tokens (shop_id, created_at DESC);
+
+CREATE INDEX idx_shop_invite_tokens_valid
+  ON shop_invite_tokens (token)
+  WHERE used_at IS NULL;
+
+
 -- Вставляем временно тестового пользователя и магазин для отладки
 INSERT INTO users (
     id,
@@ -430,6 +461,8 @@ DROP TABLE IF EXISTS shops;
 DROP TABLE IF EXISTS users;
 
 DROP TABLE shop_sync_leases;
+DROP TABLE telegram_chat_states;
+DROP TABLE shop_invite_tokens;
 
 -- +goose StatementEnd
 

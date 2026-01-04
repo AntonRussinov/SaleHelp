@@ -2,6 +2,7 @@ package notificationendpoint
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"salehelp/domain"
 	"salehelp/internal/storage/pggorm/model"
@@ -52,6 +53,65 @@ func (r *Repository) ListByShopID(ctx context.Context, shopID int, onlyEnabled b
 	out := make([]*domain.NotificationEndpoint, 0, len(rows))
 	for i := range rows {
 		out = append(out, rows[i].ToDomain())
+	}
+	return out, nil
+}
+
+func (r *Repository) Exists(ctx context.Context, shopID int, channel, address string) (bool, error) {
+	var count int64
+
+	err := r.DB.WithContext(ctx).
+		Model(&model.ShopNotificationEndpoint{}).
+		Where("shop_id = ?", shopID).
+		Where("channel = ?", channel).
+		Where("address = ?", address).
+		Where("enabled = true").
+		Count(&count).Error
+
+	if err != nil {
+		return false, fmt.Errorf("shop_notification_endpoints exists: %w", err)
+	}
+
+	return count > 0, nil
+}
+
+func (r *Repository) IsOwner(ctx context.Context, shopID int, channel, address string) (bool, error) {
+	var m model.ShopNotificationEndpoint
+
+	err := r.DB.WithContext(ctx).
+		Where("shop_id = ?", shopID).
+		Where("channel = ?", channel).
+		Where("address = ?", address).
+		Where("enabled = true").
+		Where("label = ?", "owner").
+		First(&m).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, fmt.Errorf("shop_notification_endpoints is owner: %w", err)
+	}
+
+	return true, nil
+}
+
+func (r *Repository) ListByChat(ctx context.Context, channel, address string) ([]domain.NotificationEndpoint, error) {
+	var rows []model.ShopNotificationEndpoint
+
+	if err := r.DB.WithContext(ctx).
+		Where("channel = ?", channel).
+		Where("address = ?", address).
+		Where("enabled = true").
+		Order("created_at ASC").
+		Find(&rows).Error; err != nil {
+
+		return nil, fmt.Errorf("shop_notification_endpoints list by chat: %w", err)
+	}
+
+	out := make([]domain.NotificationEndpoint, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, *r.ToDomain())
 	}
 	return out, nil
 }

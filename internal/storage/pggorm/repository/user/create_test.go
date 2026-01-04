@@ -35,6 +35,7 @@ func TestUserRepositoryCreate(t *testing.T) {
 			args := []driver.Value{
 				u.Email,
 				u.PasswordHash,
+				u.TelegramChatID,
 				u.CreatedAt,
 				u.UpdatedAt,
 			}
