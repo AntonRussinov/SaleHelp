@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"salehelp/internal/db"
+	"salehelp/internal/scheduler/jobs"
 	"salehelp/pkg/auth"
 
 	"github.com/spf13/viper"
@@ -18,6 +19,8 @@ type (
 		AllowedOrigins []string
 		Auth           auth.Config
 		DB             db.Config
+		InstanceID     string
+		Scheduler      jobs.SyncActiveShopsConfig
 		//	GCS            gcs.Config
 	}
 

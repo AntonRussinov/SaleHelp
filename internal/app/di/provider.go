@@ -6,6 +6,7 @@ import (
 	"net/http"
 	wbclient "salehelp/internal/adapter/wb/client"
 	"salehelp/internal/config"
+	"salehelp/internal/scheduler"
 	"salehelp/pkg/extendedvalidator"
 
 	"github.com/labstack/echo/v4"
@@ -23,6 +24,7 @@ type Provider struct {
 	Handlers     Handlers
 	Router       *echo.Echo
 	Validator    *extendedvalidator.Validator
+	scheduler    *scheduler.Scheduler
 	// AccessManager  *access.Manager
 	// KaspiAPI       kaspiAPI.API
 	// KaspiPortalAPI portalAPI.PortalAPI

@@ -15,6 +15,7 @@ import (
 	"salehelp/internal/storage/pggorm/repository/productsnapshot"
 	"salehelp/internal/storage/pggorm/repository/sellerwarehouse"
 	"salehelp/internal/storage/pggorm/repository/shop"
+	"salehelp/internal/storage/pggorm/repository/shopsyncleases"
 	"salehelp/internal/storage/pggorm/repository/subscription"
 	"salehelp/internal/storage/pggorm/repository/telegramaccount"
 	"salehelp/internal/storage/pggorm/repository/user"
@@ -36,6 +37,7 @@ type Repositories struct {
 	Product                  *product.Repository
 	SellerWarehouse          *sellerwarehouse.Repository
 	Shop                     *shop.Repository
+	ShopSyncLeases           *shopsyncleases.Repository
 	Subscription             *subscription.Repository
 	TelegramAccount          *telegramaccount.Repository
 	User                     *user.Repository
@@ -58,6 +60,7 @@ func (prov *Provider) InitRepositories() {
 		Product:                  product.NewRepository(prov.log, prov.Database.GormDB),
 		SellerWarehouse:          sellerwarehouse.NewRepository(prov.log, prov.Database.GormDB),
 		Shop:                     shop.NewRepository(prov.log, prov.Database.GormDB),
+		ShopSyncLeases:           shopsyncleases.NewRepository(prov.log, prov.Database.GormDB),
 		Subscription:             subscription.NewRepository(prov.log, prov.Database.GormDB),
 		TelegramAccount:          telegramaccount.NewRepository(prov.log, prov.Database.GormDB),
 		User:                     user.NewRepository(prov.log, prov.Database.GormDB),

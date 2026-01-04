@@ -339,6 +339,14 @@ CREATE INDEX IF NOT EXISTS idx_psps_snapshot_size
 ON product_size_price_snapshots (product_snapshot_id, product_size_id);
 
 
+CREATE TABLE shop_sync_leases (
+  shop_id      BIGINT PRIMARY KEY REFERENCES shops(id) ON DELETE CASCADE,
+  leased_by    TEXT,
+  lease_until  TIMESTAMPTZ
+);
+
+CREATE INDEX idx_shop_sync_leases_until ON shop_sync_leases(lease_until);
+
 
 -- Вставляем временно тестового пользователя и магазин для отладки
 INSERT INTO users (
@@ -421,7 +429,7 @@ DROP TABLE IF EXISTS shops;
 -- 10. Пользователи (последними, т.к. на них всё ссылается)
 DROP TABLE IF EXISTS users;
 
-
+DROP TABLE shop_sync_leases;
 
 -- +goose StatementEnd
 

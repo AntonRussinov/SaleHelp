@@ -15,6 +15,9 @@ type (
 	Provider interface {
 		Init(ctx context.Context) error
 		GetRouter() *echo.Echo
+
+		StartScheduler(ctx context.Context) error
+		StopScheduler(ctx context.Context) error
 	}
 
 	APP struct {
@@ -38,6 +41,10 @@ func New(cfg *config.ServiceConfig, log *slog.Logger, prov Provider) *APP {
 func (app *APP) Run(ctx context.Context) error {
 	if app.isShuttingDown() {
 		return ErrAppStopped
+	}
+
+	if err := app.prov.StartScheduler(ctx); err != nil {
+		return err
 	}
 
 	// старт сервера в горутине
@@ -70,6 +77,10 @@ func (app *APP) Shutdown(ctx context.Context) error {
 
 	// graceful shutdown HTTP сервера
 	if err := app.prov.GetRouter().Shutdown(ctx); err != nil {
+		return err
+	}
+
+	if err := app.prov.StopScheduler(ctx); err != nil {
 		return err
 	}
 
