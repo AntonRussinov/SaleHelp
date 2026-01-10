@@ -2,45 +2,31 @@ package subscription
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"salehelp/domain"
 	"salehelp/internal/storage/pggorm/model"
+	"time"
 
 	"gorm.io/gorm"
 )
 
-func (r *Repository) GetByID(ctx context.Context, id int) (*domain.Subscription, error) {
+// GetActiveByShopID возвращает текущую активную подписку (valid_to > now) либо nil.
+func (r *Repository) GetActiveByShopID(ctx context.Context, shopID int, now time.Time) (*domain.Subscription, error) {
 	var m model.Subscription
 
-	if err := r.DB.WithContext(ctx).
-		First(&m, "id = ?", id).Error; err != nil {
+	err := r.DB.WithContext(ctx).
+		Where("shop_id = ? AND status = ? AND valid_to > ?", shopID, "active", now).
+		Order("valid_to DESC").
+		Limit(1).
+		First(&m).Error
 
-		if err == gorm.ErrRecordNotFound {
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-
-		return nil, fmt.Errorf("subscription get by id: %w", err)
+		return nil, fmt.Errorf("get active subscription by shop_id: %w", err)
 	}
 
 	return m.ToDomain(), nil
-}
-
-// ListByUser возвращает все подписки пользователя
-func (r *Repository) ListByUser(ctx context.Context, userID int) ([]*domain.Subscription, error) {
-	var rows []model.Subscription
-
-	if err := r.DB.WithContext(ctx).
-		Where("user_id = ?", userID).
-		Order("id ASC").
-		Find(&rows).Error; err != nil {
-
-		return nil, fmt.Errorf("subscription list by user: %w", err)
-	}
-
-	res := make([]*domain.Subscription, 0, len(rows))
-	for i := range rows {
-		res = append(res, rows[i].ToDomain())
-	}
-
-	return res, nil
 }

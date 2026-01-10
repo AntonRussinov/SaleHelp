@@ -99,6 +99,7 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.NotificationEndpoint,
 		prov.Repositories.Shop,
 		prov.Services.Monitoring,
+		prov.cfg.TelegramBotUsername,
 	)
 
 }

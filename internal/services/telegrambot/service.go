@@ -13,6 +13,7 @@ type (
 	// TelegramAPI — низкоуровневый клиент Telegram (sendMessage).
 	TelegramAPI interface {
 		SendMessage(ctx context.Context, chatID int64, text string) error
+		SendMessageWithKeyboard(ctx context.Context, chatID int64, text string, keyboard map[string]any) error
 	}
 
 	// TelegramChatStatesRepo — твой репозиторий состояний мастера.
@@ -26,11 +27,15 @@ type (
 	ShopInviteTokensRepo interface {
 		Create(ctx context.Context, token *domain.ShopInviteToken) error
 		GetActiveByShopID(ctx context.Context, shopID int) (*domain.ShopInviteToken, error)
+		GetByToken(ctx context.Context, token string) (*domain.ShopInviteToken, error)
 	}
 
 	ShopsRepo interface {
 		Create(ctx context.Context, s *domain.Shop) error
+		GetByID(ctx context.Context, id int) (*domain.Shop, error)
 		ListByUser(ctx context.Context, userID int, limit, offset int) ([]*domain.Shop, error)
+		ListByTelegramChat(ctx context.Context, chatID int64) ([]*domain.Shop, error)
+		SetActive(ctx context.Context, shopID int, active bool) error
 	}
 
 	UsersRepo interface {
@@ -40,27 +45,27 @@ type (
 	ShopNotificationEndpointsRepo interface {
 		Exists(ctx context.Context, shopID int, channel, address string) (bool, error)
 		Create(ctx context.Context, e *domain.NotificationEndpoint) error
+		SetEnabledByShopAndAddress(ctx context.Context, shopID int, channel, address string, enabled bool) error
+		GetByShopAndAddress(ctx context.Context, shopID int, channel string, address string) (*domain.NotificationEndpoint, error)
+		ListByShopID(ctx context.Context, shopID int, onlyEnabled bool) ([]*domain.NotificationEndpoint, error)
 	}
 
 	// MonitoringService — чтобы валидировать WB token или использовать существующую логику.
 	MonitoringService interface {
-		// ValidateWBToken(ctx, token string) error  // рекомендую добавить
-		// или можно временно дернуть SyncShop(...) после создания, но для проверки токена лучше отдельный метод
+		CheckWBToken(ctx context.Context, token string) error
 	}
 
 	Service struct {
-		log *slog.Logger
-
-		tg TelegramAPI
-
-		statesRepo TelegramChatStatesRepo
-
-		// на будущее
+		log           *slog.Logger
+		tg            TelegramAPI
+		statesRepo    TelegramChatStatesRepo
 		invitesRepo   ShopInviteTokensRepo
 		usersRepo     UsersRepo
 		endpointsRepo ShopNotificationEndpointsRepo
 		shopsRepo     ShopsRepo
 		monitoring    MonitoringService
+
+		botUsername string
 	}
 )
 
@@ -73,18 +78,17 @@ func NewService(
 	endpointsRepo ShopNotificationEndpointsRepo,
 	shopsRepo ShopsRepo,
 	monitoring MonitoringService,
+	botUsername string,
 ) *Service {
 	return &Service{
-		log: log.With(sl.Module("TelegramBotService")),
-
-		tg: tg,
-
-		statesRepo: statesRepo,
-
+		log:           log.With(sl.Module("TelegramBotService")),
+		tg:            tg,
+		statesRepo:    statesRepo,
 		invitesRepo:   invitesRepo,
 		usersRepo:     usersRepo,
 		endpointsRepo: endpointsRepo,
 		shopsRepo:     shopsRepo,
 		monitoring:    monitoring,
+		botUsername:   botUsername,
 	}
 }

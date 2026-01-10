@@ -27,3 +27,11 @@ func (a *TelegramAdapter) SendMessage(ctx context.Context, chatID int64, text st
 
 	return a.sender.Send(ctx, r, m)
 }
+func (a *TelegramAdapter) SendMessageWithKeyboard(
+	ctx context.Context,
+	chatID int64,
+	text string,
+	keyboard map[string]any,
+) error {
+	return a.sender.SendWithKeyboard(ctx, chatID, text, keyboard)
+}

@@ -115,3 +115,26 @@ func (r *Repository) ListByChat(ctx context.Context, channel, address string) ([
 	}
 	return out, nil
 }
+
+func (r *Repository) GetByShopAndAddress(
+	ctx context.Context,
+	shopID int,
+	channel string,
+	address string,
+) (*domain.NotificationEndpoint, error) {
+
+	var m model.ShopNotificationEndpoint
+
+	err := r.DB.WithContext(ctx).
+		Where("shop_id = ? AND channel = ? AND address = ?", shopID, channel, address).
+		First(&m).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("endpoint get by shop+address: %w", err)
+	}
+
+	return m.ToDomain(), nil
+}

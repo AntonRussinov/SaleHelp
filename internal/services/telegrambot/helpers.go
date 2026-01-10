@@ -1,6 +1,7 @@
 package telegrambot
 
 import (
+	"context"
 	"encoding/json"
 	"salehelp/domain"
 )
@@ -25,4 +26,31 @@ func extractShopIDs(shops []*domain.Shop) []int {
 		ids = append(ids, sh.ID)
 	}
 	return ids
+}
+
+func mainMenuKeyboard() map[string]any {
+	return map[string]any{
+		"keyboard": [][]map[string]string{
+			{
+				{"text": "/addshop"},
+				{"text": "/myshops"},
+			},
+			{
+				{"text": "/invite"},
+			},
+			{
+				{"text": "/cancel"},
+			},
+		},
+		"resize_keyboard": true,
+	}
+}
+
+func (s *Service) sendMainMenu(ctx context.Context, chatID int64) {
+	_ = s.tg.SendMessageWithKeyboard(
+		ctx,
+		chatID,
+		"Главное меню:",
+		mainMenuKeyboard(),
+	)
 }

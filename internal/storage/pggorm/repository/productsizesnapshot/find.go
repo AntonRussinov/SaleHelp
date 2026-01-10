@@ -98,7 +98,7 @@ func (r *Repository) GetLatestBySizeIDsLimitMap(
     `
 
 	arr := pgtype.Int8Array{}
-	_ = arr.Set(sizeIDs) // или конвертнуть в []int64
+	_ = arr.Set(sizeIDs)
 
 	// ВАЖНО: как и раньше, чтобы ANY(?) корректно работал
 	if err := r.DB.WithContext(ctx).

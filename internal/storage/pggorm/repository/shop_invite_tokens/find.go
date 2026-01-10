@@ -51,3 +51,24 @@ func (r *Repository) GetActiveByShopID(
 
 	return m.ToDomain(), nil
 }
+
+func (r *Repository) GetByToken(
+	ctx context.Context,
+	token string,
+) (*domain.ShopInviteToken, error) {
+
+	var m model.ShopInviteToken
+
+	err := r.DB.WithContext(ctx).
+		Where("token = ?", token).
+		First(&m).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("invite get by token: %w", err)
+	}
+
+	return m.ToDomain(), nil
+}

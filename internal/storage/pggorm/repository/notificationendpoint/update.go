@@ -28,3 +28,22 @@ func (r *Repository) DisableByID(ctx context.Context, id int) error {
 	}
 	return nil
 }
+
+func (r *Repository) SetEnabledByShopAndAddress(
+	ctx context.Context,
+	shopID int,
+	channel string,
+	address string,
+	enabled bool,
+) error {
+
+	err := r.DB.WithContext(ctx).
+		Model(&model.ShopNotificationEndpoint{}).
+		Where("shop_id = ? AND channel = ? AND address = ?", shopID, channel, address).
+		Update("enabled", enabled).Error
+
+	if err != nil {
+		return fmt.Errorf("endpoint set enabled: %w", err)
+	}
+	return nil
+}

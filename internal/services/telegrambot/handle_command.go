@@ -10,17 +10,28 @@ import (
 func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) {
 	cmd := strings.Fields(text)
 	switch {
+	case len(cmd) > 1 && cmd[0] == "/start" && strings.HasPrefix(cmd[1], "invite_"):
+		token := strings.TrimPrefix(cmd[1], "invite_")
+		s.handleJoin(ctx, chatID, token)
+		return
+
 	case len(cmd) > 0 && cmd[0] == "/start":
-		_ = s.tg.SendMessage(ctx, chatID,
-			"Привет! 👋\n\nКоманды:\n"+
-				"/addshop — добавить магазин\n"+
-				"/cancel — отменить текущий шаг",
+		_ = s.tg.SendMessageWithKeyboard(
+			ctx,
+			chatID,
+			"Привет! 👋\n\nВыбери действие:",
+			mainMenuKeyboard(),
 		)
 		return
 
 	case len(cmd) > 0 && cmd[0] == "/cancel":
 		_ = s.statesRepo.Clear(ctx, chatID)
-		_ = s.tg.SendMessage(ctx, chatID, "Ок, отменил. Можешь начать заново: /addshop")
+		_ = s.tg.SendMessageWithKeyboard(
+			ctx,
+			chatID,
+			"Ок, отменил. Можешь начать заново.",
+			mainMenuKeyboard(),
+		)
 		return
 
 	case len(cmd) > 0 && cmd[0] == "/addshop":
@@ -33,6 +44,22 @@ func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) 
 
 	case len(cmd) > 0 && cmd[0] == "/invite":
 		s.startInvite(ctx, chatID)
+		return
+
+	case len(cmd) == 2 && cmd[0] == "/join":
+		s.handleJoin(ctx, chatID, cmd[1])
+		return
+
+	case len(cmd) == 3 && cmd[0] == "/shop":
+		s.handleShopToggle(ctx, chatID, cmd[1], cmd[2])
+		return
+
+	case len(cmd) == 3 && cmd[0] == "/notify":
+		s.handleNotifyToggle(ctx, chatID, cmd[1], cmd[2])
+		return
+
+	case len(cmd) == 2 && cmd[0] == "/chats":
+		s.handleChats(ctx, chatID, cmd[1])
 		return
 
 	default:

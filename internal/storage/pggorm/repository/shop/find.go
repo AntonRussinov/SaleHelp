@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"salehelp/domain"
 	"salehelp/internal/storage/pggorm/model"
+	"strconv"
 
 	"gorm.io/gorm"
 )
@@ -113,4 +114,30 @@ func (r *Repository) ListActiveIDs(ctx context.Context, limit, offset int) ([]in
 	}
 
 	return ids, nil
+}
+
+func (r *Repository) ListByTelegramChat(
+	ctx context.Context,
+	chatID int64,
+) ([]*domain.Shop, error) {
+	var models []model.Shop
+
+	err := r.DB.WithContext(ctx).
+		Joins(`
+			JOIN shop_notification_endpoints e
+			  ON e.shop_id = shops.id
+		`).
+		Where("e.channel = ?", "telegram").
+		Where("e.address = ?", strconv.FormatInt(chatID, 10)).
+		Find(&models).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*domain.Shop, 0, len(models))
+	for i := range models {
+		res = append(res, models[i].ToDomain())
+	}
+	return res, nil
 }

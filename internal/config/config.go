@@ -11,17 +11,18 @@ import (
 
 type (
 	ServiceConfig struct {
-		Listen         string
-		Environment    string
-		TelegramToken  string
-		TelegramSecret string
-		GormLogLevel   int
-		ClientSecret   string
-		AllowedOrigins []string
-		Auth           auth.Config
-		DB             db.Config
-		InstanceID     string
-		Scheduler      jobs.SyncActiveShopsConfig
+		Listen              string
+		Environment         string
+		TelegramToken       string
+		TelegramSecret      string
+		TelegramBotUsername string
+		GormLogLevel        int
+		ClientSecret        string
+		AllowedOrigins      []string
+		Auth                auth.Config
+		DB                  db.Config
+		InstanceID          string
+		Scheduler           jobs.SyncActiveShopsConfig
 		//	GCS            gcs.Config
 	}
 

@@ -54,6 +54,33 @@ func (s *Sender) Send(ctx context.Context, r notify.Recipient, m notify.Message)
 	)
 }
 
+func (s *Sender) SendWithKeyboard(
+	ctx context.Context,
+	chatID int64,
+	text string,
+	keyboard map[string]any,
+) error {
+	if chatID == 0 {
+		return fmt.Errorf("telegram chat_id is 0")
+	}
+	if text == "" {
+		return fmt.Errorf("telegram text is empty")
+	}
+
+	// экранируем так же, как в обычной Send
+	text = escapeHTML(text)
+
+	payload := map[string]any{
+		"chat_id":                  chatID,
+		"text":                     text,
+		"parse_mode":               "HTML",
+		"disable_web_page_preview": true,
+		"reply_markup":             keyboard,
+	}
+
+	return s.client.SendRaw(ctx, payload)
+}
+
 // Минимальный HTML-эскейп (достаточно для <, >, &).
 func escapeHTML(s string) string {
 	// не используем html.EscapeString? можно, но это минималка без лишних импортов

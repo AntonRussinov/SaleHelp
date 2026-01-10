@@ -177,20 +177,63 @@ ALTER TABLE alerts
     ON DELETE SET NULL;
 
 CREATE TABLE subscriptions (
-    id                      BIGSERIAL PRIMARY KEY,
-    user_id                 BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    plan                    TEXT   NOT NULL,
-    status                  TEXT   NOT NULL,
-    valid_from              TIMESTAMPTZ NOT NULL,
-    valid_to                TIMESTAMPTZ NOT NULL,
-    external_customer_id    TEXT,
-    external_subscription_id TEXT,
-    created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                BIGSERIAL PRIMARY KEY,
+  shop_id           BIGINT NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+
+  plan              TEXT NOT NULL DEFAULT 'basic',
+  status            TEXT NOT NULL, -- active | expired | canceled
+
+  valid_from        TIMESTAMPTZ NOT NULL,
+  valid_to          TIMESTAMPTZ NOT NULL,
+
+  period_months     SMALLINT NOT NULL,
+
+  base_amount_minor BIGINT NOT NULL,
+  currency_code     CHAR(3) NOT NULL,
+
+  paid_at           TIMESTAMPTZ,
+  source            TEXT NOT NULL DEFAULT 'manual',
+  comment           TEXT,
+
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  CHECK (valid_to > valid_from),
+  CHECK (period_months IN (1,3,6)),
+  CHECK (status IN ('active','expired','canceled'))
 );
 
-CREATE INDEX idx_subscriptions_user ON subscriptions(user_id, status);
+CREATE UNIQUE INDEX ux_subscriptions_one_active_per_shop
+  ON subscriptions (shop_id)
+  WHERE status = 'active';
 
+CREATE INDEX idx_subscriptions_shop_status_validto
+  ON subscriptions (shop_id, status, valid_to DESC);
+
+
+CREATE TABLE subscription_addons (
+  id               BIGSERIAL PRIMARY KEY,
+  subscription_id  BIGINT NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
+
+  code             TEXT NOT NULL, -- telegram_extra_chat, ...
+  quantity         INT  NOT NULL DEFAULT 1,
+
+  amount_minor     BIGINT NOT NULL DEFAULT 0,
+  currency_code    CHAR(3) NOT NULL,
+
+  meta             JSONB NOT NULL DEFAULT '{}'::jsonb,
+
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  CHECK (quantity >= 0),
+  CHECK (code <> '')
+);
+
+CREATE UNIQUE INDEX ux_addons_subscription_code
+  ON subscription_addons (subscription_id, code);
+
+CREATE INDEX idx_addons_subscription
+  ON subscription_addons (subscription_id);
 
 CREATE TABLE alerts_triggered (
     id              BIGSERIAL PRIMARY KEY,
@@ -460,10 +503,10 @@ DROP TABLE IF EXISTS shops;
 -- 10. Пользователи (последними, т.к. на них всё ссылается)
 DROP TABLE IF EXISTS users;
 
-DROP TABLE shop_sync_leases;
-DROP TABLE telegram_chat_states;
-DROP TABLE shop_invite_tokens;
-
+DROP TABLE IF EXISTS shop_sync_leases;
+DROP TABLE IF EXISTS telegram_chat_states;
+DROP TABLE IF EXISTS shop_invite_tokens;
+DROP TABLE IF EXISTS subscription_addons;
 -- +goose StatementEnd
 
  

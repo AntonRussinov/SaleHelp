@@ -66,6 +66,17 @@ func (s *Service) stepWBToken(ctx context.Context, chatID int64, st *domain.Tele
 		return
 	}
 
+	if err := s.monitoring.CheckWBToken(ctx, token); err != nil {
+		_ = s.tg.SendMessage(ctx, chatID,
+			"❌ Токен не подходит.\n\n"+
+				"Проверь:\n"+
+				"• что токен скопирован полностью\n"+
+				"• что он из кабинета WB\n"+
+				"• что у него есть доступ к карточкам",
+		)
+		return
+	}
+
 	p[PayloadWBToken] = token
 
 	next := &domain.TelegramChatState{
@@ -85,11 +96,13 @@ func (s *Service) stepWBToken(ctx context.Context, chatID int64, st *domain.Tele
 func (s *Service) stepShopName(ctx context.Context, chatID int64, st *domain.TelegramChatState, name string) {
 	name = strings.TrimSpace(name)
 	if len([]rune(name)) < 2 {
-		_ = s.tg.SendMessage(ctx, chatID, "Название слишком короткое. Пришли нормальное название или /cancel.")
+		_ = s.tg.SendMessage(ctx, chatID, "Название слишком короткое. Пришли корректное название или /cancel.")
+		s.sendMainMenu(ctx, chatID)
 		return
 	}
 	if len([]rune(name)) > 64 {
 		_ = s.tg.SendMessage(ctx, chatID, "Название слишком длинное (макс 64). Пришли короче или /cancel.")
+		s.sendMainMenu(ctx, chatID)
 		return
 	}
 
@@ -97,6 +110,7 @@ func (s *Service) stepShopName(ctx context.Context, chatID int64, st *domain.Tel
 	if err != nil {
 		_ = s.statesRepo.Clear(ctx, chatID)
 		_ = s.tg.SendMessage(ctx, chatID, "Ошибка payload. Напиши /addshop чтобы начать заново.")
+		s.sendMainMenu(ctx, chatID)
 		return
 	}
 
@@ -104,6 +118,7 @@ func (s *Service) stepShopName(ctx context.Context, chatID int64, st *domain.Tel
 	if wbToken == "" {
 		_ = s.statesRepo.Clear(ctx, chatID)
 		_ = s.tg.SendMessage(ctx, chatID, "Токен потерялся. Напиши /addshop чтобы начать заново.")
+		s.sendMainMenu(ctx, chatID)
 		return
 	}
 
@@ -111,6 +126,7 @@ func (s *Service) stepShopName(ctx context.Context, chatID int64, st *domain.Tel
 	if err != nil {
 		s.log.Error("ensure user failed", "chat_id", chatID, "err", err)
 		_ = s.tg.SendMessage(ctx, chatID, "Не получилось создать пользователя. Попробуй ещё раз /addshop.")
+		s.sendMainMenu(ctx, chatID)
 		return
 	}
 
@@ -157,9 +173,10 @@ func (s *Service) stepShopName(ctx context.Context, chatID int64, st *domain.Tel
 	// 3) clear state
 	_ = s.statesRepo.Clear(ctx, chatID)
 
-	_ = s.tg.SendMessage(ctx, chatID,
+	_ = s.tg.SendMessageWithKeyboard(ctx, chatID,
 		"Готово ✅ Магазин подключен.\n\n"+
 			"В ближайший час придёт первый sync/алерты (если они сработают).",
+		mainMenuKeyboard(),
 	)
 }
 

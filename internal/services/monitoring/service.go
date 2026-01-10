@@ -86,6 +86,7 @@ type (
 		GetStocksByChrtIDs(ctx context.Context, apiKey string, warehouseID int64, chrtIDs []int64) ([]dto.StockItem, error)
 		GetWBWarehouses(ctx context.Context, apiKey string) ([]dto.WBWarehouse, error)
 		GetSellerWarehouses(ctx context.Context, apiKey string) ([]dto.SellerWarehouse, error)
+		CheckToken(ctx context.Context, token string) error
 	}
 )
 

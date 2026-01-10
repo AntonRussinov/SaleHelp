@@ -69,6 +69,7 @@ func (s *Service) handleInviteChooseShop(
 	if err := json.Unmarshal(st.Payload, &data); err != nil {
 		_ = s.tg.SendMessage(ctx, chatID, "Ошибка данных. Напиши /invite ещё раз.")
 		_ = s.statesRepo.Clear(ctx, chatID)
+		s.sendMainMenu(ctx, chatID)
 		return
 	}
 
@@ -106,16 +107,22 @@ func (s *Service) handleInviteChooseShop(
 
 	_ = s.statesRepo.Clear(ctx, chatID)
 
+	deepLink := fmt.Sprintf(
+		"https://t.me/%s?start=invite_%s",
+		s.botUsername, // из конфига
+		invite.Token,
+	)
+
 	_ = s.tg.SendMessage(ctx, chatID,
 		fmt.Sprintf(
-			"Готово ✅\n\nТокен для подключения:\n<code>%s</code>\n\n"+
-				"Он действует до %s\n\n"+
-				"Передай его и пусть напишут:\n/join %s",
-			invite.Token,
-			invite.ExpiresAt.Format("02.01 15:04"),
-			invite.Token,
+			"Готово ✅\n\n"+
+				"🔗 Ссылка для подключения:\n%s\n\n"+
+				"Можно просто переслать это сообщение — человеку достаточно нажать на ссылку.",
+			deepLink,
 		),
 	)
+
+	s.sendMainMenu(ctx, chatID)
 
 }
 

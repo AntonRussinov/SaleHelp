@@ -85,3 +85,42 @@ func (c *Client) SendMessage(ctx context.Context, chatID int64, text string, par
 
 	return nil
 }
+
+func (c *Client) SendRaw(ctx context.Context, payload map[string]any) error {
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("telegram marshal raw request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		c.baseURL+"/sendMessage",
+		bytes.NewReader(b),
+	)
+	if err != nil {
+		return fmt.Errorf("telegram new raw request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("telegram http raw request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	var terr telegramErrorResponse
+	_ = json.Unmarshal(body, &terr)
+
+	if terr.Ok == false && terr.Description != "" {
+		return fmt.Errorf("telegram api error (%d): %s", terr.ErrorCode, terr.Description)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("telegram http status: %s", resp.Status)
+	}
+
+	return nil
+}
