@@ -40,3 +40,9 @@ func toModel(a *domain.SubscriptionAddon) *model.SubscriptionAddon {
 		CreatedAt:      a.CreatedAt,
 	}
 }
+
+func (r *Repository) WithDB(db *gorm.DB) *Repository {
+	cp := *r
+	cp.DB = db
+	return &cp
+}

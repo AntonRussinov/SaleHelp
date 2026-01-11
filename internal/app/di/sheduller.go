@@ -32,7 +32,20 @@ func (prov *Provider) initScheduler(ctx context.Context) error {
 		prov.Repositories.Shop,
 		prov.Services.Monitoring,
 		prov.Repositories.ShopSyncLeases,
+		prov.Services.Subscription,
 	)
+
+	notifyJob := jobs.NewNotifySubscriptionsJob(
+		prov.log,
+		jobs.NotifySubscriptionsConfig{
+			Spec: prov.cfg.Scheduler.SubscriptionNotifySpec, // добавишь в конфиг
+		},
+		prov.Services.SubscriptionMonitor,
+	)
+
+	if err := prov.scheduler.Register(ctx, prov.cfg.Scheduler.SubscriptionNotifySpec, "notify_subscriptions", notifyJob.Run); err != nil {
+		return err
+	}
 
 	// регистрируем задачу
 	return prov.scheduler.Register(ctx, prov.cfg.Scheduler.Spec, "sync_active_shops", job.Run)

@@ -3,9 +3,20 @@ package alert
 import (
 	"context"
 	"salehelp/domain"
+	"salehelp/internal/services/subscription"
 )
 
 func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
+
+	lvl, _, err := e.subSvc.GetShopAccessLevel(ctx, shopID)
+	if err != nil {
+		return err
+	}
+
+	if lvl != subscription.AccessActive {
+		return nil // алерты отключены (grace/blocked/none)
+	}
+
 	alerts, err := e.alertsRepo.ListActiveByShop(ctx, shopID)
 	if err != nil || len(alerts) == 0 {
 		return err

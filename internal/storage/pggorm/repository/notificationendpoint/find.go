@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"salehelp/domain"
 	"salehelp/internal/storage/pggorm/model"
+	"strconv"
 
 	"gorm.io/gorm"
 )
@@ -137,4 +138,29 @@ func (r *Repository) GetByShopAndAddress(
 	}
 
 	return m.ToDomain(), nil
+}
+
+func (r *Repository) ListEnabledTelegramChatIDsByShopID(ctx context.Context, shopID int) ([]int64, error) {
+	var addresses []string
+
+	err := r.DB.WithContext(ctx).
+		Model(&model.ShopNotificationEndpoint{}).
+		Select("address").
+		Where("shop_id = ? AND channel = ? AND enabled = TRUE", shopID, "telegram").
+		Find(&addresses).Error
+	if err != nil {
+		return nil, fmt.Errorf("list enabled telegram endpoints: %w", err)
+	}
+
+	res := make([]int64, 0, len(addresses))
+	for _, a := range addresses {
+		v, err := strconv.ParseInt(a, 10, 64)
+		if err != nil {
+			// v0: пропускаем мусор, но можно логировать
+			continue
+		}
+		res = append(res, v)
+	}
+
+	return res, nil
 }

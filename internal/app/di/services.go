@@ -1,11 +1,14 @@
 package di
 
 import (
+	"log/slog"
 	"os"
 	"salehelp/internal/services/alert"
 	"salehelp/internal/services/monitoring"
 	notifications "salehelp/internal/services/notification"
 	"salehelp/internal/services/product"
+	"salehelp/internal/services/subscription"
+	subscriptionmonitor "salehelp/internal/services/subscription_monitor"
 	"salehelp/internal/services/telegrambot"
 	"salehelp/pkg/notify"
 	"salehelp/pkg/notify/telegram"
@@ -15,12 +18,14 @@ import (
 type Services struct {
 	//User *user.Service
 	//Limit         *limit.Service
-	Alert       *alert.AlertEngine
-	Monitoring  *monitoring.Service
-	Notifier    *notifications.Service //Dispatcher
-	AlertWorker *alert.Worker
-	Product     *product.Service
-	TelegramBot *telegrambot.Service
+	Alert               *alert.AlertEngine
+	Monitoring          *monitoring.Service
+	Notifier            *notifications.Service //Dispatcher
+	AlertWorker         *alert.Worker
+	Product             *product.Service
+	TelegramBot         *telegrambot.Service
+	Subscription        *subscription.Service
+	SubscriptionMonitor *subscriptionmonitor.Monitor
 }
 
 func (prov *Provider) InitServices() {
@@ -42,19 +47,18 @@ func (prov *Provider) initIndependentServices() {
 		prov.WBClient,
 		prov.log,
 	)
-	prov.Services.Alert = alert.NewAlertEngine(
-		prov.Repositories.Alert,
-		prov.Repositories.AlertTriggered,
-		prov.Repositories.Product,
-		prov.Repositories.ProductSize,
-		prov.Repositories.ProductSizeSnapshot,
-		prov.Repositories.ProductSnapshot,
-		prov.Repositories.AlertTriggeredDelivery,
-	)
+
 	prov.Services.AlertWorker = alert.NewWorker(
 		prov.Repositories.Shop, // должен реализовать ListActiveIDs
 		prov.Services.Alert,
 		3*time.Minute,
+	)
+
+	prov.Services.Subscription = subscription.New(
+		prov.Repositories.TxRunner,
+		prov.Repositories.Subscription,
+		prov.Repositories.SubscriptionAddon,
+		prov.Repositories.NotificationEndpoint,
 	)
 
 }
@@ -90,6 +94,17 @@ func (prov *Provider) initDependentServices() {
 	// 	prov.Repositories.Merchant, prov.Repositories.Image,
 	// 	prov.KaspiPortalAPI)
 
+	prov.Services.Alert = alert.NewAlertEngine(
+		prov.Services.Subscription,
+		prov.Repositories.Alert,
+		prov.Repositories.AlertTriggered,
+		prov.Repositories.Product,
+		prov.Repositories.ProductSize,
+		prov.Repositories.ProductSizeSnapshot,
+		prov.Repositories.ProductSnapshot,
+		prov.Repositories.AlertTriggeredDelivery,
+	)
+
 	prov.Services.TelegramBot = telegrambot.NewService(
 		prov.log,
 		tgAdapter,
@@ -100,6 +115,26 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.Shop,
 		prov.Services.Monitoring,
 		prov.cfg.TelegramBotUsername,
+		prov.Services.Subscription,
+	)
+
+	loc, err := time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		panic(err)
+	}
+
+	now := time.Now().In(loc)
+	prov.log.Info("subscription monitor time check",
+		slog.String("location", loc.String()),
+		slog.String("now", now.Format(time.RFC3339)),
+	)
+
+	prov.Services.SubscriptionMonitor = subscriptionmonitor.New(
+		prov.Repositories.Subscription,
+		prov.Repositories.SubscriptionNotificationEvent,
+		prov.Repositories.NotificationEndpoint,
+		tgAdapter,
+		loc,
 	)
 
 }

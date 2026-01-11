@@ -8,7 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"salehelp/domain"
 	"salehelp/internal/scheduler/runner"
+	"salehelp/internal/services/subscription"
 )
 
 type Logger interface {
@@ -30,22 +32,28 @@ type ShopLeaseLocker interface {
 	Release(ctx context.Context, shopID int, leasedBy string) error
 }
 
+type SubscriptionService interface {
+	GetShopAccessLevel(ctx context.Context, shopID int) (subscription.AccessLevel, *domain.Subscription, error)
+}
+
 type SyncActiveShopsConfig struct {
-	Spec        string
-	Concurrency int
-	ShopTimeout time.Duration
-	LeaseTTL    time.Duration
-	LeasedBy    string
-	BatchSize   int
+	Spec                   string
+	Concurrency            int
+	ShopTimeout            time.Duration
+	LeaseTTL               time.Duration
+	LeasedBy               string
+	BatchSize              int
+	SubscriptionNotifySpec string
 }
 
 type SyncActiveShopsJob struct {
-	log   Logger
-	cfg   SyncActiveShopsConfig
-	shops ShopRepo
-	mon   MonitoringService
-	lock  ShopLeaseLocker
-	pool  *runner.Pool
+	log                Logger
+	cfg                SyncActiveShopsConfig
+	shops              ShopRepo
+	mon                MonitoringService
+	subsriptionService SubscriptionService
+	lock               ShopLeaseLocker
+	pool               *runner.Pool
 
 	running atomic.Bool
 }
@@ -63,18 +71,20 @@ func NewSyncActiveShopsJob(
 	shops ShopRepo,
 	mon MonitoringService,
 	lock ShopLeaseLocker,
+	subsriptionService SubscriptionService,
 ) *SyncActiveShopsJob {
 	if cfg.LeasedBy == "" {
 		host, _ := os.Hostname()
 		cfg.LeasedBy = fmt.Sprintf("%s-%d", host, os.Getpid())
 	}
 	return &SyncActiveShopsJob{
-		log:   log,
-		cfg:   cfg,
-		shops: shops,
-		mon:   mon,
-		lock:  lock,
-		pool:  runner.New(cfg.Concurrency),
+		log:                log,
+		cfg:                cfg,
+		shops:              shops,
+		mon:                mon,
+		lock:               lock,
+		pool:               runner.New(cfg.Concurrency),
+		subsriptionService: subsriptionService,
 	}
 }
 
@@ -134,6 +144,19 @@ func (j *SyncActiveShopsJob) Run(ctx context.Context) {
 
 				shopCtx, cancel := context.WithTimeout(parent, j.cfg.ShopTimeout)
 				defer cancel()
+
+				lvl, _, err := j.subsriptionService.GetShopAccessLevel(ctx, shopID)
+				if err != nil {
+					j.log.Error("failed to get shop access level", "shop_id", shopID, "err", err)
+					atomic.AddInt64(&leaseErrCount, 1)
+					return
+				}
+
+				if lvl == subscription.AccessBlocked || lvl == subscription.AccessNone {
+					atomic.AddInt64(&skipCount, 1)
+					j.log.Info("sync_shop: skipped due to subscription", "shop_id", id, "access_level", lvl)
+					return
+				}
 
 				if err := j.mon.SyncShop(shopCtx, id); err != nil {
 					atomic.AddInt64(&failCount, 1)

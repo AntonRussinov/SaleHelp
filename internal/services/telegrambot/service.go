@@ -48,6 +48,7 @@ type (
 		SetEnabledByShopAndAddress(ctx context.Context, shopID int, channel, address string, enabled bool) error
 		GetByShopAndAddress(ctx context.Context, shopID int, channel string, address string) (*domain.NotificationEndpoint, error)
 		ListByShopID(ctx context.Context, shopID int, onlyEnabled bool) ([]*domain.NotificationEndpoint, error)
+		CountEnabledByShopAndChannel(ctx context.Context, shopID int, channel string) (int, error)
 	}
 
 	// MonitoringService — чтобы валидировать WB token или использовать существующую логику.
@@ -55,17 +56,22 @@ type (
 		CheckWBToken(ctx context.Context, token string) error
 	}
 
-	Service struct {
-		log           *slog.Logger
-		tg            TelegramAPI
-		statesRepo    TelegramChatStatesRepo
-		invitesRepo   ShopInviteTokensRepo
-		usersRepo     UsersRepo
-		endpointsRepo ShopNotificationEndpointsRepo
-		shopsRepo     ShopsRepo
-		monitoring    MonitoringService
+	SubscriptionEntitlementsService interface {
+		// возвращает allowed telegram chats для магазина
+		AllowedTelegramChats(ctx context.Context, shopID int) (int, error)
+	}
 
-		botUsername string
+	Service struct {
+		log             *slog.Logger
+		tg              TelegramAPI
+		statesRepo      TelegramChatStatesRepo
+		invitesRepo     ShopInviteTokensRepo
+		usersRepo       UsersRepo
+		endpointsRepo   ShopNotificationEndpointsRepo
+		shopsRepo       ShopsRepo
+		monitoring      MonitoringService
+		subEntitlements SubscriptionEntitlementsService
+		botUsername     string
 	}
 )
 
@@ -79,16 +85,18 @@ func NewService(
 	shopsRepo ShopsRepo,
 	monitoring MonitoringService,
 	botUsername string,
+	subEntitlements SubscriptionEntitlementsService,
 ) *Service {
 	return &Service{
-		log:           log.With(sl.Module("TelegramBotService")),
-		tg:            tg,
-		statesRepo:    statesRepo,
-		invitesRepo:   invitesRepo,
-		usersRepo:     usersRepo,
-		endpointsRepo: endpointsRepo,
-		shopsRepo:     shopsRepo,
-		monitoring:    monitoring,
-		botUsername:   botUsername,
+		log:             log.With(sl.Module("TelegramBotService")),
+		tg:              tg,
+		statesRepo:      statesRepo,
+		invitesRepo:     invitesRepo,
+		usersRepo:       usersRepo,
+		endpointsRepo:   endpointsRepo,
+		shopsRepo:       shopsRepo,
+		monitoring:      monitoring,
+		botUsername:     botUsername,
+		subEntitlements: subEntitlements,
 	}
 }

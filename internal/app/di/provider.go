@@ -71,10 +71,10 @@ func (prov *Provider) Init(ctx context.Context) error {
 	prov.InitPresenters()
 
 	// prov.InitKaspiPortalAPI(prov.Repositories.Merchant)
-	err = prov.InitCronRunner(ctx)
-	if err != nil {
-		return err
-	}
+	// err = prov.InitCronRunner(ctx)
+	// if err != nil {
+	// 	return err
+	// }
 
 	err = prov.InitHandlers()
 	if err != nil {
@@ -82,6 +82,11 @@ func (prov *Provider) Init(ctx context.Context) error {
 	}
 
 	err = prov.InitValidator()
+	if err != nil {
+		return err
+	}
+
+	err = prov.initScheduler(ctx)
 	if err != nil {
 		return err
 	}

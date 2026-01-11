@@ -3,6 +3,7 @@ package alert
 import (
 	"context"
 	"salehelp/domain"
+	"salehelp/internal/services/subscription"
 )
 
 const (
@@ -16,6 +17,7 @@ type stockLowCfg struct {
 }
 
 type AlertEngine struct {
+	subSvc                   SubscriptionService
 	alertsRepo               AlertsRepo
 	alertsTriggeredRepo      AlertsTriggeredRepo
 	productsRepo             ProductsRepo
@@ -23,6 +25,10 @@ type AlertEngine struct {
 	productSizeSnapshotsRepo ProductSizeSnapshotsRepo
 	snapshotsRepo            ProductSnapshotsRepo
 	deliveriesFanoutRepo     DeliveriesFanoutRepo
+}
+
+type SubscriptionService interface {
+	GetShopAccessLevel(ctx context.Context, shopID int) (subscription.AccessLevel, *domain.Subscription, error)
 }
 
 type AlertsRepo interface {
@@ -59,6 +65,7 @@ type DeliveriesFanoutRepo interface {
 }
 
 func NewAlertEngine(
+	subSvc SubscriptionService,
 	alertsRepo AlertsRepo,
 	alertsTriggeredRepo AlertsTriggeredRepo,
 	productsRepo ProductsRepo,
@@ -68,6 +75,7 @@ func NewAlertEngine(
 	deliveriesFanoutRepo DeliveriesFanoutRepo,
 ) *AlertEngine {
 	return &AlertEngine{
+		subSvc:                   subSvc,
 		alertsRepo:               alertsRepo,
 		alertsTriggeredRepo:      alertsTriggeredRepo,
 		productsRepo:             productsRepo,

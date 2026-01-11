@@ -42,3 +42,9 @@ func toModel(s *domain.Subscription) *model.Subscription {
 		UpdatedAt:       s.UpdatedAt,
 	}
 }
+
+func (r *Repository) WithDB(db *gorm.DB) *Repository {
+	cp := *r
+	cp.DB = db
+	return &cp
+}

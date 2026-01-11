@@ -421,6 +421,19 @@ CREATE INDEX idx_shop_invite_tokens_valid
   ON shop_invite_tokens (token)
   WHERE used_at IS NULL;
 
+CREATE TABLE subscription_notification_events (
+  id              BIGSERIAL PRIMARY KEY,
+  subscription_id BIGINT NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
+  event           TEXT NOT NULL, -- expiring_3d | expiring_0d | expired_1d
+  sent_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  UNIQUE (subscription_id, event)
+);
+
+CREATE INDEX idx_sub_notif_sub
+  ON subscription_notification_events(subscription_id);
+
+
 
 -- Вставляем временно тестового пользователя и магазин для отладки
 INSERT INTO users (
@@ -507,6 +520,7 @@ DROP TABLE IF EXISTS shop_sync_leases;
 DROP TABLE IF EXISTS telegram_chat_states;
 DROP TABLE IF EXISTS shop_invite_tokens;
 DROP TABLE IF EXISTS subscription_addons;
+DROP TABLE IF EXISTS subscription_notification_events;
 -- +goose StatementEnd
 
  

@@ -29,6 +29,12 @@ func (s *Service) handleJoin(
 		return
 	}
 
+	ok, msg := s.canInviteMoreTelegramChats(ctx, invite.ShopID) // тот же helper
+	if !ok {
+		_ = s.tg.SendMessage(ctx, chatID, msg)
+		return
+	}
+
 	// проверяем, не подключён ли уже этот чат
 	exists, err := s.endpointsRepo.Exists(
 		ctx,

@@ -80,6 +80,14 @@ func (s *Service) handleInviteChooseShop(
 
 	shopID := data.ShopIDs[idx-1]
 
+	ok, msg := s.canInviteMoreTelegramChats(ctx, shopID)
+	if !ok {
+		_ = s.tg.SendMessage(ctx, chatID, msg)
+		_ = s.statesRepo.Clear(ctx, chatID)
+		s.sendMainMenu(ctx, chatID)
+		return
+	}
+
 	existing, err := s.invitesRepo.GetActiveByShopID(ctx, shopID)
 	if err != nil {
 		_ = s.tg.SendMessage(ctx, chatID, "Ошибка при проверке приглашений.")

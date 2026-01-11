@@ -4,13 +4,15 @@ import (
 	"errors"
 	"salehelp/internal/handler/product"
 	"salehelp/internal/handler/shop"
+	"salehelp/internal/handler/subscription"
 	"salehelp/internal/handler/telegram"
 )
 
 type Handlers struct {
-	Product     *product.Handler
-	TelegramBot *telegram.Handler
-	Shop        *shop.Handler
+	Product      *product.Handler
+	TelegramBot  *telegram.Handler
+	Shop         *shop.Handler
+	Subscription *subscription.Handler
 }
 
 var ErrInitHandlerss = errors.New("failed to initialize Handlerss")
@@ -28,6 +30,7 @@ func (prov *Provider) InitHandlers() error {
 
 	prov.Handlers.Shop = shop.NewHandler(prov.Services.Monitoring)
 	prov.Handlers.TelegramBot = telegram.NewHandler(prov.Services.TelegramBot, prov.cfg.TelegramSecret)
-
+	//prov.Handlers.Product = product.NewHandler(prov.Services.Product, prov.Presenters.Product)
+	prov.Handlers.Subscription = subscription.NewHandler(prov.Services.Subscription)
 	return nil
 }
