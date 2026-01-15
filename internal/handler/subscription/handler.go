@@ -10,7 +10,7 @@ import (
 
 type (
 	Service interface {
-		GrantSubscription(ctx context.Context, in GrantInput) (*subscription.GrantResult, error)
+		GrantSubscription(ctx context.Context, in subscription.GrantInput) (*subscription.GrantResult, error)
 		GetSubscriptionStatus(ctx context.Context, shopID int) (*subscription.StatusResult, error)
 	}
 

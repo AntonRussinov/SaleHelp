@@ -2,22 +2,14 @@ package domain
 
 import "time"
 
-type SubscriptionStatus string
-
-const (
-	SubscriptionStatusActive   SubscriptionStatus = "active"
-	SubscriptionStatusExpired  SubscriptionStatus = "expired"
-	SubscriptionStatusCanceled SubscriptionStatus = "canceled"
-)
-
 type Subscription struct {
-	ID              int64
-	ShopID          int64
+	ID              int
+	ShopID          int
 	Plan            string
-	Status          SubscriptionStatus
+	Status          string
 	ValidFrom       time.Time
 	ValidTo         time.Time
-	PeriodMonths    int16
+	PeriodMonths    int
 	BaseAmountMinor int64
 	CurrencyCode    string
 	PaidAt          *time.Time
