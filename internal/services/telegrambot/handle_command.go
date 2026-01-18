@@ -62,6 +62,10 @@ func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) 
 		s.handleChats(ctx, chatID, cmd[1])
 		return
 
+	case len(cmd) > 0 && cmd[0] == "/admin_stats":
+		s.handleAdminStats(ctx, chatID)
+		return
+
 	default:
 		_ = s.tg.SendMessage(ctx, chatID, "Неизвестная команда. Напиши /start")
 	}

@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"salehelp/domain"
 	"salehelp/internal/adapter/wb/dto"
 	wbmapper "salehelp/internal/adapter/wb/mapper"
+	"salehelp/internal/storage/pggorm/model"
+	_ "salehelp/internal/storage/pggorm/repository/shop"
 )
 
 // базовый URL для формирования ссылки на товар WB
@@ -29,7 +32,7 @@ func (s *Service) SyncAllShops(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) SyncShop(ctx context.Context, shopID int) error {
+func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 	shop, err := s.shopsRepo.GetByID(ctx, shopID)
 	if err != nil {
 		return fmt.Errorf("sync shop: get shop by id %d: %w", shopID, err)
@@ -40,6 +43,33 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) error {
 	if shop.APIToken == "" {
 		return fmt.Errorf("sync shop: shop %d has empty WB API key", shopID)
 	}
+
+	// единый апдейт статуса синка при любом выходе
+	defer func() {
+		now := time.Now()
+
+		// всегда фиксируем попытку
+		upd := model.SyncStatusUpdate{
+			LastSyncAt: &now,
+		}
+
+		if err == nil {
+			upd.LastSyncOkAt = &now
+			upd.LastSyncStatusCode = nil
+			upd.LastSyncError = nil
+			upd.LastSyncFailedAt = nil
+		} else {
+			upd.LastSyncFailedAt = &now
+
+			if sc, ok := wbStatusCode(err); ok {
+				upd.LastSyncStatusCode = &sc
+			}
+			m := err.Error()
+			upd.LastSyncError = &m
+		}
+
+		_ = s.shopsRepo.UpdateSyncStatus(ctx, shopID, upd)
+	}()
 
 	if err := s.syncShopWarehouses(ctx, shop); err != nil {
 		return fmt.Errorf("sync shop: sync warehouses: %w", err)
@@ -56,8 +86,28 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) error {
 	}
 
 	// 2) цены/остатки -> snapshots
-	if err := s.syncShopSnapshots(ctx, shop, products); err != nil {
+	if err = s.syncShopSnapshots(ctx, shop, products); err != nil {
 		return fmt.Errorf("sync shop: sync snapshots: %w", err)
+	}
+
+	// aha-moment (первый синк) — оставляем как у тебя
+	if shop.FirstSyncNotifiedAt == nil {
+		n, err2 := s.productsRepo.CountByShop(ctx, shopID)
+		if err2 == nil {
+			user, _ := s.userRepo.GetByID(ctx, shop.UserID)
+			chatID := user.TelegramChatID
+			if chatID != nil && *chatID != 0 {
+				msg := fmt.Sprintf(
+					"✅ Первый синк завершен!\n\n"+
+						"Я нашел в вашем магазине %d товаров.\n"+
+						"Теперь я слежу за ними 24/7. Как только что-то изменится — я сразу маякну!",
+					n,
+				)
+				if err3 := s.tg.SendMessage(ctx, *chatID, msg); err3 == nil {
+					_ = s.shopsRepo.UpdateFirstSyncNotifiedAt(ctx, shopID, time.Now())
+				}
+			}
+		}
 	}
 
 	return nil
@@ -217,35 +267,6 @@ func (s *Service) syncShopSnapshots(
 		seenChrt[chrtID] = struct{}{}
 		chrtIDs = append(chrtIDs, chrtID)
 	}
-
-	// // 6) Prepare unique SKUs for stocks calls + group skuRows by product
-	// type row struct {
-	// 	ProductID     int
-	// 	ProductSizeID int
-	// 	SKU           string
-	// }
-	// rowsByProduct := make(map[int][]row, len(products))
-	// seenSKU := make(map[string]struct{}, len(skuRows))
-	// skus := make([]string, 0, len(skuRows))
-	// skuToProductID := make(map[string]int, len(skuRows))
-
-	// for _, r := range skuRows {
-	// 	if r.SKU == "" {
-	// 		continue
-	// 	}
-	// 	rowsByProduct[r.ProductID] = append(rowsByProduct[r.ProductID], row{
-	// 		ProductID:     r.ProductID,
-	// 		ProductSizeID: r.ProductSizeID,
-	// 		SKU:           r.SKU,
-	// 	})
-	// 	skuToProductID[r.SKU] = r.ProductID
-
-	// 	if _, ok := seenSKU[r.SKU]; ok {
-	// 		continue
-	// 	}
-	// 	seenSKU[r.SKU] = struct{}{}
-	// 	skus = append(skus, r.SKU)
-	// }
 
 	// 7) stocks by sku
 	stockByChrtID := make(map[int64]int)

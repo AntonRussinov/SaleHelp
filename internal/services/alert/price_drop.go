@@ -48,10 +48,8 @@ func (e *AlertEngine) evalPriceDropEffective(
 		latest := snaps[0]
 		prev := snaps[1]
 
-		// TODO: заменишь на своё поле
-		latestPrice := derefFloat64(latest.BasePrice)
-		prevPrice := derefFloat64(prev.BasePrice)
-
+		latestPrice := derefFloat64(latest.FinalPrice)
+		prevPrice := derefFloat64(prev.FinalPrice)
 		// cfg
 		var cfg priceDropCfg
 		if useOverride {

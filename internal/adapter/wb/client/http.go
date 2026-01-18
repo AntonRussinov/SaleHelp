@@ -89,7 +89,11 @@ func (c *Client) doJSON(
 			// 6) Любой другой не-2xx — ошибка без retry
 			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 				b, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-				err = fmt.Errorf("http status %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
+				err = &HTTPError{
+					StatusCode: resp.StatusCode,
+					URL:        url, // переменная url из аргументов doJSON
+					Body:       strings.TrimSpace(string(b)),
+				}
 				return
 			}
 

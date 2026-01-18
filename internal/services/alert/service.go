@@ -2,6 +2,7 @@ package alert
 
 import (
 	"context"
+	"log/slog"
 	"salehelp/domain"
 	"salehelp/internal/services/subscription"
 )
@@ -25,6 +26,7 @@ type AlertEngine struct {
 	productSizeSnapshotsRepo ProductSizeSnapshotsRepo
 	snapshotsRepo            ProductSnapshotsRepo
 	deliveriesFanoutRepo     DeliveriesFanoutRepo
+	log                      *slog.Logger
 }
 
 type SubscriptionService interface {
@@ -73,6 +75,7 @@ func NewAlertEngine(
 	productSizeSnapshotsRepo ProductSizeSnapshotsRepo,
 	snapshotsRepo ProductSnapshotsRepo,
 	deliveriesFanoutRepo DeliveriesFanoutRepo,
+	log *slog.Logger,
 ) *AlertEngine {
 	return &AlertEngine{
 		subSvc:                   subSvc,
@@ -83,5 +86,6 @@ func NewAlertEngine(
 		productSizeSnapshotsRepo: productSizeSnapshotsRepo,
 		snapshotsRepo:            snapshotsRepo,
 		deliveriesFanoutRepo:     deliveriesFanoutRepo,
+		log:                      log,
 	}
 }

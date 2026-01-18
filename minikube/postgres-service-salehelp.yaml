@@ -8,4 +8,3 @@ spec:
   selector:
     app: postgres-salehelp
   type: NodePort
-/Users/Anton_Russinov/go/src/kaspi/salehelp/minikube/postgres-service-salehelp.yaml

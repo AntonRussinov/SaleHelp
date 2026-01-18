@@ -6,15 +6,35 @@ import (
 )
 
 type Shop struct {
-	ID          int       `gorm:"primaryKey;column:id"`
-	UserID      int       `gorm:"column:user_id;not null"`
-	Marketplace string    `gorm:"column:marketplace;type:text;not null"` // "WB", "OZON", "Kaspi", ...
-	ExternalID  string    `gorm:"column:external_id;type:text"`
-	Name        string    `gorm:"column:name;type:text;not null"`
-	APIToken    string    `gorm:"column:api_token;type:text;not null"`
-	IsActive    bool      `gorm:"column:is_active;not null;default:true"`
-	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt   time.Time `gorm:"column:updated_at;autoUpdateTime"`
+	ID                  int        `gorm:"primaryKey;column:id"`
+	UserID              int        `gorm:"column:user_id;not null"`
+	Marketplace         string     `gorm:"column:marketplace;type:text;not null"` // "WB", "OZON", "Kaspi", ...
+	ExternalID          string     `gorm:"column:external_id;type:text"`
+	Name                string     `gorm:"column:name;type:text;not null"`
+	APIToken            string     `gorm:"column:api_token;type:text;not null"`
+	IsActive            bool       `gorm:"column:is_active;not null;default:true"`
+	LastSyncAt          *time.Time `gorm:"column:last_sync_at"`
+	FirstSyncNotifiedAt *time.Time `gorm:"column:first_sync_notified_at"`
+	LastSyncStatusCode  int        `gorm:"column:last_sync_status_code"`
+	LastSyncError       string     `gorm:"column:last_sync_error;type:text"`
+	LastSyncFailedAt    *time.Time `gorm:"column:last_sync_failed_at"`
+	LastSyncOkAt        *time.Time `gorm:"column:last_sync_ok_at"`
+	CreatedAt           time.Time  `gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt           time.Time  `gorm:"column:updated_at;autoUpdateTime"`
+}
+
+type SyncStatusUpdate struct {
+	LastSyncAt         *time.Time
+	LastSyncStatusCode *int
+	LastSyncError      *string
+	LastSyncFailedAt   *time.Time
+	LastSyncOkAt       *time.Time
+}
+
+type MoneyByCurrency struct {
+	CurrencyCode string `gorm:"column:currency_code"`
+	AmountMinor  int64  `gorm:"column:amount_minor"`
+	Count        int64  `gorm:"column:cnt"`
 }
 
 func ShopColumns() []string {
@@ -26,6 +46,12 @@ func ShopColumns() []string {
 		"name",
 		"api_token",
 		"is_active",
+		"last_sync_at",
+		"first_sync_notified_at",
+		"last_sync_status_code",
+		"last_sync_error",
+		"last_sync_failed_at",
+		"last_sync_ok_at",
 		"created_at",
 		"updated_at",
 	}
@@ -37,15 +63,21 @@ func (s *Shop) ToDomain() *domain.Shop {
 	}
 
 	return &domain.Shop{
-		ID:          s.ID,
-		UserID:      s.UserID,
-		Marketplace: s.Marketplace,
-		ExternalID:  s.ExternalID,
-		Name:        s.Name,
-		APIToken:    s.APIToken,
-		IsActive:    s.IsActive,
-		CreatedAt:   s.CreatedAt,
-		UpdatedAt:   s.UpdatedAt,
+		ID:                  s.ID,
+		UserID:              s.UserID,
+		Marketplace:         s.Marketplace,
+		ExternalID:          s.ExternalID,
+		Name:                s.Name,
+		APIToken:            s.APIToken,
+		IsActive:            s.IsActive,
+		LastSyncAt:          s.LastSyncAt,
+		FirstSyncNotifiedAt: s.FirstSyncNotifiedAt,
+		LastSyncStatusCode:  s.LastSyncStatusCode,
+		LastSyncError:       s.LastSyncError,
+		LastSyncFailedAt:    s.LastSyncFailedAt,
+		LastSyncOkAt:        s.LastSyncOkAt,
+		CreatedAt:           s.CreatedAt,
+		UpdatedAt:           s.UpdatedAt,
 	}
 }
 

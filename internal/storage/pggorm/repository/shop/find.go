@@ -6,6 +6,7 @@ import (
 	"salehelp/domain"
 	"salehelp/internal/storage/pggorm/model"
 	"strconv"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -140,4 +141,31 @@ func (r *Repository) ListByTelegramChat(
 		res = append(res, models[i].ToDomain())
 	}
 	return res, nil
+}
+
+func (r *Repository) GetLastSyncAtMap(ctx context.Context, shopIDs []int) (map[int]*time.Time, error) {
+	out := make(map[int]*time.Time, len(shopIDs))
+	if len(shopIDs) == 0 {
+		return out, nil
+	}
+
+	type row struct {
+		ID         int        `gorm:"column:id"`
+		LastSyncAt *time.Time `gorm:"column:last_sync_at"`
+	}
+
+	var rows []row
+	if err := r.DB.WithContext(ctx).
+		Table("shops").
+		Select("id, last_sync_at").
+		Where("id IN ?", shopIDs).
+		Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("get shops.last_sync_at map: %w", err)
+	}
+
+	for _, r := range rows {
+		out[r.ID] = r.LastSyncAt
+	}
+
+	return out, nil
 }

@@ -49,9 +49,12 @@ func main() {
 		runErrCh <- application.Run(ctx)
 	}()
 
+	applogger.Info("application started")
 	// 1) запускаем воркеры СРАЗУ (они крутятся пока ctx жив)
 	go prov.Services.Notifier.Run(ctx)    // deliveries -> telegram
 	go prov.Services.AlertWorker.Run(ctx) // shops -> engine -> triggered+fanout
+
+	applogger.Info("workers started")
 
 	// 3) ждём либо:
 	// - сигнал (ctx.Done())

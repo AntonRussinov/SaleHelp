@@ -16,6 +16,7 @@ type (
 		TelegramToken       string
 		TelegramSecret      string
 		TelegramBotUsername string
+		TelegramAdminID     int64
 		GormLogLevel        int
 		ClientSecret        string
 		AllowedOrigins      []string

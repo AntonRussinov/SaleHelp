@@ -18,7 +18,7 @@ import (
 type Services struct {
 	//User *user.Service
 	//Limit         *limit.Service
-	Alert               *alert.AlertEngine
+	AlertEngine         *alert.AlertEngine
 	Monitoring          *monitoring.Service
 	Notifier            *notifications.Service //Dispatcher
 	AlertWorker         *alert.Worker
@@ -34,25 +34,6 @@ func (prov *Provider) InitServices() {
 }
 
 func (prov *Provider) initIndependentServices() {
-	prov.Services.Monitoring = monitoring.NewMonitoringService(
-		prov.Repositories.Shop,
-		prov.Repositories.Product,
-		prov.Repositories.ProductSnapshot,
-		prov.Repositories.ProductSizeSnapshot,
-		prov.Repositories.ProductSizePriceSnapshot,
-		prov.Repositories.ProductSize,
-		prov.Repositories.ProductSizesku,
-		prov.Repositories.WBWarehouse,
-		prov.Repositories.SellerWarehouse,
-		prov.WBClient,
-		prov.log,
-	)
-
-	prov.Services.AlertWorker = alert.NewWorker(
-		prov.Repositories.Shop, // должен реализовать ListActiveIDs
-		prov.Services.Alert,
-		3*time.Minute,
-	)
 
 	prov.Services.Subscription = subscription.New(
 		prov.Repositories.TxRunner,
@@ -77,6 +58,22 @@ func (prov *Provider) initDependentServices() {
 	tgAdapter := telegrambot.NewTelegramAdapter(tgSender)
 	registry := notifications.NewSenderRegistry(senders)
 
+	prov.Services.Monitoring = monitoring.NewMonitoringService(
+		prov.Repositories.Shop,
+		prov.Repositories.Product,
+		prov.Repositories.ProductSnapshot,
+		prov.Repositories.ProductSizeSnapshot,
+		prov.Repositories.ProductSizePriceSnapshot,
+		prov.Repositories.ProductSize,
+		prov.Repositories.ProductSizesku,
+		prov.Repositories.WBWarehouse,
+		prov.Repositories.SellerWarehouse,
+		prov.Repositories.User,
+		tgAdapter,
+		prov.WBClient,
+		prov.log,
+	)
+
 	dispatcher := notifications.NewDispatcher(
 		prov.Repositories.AlertTriggeredDelivery, // deliveries repo
 		prov.Repositories.AlertTriggered,         // triggered repo
@@ -94,7 +91,7 @@ func (prov *Provider) initDependentServices() {
 	// 	prov.Repositories.Merchant, prov.Repositories.Image,
 	// 	prov.KaspiPortalAPI)
 
-	prov.Services.Alert = alert.NewAlertEngine(
+	prov.Services.AlertEngine = alert.NewAlertEngine(
 		prov.Services.Subscription,
 		prov.Repositories.Alert,
 		prov.Repositories.AlertTriggered,
@@ -103,19 +100,29 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.ProductSizeSnapshot,
 		prov.Repositories.ProductSnapshot,
 		prov.Repositories.AlertTriggeredDelivery,
+		prov.log,
+	)
+
+	prov.Services.AlertWorker = alert.NewWorker(
+		prov.log,
+		prov.Repositories.Shop,
+		prov.Services.AlertEngine,
+		1*time.Minute,
 	)
 
 	prov.Services.TelegramBot = telegrambot.NewService(
 		prov.log,
 		tgAdapter,
 		prov.Repositories.TelegramChatState,
-		prov.Repositories.Shopinvitetokens,
+		prov.Repositories.ShopInviteTokens,
 		prov.Repositories.User,
 		prov.Repositories.NotificationEndpoint,
 		prov.Repositories.Shop,
 		prov.Services.Monitoring,
 		prov.cfg.TelegramBotUsername,
 		prov.Services.Subscription,
+		prov.Repositories.Subscription,
+		prov.cfg.TelegramAdminID,
 	)
 
 	loc, err := time.LoadLocation("Europe/Moscow")

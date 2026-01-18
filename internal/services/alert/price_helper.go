@@ -11,6 +11,12 @@ type priceDropCfg struct {
 	Mode    string  `json:"mode"`    // "any" (по умолчанию) | "all" (опционально)
 }
 
+// {
+//   "percent": 7,
+//   "amount": 1000,
+//   "mode": "any"
+// }
+
 const (
 	minPriceDropPercent = 0.5
 	minPriceDropAmount  = 10

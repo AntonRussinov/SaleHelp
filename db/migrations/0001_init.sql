@@ -11,15 +11,21 @@ CREATE TABLE users (
 );
 
 CREATE TABLE shops (
-    id              BIGSERIAL PRIMARY KEY,
-    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    marketplace     TEXT   NOT NULL,
-    external_id     TEXT,
-    name            TEXT NOT NULL,
-    api_token       TEXT NOT NULL,
-    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                     BIGSERIAL PRIMARY KEY,
+    user_id                BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    marketplace            TEXT   NOT NULL,
+    external_id            TEXT,
+    name                   TEXT NOT NULL,
+    api_token              TEXT NOT NULL,
+    is_active              BOOLEAN NOT NULL DEFAULT TRUE,
+    last_sync_at           TIMESTAMPTZ,
+    first_sync_notified_at TIMESTAMPTZ,
+    last_sync_status_code  INT,
+    last_sync_error        TEXT,
+    last_sync_failed_at    TIMESTAMPTZ,
+    last_sync_ok_at        TIMESTAMPTZ,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_shops_user_id ON shops(user_id);
@@ -456,71 +462,39 @@ INSERT INTO users (
 -- +goose Down
 -- +goose StatementBegin
 
-DROP TABLE IF EXISTS alerts_triggered_deliveries;
-DROP TABLE IF EXISTS shop_notification_endpoints;
-
--- 1. Сначала зависимая таблица alerts_triggered
-DROP INDEX IF EXISTS idx_alerts_triggered_snapshot;
-DROP INDEX IF EXISTS idx_alerts_triggered_product;
-DROP INDEX IF EXISTS idx_alerts_triggered_alert;
-DROP TABLE IF EXISTS alerts_triggered;
-
--- 2. Снимаем FK с alerts на ai_recommendations
+-- 1. Сначала разрываем кольцевую связь между alerts и ai_recommendations
 ALTER TABLE IF EXISTS alerts DROP CONSTRAINT IF EXISTS fk_alerts_ai_rec;
 
--- 3. Дропаем ai_recommendations (она ссылается на alerts)
-DROP TABLE IF EXISTS ai_recommendations;
+-- 2. Теперь удаляем таблицы, которые зависят от алертов
+DROP TABLE IF EXISTS alerts_triggered_deliveries CASCADE;
+DROP TABLE IF EXISTS alerts_triggered CASCADE;
 
--- 4. Дропаем alerts и связанные с ними индексы
-DROP INDEX IF EXISTS idx_alerts_product;
-DROP INDEX IF EXISTS idx_alerts_shop_status;
-DROP TABLE IF EXISTS alerts;
+-- 3. Теперь можно безопасно удалить рекомендации и сами алерты
+DROP TABLE IF EXISTS ai_recommendations CASCADE;
+DROP TABLE IF EXISTS alerts CASCADE;
 
--- 5. Сначала дочерняя таблица размеров, потом снапшоты товаров
-DROP INDEX IF EXISTS idx_product_size_snapshots_snapshot;
-DROP INDEX IF EXISTS idx_product_size_snapshots_size;
-DROP TABLE IF EXISTS product_size_snapshots;
-DROP TABLE IF EXISTS product_size_price_snapshots;
-DROP INDEX IF EXISTS idx_product_snapshots_product_time;
-DROP TABLE IF EXISTS product_snapshots;
+-- 4. Удаляем всё, что связано с товарами и их структурой
+DROP TABLE IF EXISTS product_size_price_snapshots CASCADE;
+DROP TABLE IF EXISTS product_size_snapshots CASCADE;
+DROP TABLE IF EXISTS product_snapshots CASCADE;
+DROP TABLE IF EXISTS product_size_skus CASCADE;
+DROP TABLE IF EXISTS product_sizes CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
 
-DROP TABLE IF EXISTS product_size_skus;
-DROP TABLE IF EXISTS product_sizes;
+-- 5. Удаляем инфраструктурные таблицы
+DROP TABLE IF EXISTS shop_notification_endpoints CASCADE;
+DROP TABLE IF EXISTS seller_warehouses CASCADE;
+DROP TABLE IF EXISTS wb_warehouses CASCADE;
+DROP TABLE IF EXISTS shop_sync_leases CASCADE;
+DROP TABLE IF EXISTS telegram_chat_states CASCADE;
+DROP TABLE IF EXISTS shop_invite_tokens CASCADE;
+DROP TABLE IF EXISTS subscription_notification_events CASCADE;
+DROP TABLE IF EXISTS subscription_addons CASCADE;
+DROP TABLE IF EXISTS subscriptions CASCADE;
 
+-- 6. В самом конце — магазины и пользователи
+DROP TABLE IF EXISTS shops CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 
-
--- 6. Продукты и индекс
-DROP INDEX IF EXISTS idx_products_shop_id;
-DROP TABLE IF EXISTS products;
-
--- 7. Подписки и индекс
-DROP INDEX IF EXISTS idx_subscriptions_user;
-DROP TABLE IF EXISTS subscriptions;
-
--- 13. Дропаем склады WB и индекс
-DROP TABLE IF EXISTS wb_warehouses;
-
--- 12. Дропаем склады и индекс
-DROP TABLE IF EXISTS seller_warehouses;
-
--- 11. Дропаем индексы и таблицы размеров товаров, снапшотов товаров и самих товаров, если они остались
-DROP INDEX IF EXISTS idx_product_size_snapshots_snapshot;
-DROP INDEX IF EXISTS idx_product_size_snapshots_size;
-DROP TABLE IF EXISTS product_size_snapshots;
-
--- 9. Магазины и индексы
-DROP INDEX IF EXISTS idx_shops_marketplace_external;
-DROP INDEX IF EXISTS idx_shops_user_id;
-DROP TABLE IF EXISTS shops;
-
--- 10. Пользователи (последними, т.к. на них всё ссылается)
-DROP TABLE IF EXISTS users;
-
-DROP TABLE IF EXISTS shop_sync_leases;
-DROP TABLE IF EXISTS telegram_chat_states;
-DROP TABLE IF EXISTS shop_invite_tokens;
-DROP TABLE IF EXISTS subscription_addons;
-DROP TABLE IF EXISTS subscription_notification_events;
 -- +goose StatementEnd
-
  

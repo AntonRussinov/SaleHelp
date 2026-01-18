@@ -42,7 +42,7 @@ type Repositories struct {
 	Product                       *product.Repository
 	SellerWarehouse               *sellerwarehouse.Repository
 	Shop                          *shop.Repository
-	Shopinvitetokens              *shopinvitetokens.Repository
+	ShopInviteTokens              *shopinvitetokens.Repository
 	ShopSyncLeases                *shopsyncleases.Repository
 	Subscription                  *subscription.Repository
 	SubscriptionAddon             *subscriptionaddon.Repository
@@ -74,7 +74,7 @@ func (prov *Provider) InitRepositories() {
 		Product:                       product.NewRepository(prov.log, prov.Database.GormDB),
 		SellerWarehouse:               sellerwarehouse.NewRepository(prov.log, prov.Database.GormDB),
 		Shop:                          shop.NewRepository(prov.log, prov.Database.GormDB),
-		Shopinvitetokens:              shopinvitetokens.NewRepository(prov.log, prov.Database.GormDB),
+		ShopInviteTokens:              shopinvitetokens.NewRepository(prov.log, prov.Database.GormDB),
 		ShopSyncLeases:                shopsyncleases.NewRepository(prov.log, prov.Database.GormDB),
 		Subscription:                  subscrRepo,
 		SubscriptionAddon:             subscrAddonRepo,

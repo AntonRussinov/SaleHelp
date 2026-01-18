@@ -2,10 +2,14 @@ package monitoring
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"salehelp/domain"
+	wbclient "salehelp/internal/adapter/wb/client"
 	"salehelp/internal/adapter/wb/dto"
+	"salehelp/internal/storage/pggorm/model"
 	"salehelp/internal/storage/pggorm/repository/productsizesku"
+	"time"
 )
 
 type (
@@ -19,7 +23,9 @@ type (
 		productSizeSKUsRepo    ProductSizeSKURepository
 		wbWarehousesRepo       WBWarehousesRepository
 		sellerWarehousesRepo   SellerWarehousesRepository
+		userRepo               UserRepo
 
+		tg       TelegramAPI
 		wbClient WBClient
 		log      *slog.Logger
 	}
@@ -28,11 +34,15 @@ type (
 	ShopRepository interface {
 		GetByID(ctx context.Context, id int) (*domain.Shop, error)
 		ListAll(ctx context.Context) ([]*domain.Shop, error)
+		UpdateLastSyncAt(ctx context.Context, shopID int, t time.Time) error
+		UpdateSyncStatus(ctx context.Context, shopID int, update model.SyncStatusUpdate) error
+		UpdateFirstSyncNotifiedAt(ctx context.Context, shopID int, t time.Time) error
 	}
 
 	ProductRepository interface {
 		Upsert(ctx context.Context, p *domain.Product) error
 		ListIDsByShopID(ctx context.Context, shopID int) ([]int, error)
+		CountByShop(ctx context.Context, shopID int) (int, error)
 	}
 
 	ProductSnapshotRepository interface {
@@ -76,6 +86,10 @@ type (
 		ListByShop(ctx context.Context, shopID int) ([]*domain.SellerWarehouse, error)
 	}
 
+	UserRepo interface {
+		GetByID(ctx context.Context, id int) (*domain.User, error)
+	}
+
 	// Локальный интерфейс под WB-клиент
 	WBClient interface {
 		GetCards(ctx context.Context, apiKey string, req dto.GetCardsRequest) (*dto.GetCardsResponse, error)
@@ -87,6 +101,10 @@ type (
 		GetWBWarehouses(ctx context.Context, apiKey string) ([]dto.WBWarehouse, error)
 		GetSellerWarehouses(ctx context.Context, apiKey string) ([]dto.SellerWarehouse, error)
 		CheckToken(ctx context.Context, token string) error
+	}
+
+	TelegramAPI interface {
+		SendMessage(ctx context.Context, chatID int64, text string) error
 	}
 )
 
@@ -100,6 +118,8 @@ func NewMonitoringService(
 	productSizeSKUs ProductSizeSKURepository,
 	wbWarehousesRepo WBWarehousesRepository,
 	sellerWarehousesRepo SellerWarehousesRepository,
+	userRepo UserRepo,
+	tg TelegramAPI,
 	wb WBClient,
 	log *slog.Logger,
 ) *Service {
@@ -113,7 +133,17 @@ func NewMonitoringService(
 		productSizeSKUsRepo:    productSizeSKUs,
 		wbWarehousesRepo:       wbWarehousesRepo,
 		sellerWarehousesRepo:   sellerWarehousesRepo,
+		userRepo:               userRepo,
+		tg:                     tg,
 		wbClient:               wb,
 		log:                    log,
 	}
+}
+
+func wbStatusCode(err error) (int, bool) {
+	var he *wbclient.HTTPError
+	if errors.As(err, &he) {
+		return he.StatusCode, true
+	}
+	return 0, false
 }

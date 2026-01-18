@@ -123,3 +123,14 @@ func (r *Repository) GetByIDs(ctx context.Context, ids []int) (map[int]*domain.P
 
 	return out, nil
 }
+
+func (r *Repository) CountByShop(ctx context.Context, shopID int) (int, error) {
+	var cnt int64
+	if err := r.DB.WithContext(ctx).
+		Table("products").
+		Where("shop_id = ?", shopID).
+		Count(&cnt).Error; err != nil {
+		return 0, fmt.Errorf("count products by shop: %w", err)
+	}
+	return int(cnt), nil
+}

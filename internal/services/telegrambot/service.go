@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"salehelp/domain" // или куда ты положил Update DTO
+	"salehelp/internal/services/subscription"
+	"salehelp/internal/storage/pggorm/model"
 	"salehelp/pkg/logger/sl"
 )
 
@@ -33,9 +35,15 @@ type (
 	ShopsRepo interface {
 		Create(ctx context.Context, s *domain.Shop) error
 		GetByID(ctx context.Context, id int) (*domain.Shop, error)
+		GetLastSyncAtMap(ctx context.Context, shopIDs []int) (map[int]*time.Time, error)
 		ListByUser(ctx context.Context, userID int, limit, offset int) ([]*domain.Shop, error)
 		ListByTelegramChat(ctx context.Context, chatID int64) ([]*domain.Shop, error)
 		SetActive(ctx context.Context, shopID int, active bool) error
+
+		CountAll(ctx context.Context) (int, error)
+		CountActive(ctx context.Context) (int, error)
+		CountByLastSyncStatusCode(ctx context.Context, code int) (int, error) // ты уже добавлял
+
 	}
 
 	UsersRepo interface {
@@ -59,19 +67,27 @@ type (
 	SubscriptionEntitlementsService interface {
 		// возвращает allowed telegram chats для магазина
 		AllowedTelegramChats(ctx context.Context, shopID int) (int, error)
+		GetShopAccessLevel(ctx context.Context, shopID int) (subscription.AccessLevel, *domain.Subscription, error)
+	}
+	SubscriptionRepo interface {
+		CountByState(ctx context.Context, now time.Time) (active, grace, expired int, err error)
+		SumRevenueActiveByCurrency(ctx context.Context, now time.Time) ([]model.MoneyByCurrency, error)
+		SumRevenueGraceByCurrency(ctx context.Context, now time.Time) ([]model.MoneyByCurrency, error)
 	}
 
 	Service struct {
-		log             *slog.Logger
-		tg              TelegramAPI
-		statesRepo      TelegramChatStatesRepo
-		invitesRepo     ShopInviteTokensRepo
-		usersRepo       UsersRepo
-		endpointsRepo   ShopNotificationEndpointsRepo
-		shopsRepo       ShopsRepo
-		monitoring      MonitoringService
-		subEntitlements SubscriptionEntitlementsService
-		botUsername     string
+		log              *slog.Logger
+		tg               TelegramAPI
+		statesRepo       TelegramChatStatesRepo
+		invitesRepo      ShopInviteTokensRepo
+		usersRepo        UsersRepo
+		endpointsRepo    ShopNotificationEndpointsRepo
+		shopsRepo        ShopsRepo
+		monitoring       MonitoringService
+		subEntitlements  SubscriptionEntitlementsService
+		subscriptionRepo SubscriptionRepo
+		botUsername      string
+		adminChatID      int64
 	}
 )
 
@@ -86,17 +102,21 @@ func NewService(
 	monitoring MonitoringService,
 	botUsername string,
 	subEntitlements SubscriptionEntitlementsService,
+	subscriptionRepo SubscriptionRepo,
+	adminChatID int64,
 ) *Service {
 	return &Service{
-		log:             log.With(sl.Module("TelegramBotService")),
-		tg:              tg,
-		statesRepo:      statesRepo,
-		invitesRepo:     invitesRepo,
-		usersRepo:       usersRepo,
-		endpointsRepo:   endpointsRepo,
-		shopsRepo:       shopsRepo,
-		monitoring:      monitoring,
-		botUsername:     botUsername,
-		subEntitlements: subEntitlements,
+		log:              log.With(sl.Module("TelegramBotService")),
+		tg:               tg,
+		statesRepo:       statesRepo,
+		invitesRepo:      invitesRepo,
+		usersRepo:        usersRepo,
+		endpointsRepo:    endpointsRepo,
+		shopsRepo:        shopsRepo,
+		monitoring:       monitoring,
+		botUsername:      botUsername,
+		subEntitlements:  subEntitlements,
+		subscriptionRepo: subscriptionRepo,
+		adminChatID:      adminChatID,
 	}
 }
