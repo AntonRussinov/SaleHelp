@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"salehelp/internal/db"
-	"salehelp/internal/db/gormdb"
 
 	"gorm.io/gorm"
 )
@@ -24,23 +23,22 @@ var (
 func (prov *Provider) InitDB(ctx context.Context) error {
 	prov.log.Info("initializing database connection...")
 
-	db, err := db.ConnectWithConfig(prov.log, &prov.cfg.DB)
+	// 1. Создаём GORM + настраиваем пул внутри
+	gormDB, err := db.ConnectGormWithConfig(prov.log, &prov.cfg.DB)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrDBInit, err)
 	}
 
-	prov.log.Info("database connection established")
-	prov.Database.DB = db
-
-	prov.log.Info("initializing GORM")
-
-	gormDB, err := gormdb.New(prov.cfg.DB.DriverName, db, prov.cfg.GormLogLevel)
+	// 2. Получаем underlying *sql.DB
+	sqlDB, err := gormDB.DB()
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrGormInit, err)
+		return fmt.Errorf("get sql db: %w", err)
 	}
 
-	prov.log.Info("GORM adapter initialized")
 	prov.Database.GormDB = gormDB
+	prov.Database.DB = sqlDB
+
+	prov.log.Info("database initialized successfully")
 
 	return nil
 }

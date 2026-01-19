@@ -33,5 +33,3 @@ go.work
 # Output for generated files related to CI/CD
 data/*
 
-# Minikube
-minikube/

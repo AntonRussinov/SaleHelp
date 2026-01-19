@@ -66,6 +66,12 @@ func (b *DataBuilder) ShopRowValues(shop domain.Shop) []driver.Value {
 		shop.Name,
 		shop.APIToken,
 		shop.IsActive,
+		shop.LastSyncAt,
+		shop.FirstSyncNotifiedAt,
+		shop.LastSyncStatusCode,
+		shop.LastSyncError,
+		shop.LastSyncFailedAt,
+		shop.LastSyncOkAt,
 		shop.CreatedAt,
 		shop.UpdatedAt,
 	}

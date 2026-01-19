@@ -101,7 +101,7 @@ func TestUserRepositoryGetByEmail(t *testing.T) {
 				WillReturnRows(rows).
 				WillReturnError(tc.sqlErr)
 
-			got, err := repo.GetByEmail(ctx, u.Email)
+			got, err := repo.GetByEmail(ctx, *u.Email)
 
 			if tc.wantErr {
 				require.Error(t, err)

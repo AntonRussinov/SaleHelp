@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"salehelp/internal/db"
+	"salehelp/internal/scheduler/jobs"
 	"salehelp/pkg/auth"
 
 	"github.com/spf13/viper"
@@ -10,13 +11,19 @@ import (
 
 type (
 	ServiceConfig struct {
-		Listen         string
-		Environment    string
-		GormLogLevel   int
-		ClientSecret   string
-		AllowedOrigins []string
-		Auth           auth.Config
-		DB             db.Config
+		Listen              string
+		Environment         string
+		TelegramToken       string
+		TelegramSecret      string
+		TelegramBotUsername string
+		TelegramAdminID     int64
+		GormLogLevel        int
+		ClientSecret        string
+		AllowedOrigins      []string
+		Auth                auth.Config
+		DB                  db.Config
+		InstanceID          string
+		Scheduler           jobs.SyncActiveShopsConfig
 		//	GCS            gcs.Config
 	}
 

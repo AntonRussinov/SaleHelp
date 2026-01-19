@@ -3,9 +3,10 @@ package di
 import (
 	"context"
 	"log/slog"
-	kaspiAPI "salehelp/internal/adapter/kaspi/api/connector"
-	portalAPI "salehelp/internal/adapter/kaspi/portal/connector"
+	"net/http"
+	wbclient "salehelp/internal/adapter/wb/client"
 	"salehelp/internal/config"
+	"salehelp/internal/scheduler"
 	"salehelp/pkg/extendedvalidator"
 
 	"github.com/labstack/echo/v4"
@@ -23,9 +24,11 @@ type Provider struct {
 	Handlers     Handlers
 	Router       *echo.Echo
 	Validator    *extendedvalidator.Validator
+	scheduler    *scheduler.Scheduler
 	// AccessManager  *access.Manager
-	KaspiAPI       kaspiAPI.API
-	KaspiPortalAPI portalAPI.PortalAPI
+	// KaspiAPI       kaspiAPI.API
+	// KaspiPortalAPI portalAPI.PortalAPI
+	WBClient *wbclient.Client
 }
 
 func NewProvider(log *slog.Logger, cfg *config.ServiceConfig) *Provider {
@@ -43,6 +46,13 @@ func (prov *Provider) GetCron() *cron.Cron {
 	return prov.Cron
 }
 
+func (prov *Provider) initWBClient() {
+	httpClient := &http.Client{}
+
+	// Создаём WB-клиент (New возвращает *Client)
+	prov.WBClient = wbclient.New(httpClient)
+}
+
 func (prov *Provider) Init(ctx context.Context) error {
 	err := prov.InitDB(ctx)
 	if err != nil {
@@ -54,15 +64,17 @@ func (prov *Provider) Init(ctx context.Context) error {
 	// 	return err
 	// }
 
+	prov.initWBClient()
+
 	prov.InitRepositories()
 	prov.InitServices()
 	prov.InitPresenters()
-	prov.InitKaspiAPI()
+
 	// prov.InitKaspiPortalAPI(prov.Repositories.Merchant)
-	err = prov.InitCronRunner(ctx)
-	if err != nil {
-		return err
-	}
+	// err = prov.InitCronRunner(ctx)
+	// if err != nil {
+	// 	return err
+	// }
 
 	err = prov.InitHandlers()
 	if err != nil {
@@ -70,6 +82,11 @@ func (prov *Provider) Init(ctx context.Context) error {
 	}
 
 	err = prov.InitValidator()
+	if err != nil {
+		return err
+	}
+
+	err = prov.initScheduler(ctx)
 	if err != nil {
 		return err
 	}

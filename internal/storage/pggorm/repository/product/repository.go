@@ -31,16 +31,16 @@ func toModel(p *domain.Product) *model.Product {
 	}
 
 	return &model.Product{
-		ID:         p.ID,
-		ShopID:     p.ShopID,
-		ExternalID: p.ExternalID,
-		SKU:        p.SKU,
-		Title:      p.Title,
-		URL:        p.URL,
-		ImageURL:   p.ImageURL,
-		Brand:      p.Brand,
-		Category:   p.Category,
-		CreatedAt:  p.CreatedAt,
-		UpdatedAt:  p.UpdatedAt,
+		ID:          p.ID,
+		ShopID:      p.ShopID,
+		ExternalID:  p.ExternalID,
+		Title:       p.Title,
+		URL:         p.URL,
+		ImageURL:    p.ImageURL,
+		Brand:       p.Brand,
+		Category:    p.Category,
+		Description: p.Description,
+		CreatedAt:   p.CreatedAt,
+		UpdatedAt:   p.UpdatedAt,
 	}
 }

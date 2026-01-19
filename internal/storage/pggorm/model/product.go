@@ -9,7 +9,6 @@ type Product struct {
 	ID          int       `gorm:"primaryKey;column:id"`
 	ShopID      int       `gorm:"column:shop_id;not null"`
 	ExternalID  string    `gorm:"column:external_id;type:text;not null"`
-	SKU         string    `gorm:"column:sku;type:text"`
 	Title       string    `gorm:"column:title;type:text;not null"`
 	URL         string    `gorm:"column:url;type:text"`
 	ImageURL    string    `gorm:"column:image_url;type:text"`
@@ -46,7 +45,6 @@ func (p *Product) ToDomain() *domain.Product {
 		ID:          p.ID,
 		ShopID:      p.ShopID,
 		ExternalID:  p.ExternalID,
-		SKU:         p.SKU,
 		Title:       p.Title,
 		URL:         p.URL,
 		ImageURL:    p.ImageURL,

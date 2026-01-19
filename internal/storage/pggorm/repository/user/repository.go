@@ -28,10 +28,11 @@ func toModel(u *domain.User) *model.User {
 	}
 
 	return &model.User{
-		ID:           u.ID,
-		Email:        u.Email,
-		PasswordHash: u.PasswordHash,
-		CreatedAt:    u.CreatedAt,
-		UpdatedAt:    u.UpdatedAt,
+		ID:             u.ID,
+		Email:          u.Email,
+		PasswordHash:   u.PasswordHash,
+		TelegramChatID: u.TelegramChatID,
+		CreatedAt:      u.CreatedAt,
+		UpdatedAt:      u.UpdatedAt,
 	}
 }

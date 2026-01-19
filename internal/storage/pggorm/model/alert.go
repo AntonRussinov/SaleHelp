@@ -16,6 +16,8 @@ type Alert struct {
 	Payload            []byte     `gorm:"column:payload"` // JSONB
 	TriggeredAt        time.Time  `gorm:"column:triggered_at;autoCreateTime"`
 	ResolvedAt         *time.Time `gorm:"column:resolved_at"`
+	Scope              string     `gorm:"column:scope;type:text;not null;default:'auto'"` // "auto" | "product" | "size"
+	ProductSizeID      *int       `gorm:"column:product_size_id"`                         // nullable
 	AIRecommendationID *int       `gorm:"column:ai_recommendation_id"`
 }
 
@@ -31,6 +33,8 @@ func AlertColumns() []string {
 		"payload",
 		"triggered_at",
 		"resolved_at",
+		"scope",
+		"product_size_id",
 		"ai_recommendation_id",
 	}
 }
@@ -51,6 +55,8 @@ func (a *Alert) ToDomain() *domain.Alert {
 		Payload:            a.Payload,
 		TriggeredAt:        a.TriggeredAt,
 		ResolvedAt:         a.ResolvedAt,
+		Scope:              a.Scope,
+		ProductSizeID:      a.ProductSizeID,
 		AIRecommendationID: a.AIRecommendationID,
 	}
 }

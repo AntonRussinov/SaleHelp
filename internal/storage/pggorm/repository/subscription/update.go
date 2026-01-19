@@ -3,17 +3,24 @@ package subscription
 import (
 	"context"
 	"fmt"
-	"salehelp/domain"
+	"salehelp/internal/storage/pggorm/model"
+	"time"
 )
 
-func (r *Repository) Update(ctx context.Context, s *domain.Subscription) error {
-	m := toModel(s)
+// ExpireActiveByShopID переводит все активные подписки магазина в expired.
+// Возвращает кол-во обновлённых строк.
+func (r *Repository) ExpireActiveByShopID(ctx context.Context, shopID int) (int64, error) {
+	res := r.DB.WithContext(ctx).
+		Model(&model.Subscription{}).
+		Where("shop_id = ? AND status = ?", shopID, "active").
+		Updates(map[string]any{
+			"status":     "expired",
+			"updated_at": time.Now(),
+		})
 
-	if err := r.DB.WithContext(ctx).Save(m).Error; err != nil {
-		return fmt.Errorf("subscription update: %w", err)
+	if res.Error != nil {
+		return 0, fmt.Errorf("expire active subscriptions by shop_id: %w", res.Error)
 	}
 
-	s.UpdatedAt = m.UpdatedAt
-
-	return nil
+	return res.RowsAffected, nil
 }

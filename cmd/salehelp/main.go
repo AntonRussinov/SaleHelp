@@ -22,69 +22,59 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	log.Println("reading config file path from command line arguments")
-
 	configFile := pflag.StringP("config", "c", "configs/config.yml", "path to configuration file")
-
 	pflag.Parse()
 
-	log.Println("using config file ", *configFile)
-	// Загрузка конфигурации
 	cfg, err := config.Read(*configFile)
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	log.Println("initializing service")
-
 	applogger := logger.New(cfg.Environment)
-	applogger.Info("initializing service",
-		slog.String("config", *configFile),
-		slog.String("env", cfg.Environment),
-		slog.String("addr", cfg.Service.Listen),
-	)
 
-	go shutdownHandler(ctx, cancel)
-
-	// service, err := app.NewService(ctx, &cfg.Service, applogger)
-	// if err != nil {
-	// 	log.Panic(err)
-	// }
-
-	// go service.Run()
-
-	// <-ctx.Done()
-
-	// err = service.Stop()
-	// if err != nil {
-	// 	applogger.Error("Server Close: ", sl.Err(err))
-	// }
-
-	// Инициализация базы данных
-	// err = db.InitDatabase(cfg.Service.DB)
-	// if err != nil {
-	// 	log.Fatalf("Failed to connect to database: %v", err)
-	// }
-
-	// // Запуск планировщика задач
-	// scheduler.StartScheduler()
-
-	// // Блокировка основного потока для предотвращения завершения приложения
-	// select {}
+	go shutdownHandler(ctx, cancel) // по сигналу вызовет cancel()
 
 	prov := di.NewProvider(applogger, cfg.Service)
 	application := app.New(cfg.Service, applogger, prov)
 
-	err = application.Run(ctx)
-	if err != nil {
-		applogger.Error("failed to run application", slog.Any("error", err))
+	// init DI / router / db
+	if err := prov.Init(ctx); err != nil {
+		applogger.Error("provider init failed", slog.Any("error", err))
+		return
 	}
 
+	// 2) запускаем сервер в отдельной горутине (иначе дальше не дойдём)
+	runErrCh := make(chan error, 1)
+	go func() {
+		runErrCh <- application.Run(ctx)
+	}()
+
+	applogger.Info("application started")
+	// 1) запускаем воркеры СРАЗУ (они крутятся пока ctx жив)
+	go prov.Services.Notifier.Run(ctx)    // deliveries -> telegram
+	go prov.Services.AlertWorker.Run(ctx) // shops -> engine -> triggered+fanout
+
+	applogger.Info("workers started")
+
+	// 3) ждём либо:
+	// - сигнал (ctx.Done())
+	// - либо ошибка старта/работы сервера
+	select {
+	case <-ctx.Done():
+		applogger.Info("shutdown requested")
+	case err := <-runErrCh:
+		if err != nil {
+			applogger.Error("application stopped with error", slog.Any("error", err))
+		}
+		// чтобы точно завершиться — отменим контекст
+		cancel()
+	}
+
+	// 4) graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer shutdownCancel()
 
-	err = application.Shutdown(shutdownCtx)
-	if err != nil {
+	if err := application.Shutdown(shutdownCtx); err != nil {
 		applogger.Error("failed to shutdown application", slog.Any("error", err))
 	}
 }

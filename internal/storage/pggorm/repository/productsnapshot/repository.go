@@ -23,21 +23,32 @@ func NewRepository(log *slog.Logger, db *gorm.DB) *Repository {
 }
 
 // domain → model
-func toModel(s *domain.ProductSnapshot) *model.ProductSnapshot {
+func toModel(d *domain.ProductSnapshot) *model.ProductSnapshot {
+	if d == nil {
+		return nil
+	}
+
 	return &model.ProductSnapshot{
-		ID:             s.ID,
-		ProductID:      s.ProductID,
-		SnapshotTime:   s.SnapshotTime,
-		Price:          s.Price,
-		OldPrice:       s.OldPrice,
-		Discount:       s.Discount,
-		StockTotal:     s.StockTotal,
-		Rating:         s.Rating,
-		ReviewsCount:   s.ReviewsCount,
-		Sales24h:       s.Sales24h,
-		Sales7d:        s.Sales7d,
-		PositionSearch: s.PositionSearch,
-		Extra:          s.Extra,
-		CreatedAt:      s.CreatedAt,
+		ID:                d.ID,
+		ProductID:         d.ProductID,
+		SnapshotTime:      d.SnapshotTime,
+		CurrencyCode:      d.CurrencyCode,
+		BasePrice:         d.BasePrice,
+		FinalPrice:        d.FinalPrice,
+		ClubPrice:         d.ClubPrice,
+		Discount:          d.Discount,
+		ClubDiscount:      d.ClubDiscount,
+		OldPrice:          d.OldPrice,
+		StockTotal:        d.StockTotal,
+		StockInWay:        d.StockInWay,
+		Rating:            d.Rating,
+		ReviewsCount:      d.ReviewsCount,
+		Sales24h:          d.Sales24h,
+		Sales7d:           d.Sales7d,
+		PositionSearch:    d.PositionSearch,
+		IsBadTurnover:     d.IsBadTurnover,
+		EditableSizePrice: d.EditableSizePrice,
+		Extra:             d.Extra,
+		CreatedAt:         d.CreatedAt,
 	}
 }

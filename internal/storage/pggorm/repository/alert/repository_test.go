@@ -62,6 +62,8 @@ func (b *DataBuilder) AlertRowValues(a domain.Alert) []driver.Value {
 		a.Payload,
 		a.TriggeredAt,
 		a.ResolvedAt,
+		a.Scope,
+		a.ProductSizeID,
 		a.AIRecommendationID,
 	}
 }

@@ -30,14 +30,20 @@ func toModel(s *domain.Shop) *model.Shop {
 	}
 
 	return &model.Shop{
-		ID:          s.ID,
-		UserID:      s.UserID,
-		Marketplace: s.Marketplace,
-		ExternalID:  s.ExternalID,
-		Name:        s.Name,
-		APIToken:    s.APIToken,
-		IsActive:    s.IsActive,
-		CreatedAt:   s.CreatedAt,
-		UpdatedAt:   s.UpdatedAt,
+		ID:                  s.ID,
+		UserID:              s.UserID,
+		Marketplace:         s.Marketplace,
+		ExternalID:          s.ExternalID,
+		Name:                s.Name,
+		APIToken:            s.APIToken,
+		IsActive:            s.IsActive,
+		LastSyncAt:          s.LastSyncAt,
+		FirstSyncNotifiedAt: s.FirstSyncNotifiedAt,
+		LastSyncStatusCode:  s.LastSyncStatusCode,
+		LastSyncError:       s.LastSyncError,
+		LastSyncFailedAt:    s.LastSyncFailedAt,
+		LastSyncOkAt:        s.LastSyncOkAt,
+		CreatedAt:           s.CreatedAt,
+		UpdatedAt:           s.UpdatedAt,
 	}
 }

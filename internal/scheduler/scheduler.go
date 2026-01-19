@@ -1,37 +1,52 @@
 package scheduler
 
 import (
-	"log"
-	"salehelp/internal/client"
-	"salehelp/internal/db"
-	"time"
+	"context"
+	"fmt"
+
+	"github.com/robfig/cron/v3"
 )
 
-func StartScheduler() {
-	ticker := time.NewTicker(3 * time.Minute)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		processClients()
-	}
+type Logger interface {
+	Info(msg string, args ...any)
+	Error(msg string, args ...any)
 }
 
-func processClients() {
-	clients := []string{"client1", "client2"} // Получите список клиентов из вашей БД или другого источника
-	for _, clientID := range clients {
-		go func(id string) {
-			resp, err := client.GetClientData(id)
-			if err != nil {
-				log.Printf("Error fetching data for client %s: %v", id, err)
-				return
-			}
-			// Преобразование данных и сохранение в БД
-			err = db.SaveClientData(resp.Body())
-			if err != nil {
-				log.Printf("Error saving data for client %s: %v", id, err)
-				return
-			}
-			// Дополнительные манипуляции с данными
-		}(clientID)
+type Scheduler struct {
+	c   *cron.Cron
+	log Logger
+}
+
+func New(log Logger) *Scheduler {
+	c := cron.New(
+		cron.WithChain(
+			cron.Recover(cron.DefaultLogger),
+		),
+	)
+	return &Scheduler{c: c, log: log}
+}
+
+func (s *Scheduler) Register(ctx context.Context, spec, name string, fn func(ctx context.Context)) error {
+	_, err := s.c.AddFunc(spec, func() { fn(ctx) })
+	if err != nil {
+		return fmt.Errorf("register job %s (%s): %w", name, spec, err)
+	}
+	s.log.Info("scheduler: registered job", "name", name, "spec", spec)
+	return nil
+}
+
+func (s *Scheduler) Start() {
+	s.c.Start()
+	s.log.Info("scheduler: started")
+}
+
+func (s *Scheduler) Stop(ctx context.Context) error {
+	stopCtx := s.c.Stop()
+	select {
+	case <-stopCtx.Done():
+		s.log.Info("scheduler: stopped")
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"salehelp/domain"
 	"salehelp/internal/storage/pggorm/model"
 
+	"github.com/jackc/pgtype"
 	"gorm.io/gorm"
 )
 
@@ -76,4 +77,60 @@ func (r *Repository) ListByShop(
 	}
 
 	return result, nil
+}
+
+func (r *Repository) ListIDsByShopID(ctx context.Context, shopID int) ([]int, error) {
+	type row struct {
+		ID int `gorm:"column:id"`
+	}
+
+	var rows []row
+	if err := r.DB.WithContext(ctx).
+		Raw(`SELECT id FROM products WHERE shop_id = ? ORDER BY id`, shopID).
+		Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("product list ids by shop_id: %w", err)
+	}
+
+	out := make([]int, 0, len(rows))
+	for _, rr := range rows {
+		out = append(out, rr.ID)
+	}
+	return out, nil
+}
+
+func (r *Repository) GetByIDs(ctx context.Context, ids []int) (map[int]*domain.Product, error) {
+	out := make(map[int]*domain.Product, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+
+	arr := pgtype.Int8Array{}
+	if err := arr.Set(ids); err != nil {
+		return nil, fmt.Errorf("product get by ids: set array: %w", err)
+	}
+
+	var rows []model.Product
+	if err := r.DB.WithContext(ctx).
+		Where("id = ANY(?)", &arr).
+		Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("product get by ids: %w", err)
+	}
+
+	for i := range rows {
+		d := rows[i].ToDomain()
+		out[d.ID] = d
+	}
+
+	return out, nil
+}
+
+func (r *Repository) CountByShop(ctx context.Context, shopID int) (int, error) {
+	var cnt int64
+	if err := r.DB.WithContext(ctx).
+		Table("products").
+		Where("shop_id = ?", shopID).
+		Count(&cnt).Error; err != nil {
+		return 0, fmt.Errorf("count products by shop: %w", err)
+	}
+	return int(cnt), nil
 }

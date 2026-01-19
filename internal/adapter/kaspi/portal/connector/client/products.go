@@ -22,7 +22,6 @@ func (a *Client) GetAllProducts(ctx context.Context, merchantID string) (*portal
 	var response portal_models.Products
 
 	if err := a.Do(ctx, GET, fmt.Sprintf("bff/offer-view/list?m=%v&p=%v&l=%v&a=true&lowStock=false", merchantID, 0, productCount), nil, merchantID, &response); err != nil {
-		fmt.Println("err 5 - ", err)
 		return nil, err
 	}
 

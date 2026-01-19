@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"salehelp/domain"
 	"salehelp/internal/storage/pggorm/model"
@@ -39,4 +40,23 @@ func (r *Repository) GetByEmail(ctx context.Context, email string) (*domain.User
 	}
 
 	return m.ToDomain(), nil
+}
+
+func (r *Repository) GetByTelegramChatID(ctx context.Context, chatID int64) (*domain.User, error) {
+	var m model.User
+
+	err := r.DB.WithContext(ctx).
+		Model(&model.User{}).
+		Where("telegram_chat_id = ?", chatID).
+		First(&m).Error
+
+	if err == nil {
+		return m.ToDomain(), nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	return nil, fmt.Errorf("user get by telegram_chat_id %d: %w", chatID, err)
 }
