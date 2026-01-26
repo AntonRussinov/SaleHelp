@@ -2,6 +2,7 @@ package di
 
 import (
 	"errors"
+	"salehelp/internal/handler/alert"
 	"salehelp/internal/handler/product"
 	"salehelp/internal/handler/shop"
 	"salehelp/internal/handler/subscription"
@@ -13,6 +14,7 @@ type Handlers struct {
 	TelegramBot  *telegram.Handler
 	Shop         *shop.Handler
 	Subscription *subscription.Handler
+	Alert        *alert.Handler
 }
 
 var ErrInitHandlerss = errors.New("failed to initialize Handlerss")

@@ -62,7 +62,7 @@ func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
 	}
 
 	// --- stock_low: global + overrides ---
-	globalLow, lowOverrides := buildEffectiveAlertsByProduct(alerts, AlertTypeStockLow)
+	globalLow, lowOverrides := buildEffectiveAlertsByProduct(alerts, domain.AlertTypeStockLow)
 	if globalLow != nil || len(lowOverrides) > 0 {
 		if err := e.evalStockLowEffective(ctx, products, sizesByProduct, snapshotsByProduct, globalLow, lowOverrides); err != nil {
 			return err
@@ -74,7 +74,7 @@ func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
 	}
 
 	// --- stock_zero: global + overrides ---
-	globalZero, zeroOverrides := buildEffectiveAlertsByProduct(alerts, AlertTypeStockZero)
+	globalZero, zeroOverrides := buildEffectiveAlertsByProduct(alerts, domain.AlertTypeStockZero)
 	if globalZero != nil || len(zeroOverrides) > 0 {
 		if err := e.evalStockZeroEffective(ctx, products, sizesByProduct, snapshotsByProduct, globalZero, zeroOverrides); err != nil {
 			return err
@@ -85,7 +85,7 @@ func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
 		}
 	}
 
-	globalDrop, dropOverrides := buildEffectiveAlertsByProduct(alerts, AlertTypePriceDrop)
+	globalDrop, dropOverrides := buildEffectiveAlertsByProduct(alerts, domain.AlertTypePriceDrop)
 	if globalDrop != nil || len(dropOverrides) > 0 {
 		if err := e.evalPriceDropEffective(ctx, products, snapshotsByProduct, globalDrop, dropOverrides); err != nil {
 			return err

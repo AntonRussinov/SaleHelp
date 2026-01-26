@@ -29,8 +29,7 @@ type SenderRegistry struct {
 
 type groupKey struct {
 	EndpointID int
-	ProductID  int
-	AlertType  string
+	ShopID     int
 }
 
 func NewDispatcher(
@@ -124,6 +123,22 @@ func (d *Dispatcher) RunOnce(ctx context.Context) error {
 		}
 	}
 
+	// sizesCountByProduct: нужно, чтобы скрывать "фантомный" размер только когда он единственный
+	sizesCountByProduct := map[int]int{}
+
+	if len(productIDs) > 0 {
+		allSizes, err := d.productSizesRepo.ListByProductIDs(ctx, productIDs)
+		if err != nil {
+			return err
+		}
+		for _, sz := range allSizes {
+			if sz == nil {
+				continue
+			}
+			sizesCountByProduct[sz.ProductID]++
+		}
+	}
+
 	// --- group deliveries
 	groups := make(map[groupKey][]*domain.AlertTriggeredDelivery, 64)
 
@@ -141,13 +156,14 @@ func (d *Dispatcher) RunOnce(ctx context.Context) error {
 
 		k := groupKey{
 			EndpointID: del.EndpointID,
-			ProductID:  tr.ProductID,
-			AlertType:  tr.AlertType,
+			ShopID:     tr.ShopID,
 		}
 		groups[k] = append(groups[k], del)
+
 	}
 
 	// --- send each group as one message
+	// --- send each group as one (or multiple chunked) messages
 	for k, dels := range groups {
 		ep, err := d.endpointsRepo.GetByID(ctx, k.EndpointID)
 		if err != nil || ep == nil || !ep.Enabled {
@@ -155,7 +171,6 @@ func (d *Dispatcher) RunOnce(ctx context.Context) error {
 			continue
 		}
 
-		// sender
 		ch := notify.Channel(ep.Channel)
 		sender, ok := d.registry.Get(ch)
 		if !ok {
@@ -175,12 +190,6 @@ func (d *Dispatcher) RunOnce(ctx context.Context) error {
 			continue
 		}
 
-		// product
-		p := productsByID[k.ProductID]
-
-		// message
-		msg := FormatAggregatedMessageRU(k.AlertType, p, trList, sizesByID)
-
 		// recipient
 		rcpt, err := recipientFromEndpoint(ep, trList[0].ShopID)
 		if err != nil {
@@ -188,9 +197,19 @@ func (d *Dispatcher) RunOnce(ctx context.Context) error {
 			continue
 		}
 
-		// send
-		if err := sender.Send(ctx, rcpt, msg); err != nil {
-			_ = d.deliveriesRepo.MarkFailedMany(ctx, deliveryIDs(dels), err.Error())
+		// build digest messages (chunked)
+		msgs := FormatShopDigestMessagesRU(trList, productsByID, sizesByID, sizesCountByProduct)
+
+		// send all parts; only mark sent if ALL succeed
+		sentOK := true
+		for _, msg := range msgs {
+			if err := sender.Send(ctx, rcpt, msg); err != nil {
+				_ = d.deliveriesRepo.MarkFailedMany(ctx, deliveryIDs(dels), err.Error())
+				sentOK = false
+				break
+			}
+		}
+		if !sentOK {
 			continue
 		}
 

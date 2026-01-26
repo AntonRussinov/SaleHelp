@@ -7,12 +7,6 @@ import (
 	"salehelp/internal/services/subscription"
 )
 
-const (
-	AlertTypeStockLow  = "stock_low"
-	AlertTypeStockZero = "stock_zero"
-	AlertTypePriceDrop = "price_drop"
-)
-
 type stockLowCfg struct {
 	Threshold int `json:"threshold"`
 }

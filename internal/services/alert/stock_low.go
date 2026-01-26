@@ -64,6 +64,10 @@ func (e *AlertEngine) evalStockLowEffective(
 		latestStock := derefInt(latest.StockTotal)
 		prevStock := derefInt(prev.StockTotal)
 
+		if latestStock == 0 {
+			continue
+		}
+
 		// cfg
 		var cfg stockLowCfg
 		if useOverride {
@@ -101,7 +105,7 @@ func (e *AlertEngine) evalStockLowEffective(
 			Message:    msg,
 		}
 
-		_, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
+		ID, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
 		if err != nil {
 			return err
 		}
@@ -111,7 +115,7 @@ func (e *AlertEngine) evalStockLowEffective(
 		}
 
 		// ВОТ ТУТ fanout
-		if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, tr.ID, tr.ShopID); err != nil {
+		if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, ID, tr.ShopID); err != nil {
 			return err
 		}
 	}
@@ -202,6 +206,11 @@ func (e *AlertEngine) evalStockLowSizesEffective(
 			latestStock := derefInt(latest.Stock)
 			prevStock := derefInt(prev.Stock)
 
+			// priority: if stock is zero -> only stock_zero should fire
+			if latestStock == 0 {
+				continue
+			}
+
 			if !(prevStock > cfg.Threshold && latestStock <= cfg.Threshold) {
 				continue
 			}
@@ -218,7 +227,7 @@ func (e *AlertEngine) evalStockLowSizesEffective(
 				Message:       msg,
 			}
 
-			_, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
+			ID, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
 			if err != nil {
 				return err
 			}
@@ -229,7 +238,7 @@ func (e *AlertEngine) evalStockLowSizesEffective(
 			// fanout/deliveries создавай по tr.ID (как у тебя уже сделано)
 
 			// ВОТ ТУТ fanout
-			if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, tr.ID, tr.ShopID); err != nil {
+			if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, ID, tr.ShopID); err != nil {
 				return err
 			}
 		}

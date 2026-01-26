@@ -249,6 +249,7 @@ CREATE TABLE alerts_triggered (
     shop_id         BIGINT NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
     message         TEXT,
     product_size_id BIGINT REFERENCES product_sizes(id) ON DELETE CASCADE,
+    product_size_key BIGINT GENERATED ALWAYS AS (COALESCE(product_size_id, 0)) STORED,
     alert_type      TEXT   NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -257,8 +258,8 @@ CREATE INDEX idx_alerts_triggered_alert ON alerts_triggered(alert_id);
 CREATE INDEX idx_alerts_triggered_product ON alerts_triggered(product_id);
 CREATE INDEX idx_alerts_triggered_snapshot ON alerts_triggered(snapshot_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_alerts_triggered_once
-    ON alerts_triggered(alert_id, product_id, product_size_id, snapshot_id);
+CREATE UNIQUE INDEX ux_alerts_triggered_once
+    ON alerts_triggered(alert_id, product_id, snapshot_id, product_size_key);
 CREATE INDEX IF NOT EXISTS idx_alerts_triggered_shop_created
     ON alerts_triggered (shop_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_alerts_triggered_product_created

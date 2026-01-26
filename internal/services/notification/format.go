@@ -14,6 +14,7 @@ func FormatAggregatedMessageRU(
 	p *domain.Product,
 	triggered []*domain.AlertTriggered,
 	sizesByID map[int]*domain.ProductSize,
+	sizesCountByProduct map[int]int,
 ) notify.Message {
 
 	title := "SaleHelp"
@@ -36,14 +37,14 @@ func FormatAggregatedMessageRU(
 
 	// Стабильный порядок: sizeName, потом без size в конце
 	sort.SliceStable(triggered, func(i, j int) bool {
-		a := sizeName(triggered[i], sizesByID)
-		b := sizeName(triggered[j], sizesByID)
+		a := displaySizeName(triggered[i], sizesByID, sizesCountByProduct)
+		b := displaySizeName(triggered[j], sizesByID, sizesCountByProduct)
 		return a < b
 	})
 
 	lines := make([]string, 0, len(triggered))
 	for _, tr := range triggered {
-		sn := sizeName(tr, sizesByID)
+		sn := displaySizeName(tr, sizesByID, sizesCountByProduct)
 		if sn != "" {
 			lines = append(lines, fmt.Sprintf("• %s — %s", sn, tr.Message))
 		} else {
@@ -80,17 +81,4 @@ func sizeName(tr *domain.AlertTriggered, sizesByID map[int]*domain.ProductSize) 
 		return sz.ExternalID
 	}
 	return fmt.Sprintf("size_id=%d", *tr.ProductSizeID)
-}
-
-func humanAlertTypeRU(t string) string {
-	switch t {
-	case "stock_low":
-		return "Низкий остаток"
-	case "stock_zero":
-		return "Размер закончился"
-	case "price_drop":
-		return "Цена снизилась"
-	default:
-		return "Алерт"
-	}
 }

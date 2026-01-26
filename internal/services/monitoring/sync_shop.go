@@ -270,6 +270,7 @@ func (s *Service) syncShopSnapshots(
 
 	// 7) stocks by sku
 	stockByChrtID := make(map[int64]int)
+	stocksUnavailable := false
 
 	if len(sellerWhs) > 0 && len(chrtIDs) > 0 {
 		for _, wh := range sellerWhs {
@@ -286,7 +287,10 @@ func (s *Service) syncShopSnapshots(
 					"chrtIDs_count", len(chrtIDs),
 					"err", err,
 				)
-				continue
+				// Важно: если WB stocks недоступен, нельзя трактовать это как "0" и перезаписывать сток.
+				// Иначе получим ложные алерты "всё закончилось".
+				stocksUnavailable = true
+				break
 			}
 
 			for _, st := range items {
@@ -296,19 +300,22 @@ func (s *Service) syncShopSnapshots(
 	}
 
 	// 8) stock total by product + by nm
-	stockByProductID := make(map[int]int)
+	var stockByNm map[int64]int
+	if !stocksUnavailable {
+		stockByProductID := make(map[int]int)
 
-	for _, sz := range sizes {
-		chrtID, err := strconv.ParseInt(sz.ExternalID, 10, 64)
-		if err != nil {
-			continue
+		for _, sz := range sizes {
+			chrtID, err := strconv.ParseInt(sz.ExternalID, 10, 64)
+			if err != nil {
+				continue
+			}
+			stockByProductID[sz.ProductID] += stockByChrtID[chrtID]
 		}
-		stockByProductID[sz.ProductID] += stockByChrtID[chrtID]
-	}
 
-	stockByNm := make(map[int64]int, len(prodByNm))
-	for nmID, p := range prodByNm {
-		stockByNm[nmID] = stockByProductID[p.ID]
+		stockByNm = make(map[int64]int, len(prodByNm))
+		for nmID, p := range prodByNm {
+			stockByNm[nmID] = stockByProductID[p.ID]
+		}
 	}
 
 	// 9) product snapshots (only product-level)
@@ -408,25 +415,27 @@ func (s *Service) syncShopSnapshots(
 		}
 
 		// 11.2) stocks per size (iterate sizes, not skuRows!)
-		sizeMap := sizeIDToChrtByProduct[snap.ProductID]
-		for psID, chrtIDStr := range sizeMap {
-			chrtID, err := strconv.ParseInt(chrtIDStr, 10, 64)
-			if err != nil {
-				continue
-			}
+		if !stocksUnavailable {
+			sizeMap := sizeIDToChrtByProduct[snap.ProductID]
+			for psID, chrtIDStr := range sizeMap {
+				chrtID, err := strconv.ParseInt(chrtIDStr, 10, 64)
+				if err != nil {
+					continue
+				}
 
-			q := stockByChrtID[chrtID]
-			qq := q
+				q := stockByChrtID[chrtID]
+				qq := q
 
-			sizeSnap := domain.ProductSizeSnapshot{
-				ProductSnapshotID: snap.ID,
-				ProductSizeID:     psID,
-				Stock:             &qq,
-			}
+				sizeSnap := domain.ProductSizeSnapshot{
+					ProductSnapshotID: snap.ID,
+					ProductSizeID:     psID,
+					Stock:             &qq,
+				}
 
-			if err := s.sizeSnapshotsRepo.Create(ctx, &sizeSnap); err != nil {
-				return fmt.Errorf("create size stock snapshot (product %d, size %d): %w",
-					snap.ProductID, psID, err)
+				if err := s.sizeSnapshotsRepo.Create(ctx, &sizeSnap); err != nil {
+					return fmt.Errorf("create size stock snapshot (product %d, size %d): %w",
+						snap.ProductID, psID, err)
+				}
 			}
 		}
 	}

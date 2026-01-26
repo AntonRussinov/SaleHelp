@@ -31,27 +31,56 @@ func (s *Sender) Send(ctx context.Context, r notify.Recipient, m notify.Message)
 		return fmt.Errorf("telegram recipient chat_id is nil")
 	}
 
-	text := m.Text
-	if m.Title != "" {
-		// HTML-friendly формат (без Markdown экранирования)
-		text = fmt.Sprintf("<b>%s</b>\n\n%s", escapeHTML(m.Title), escapeHTML(text))
-	} else {
-		text = escapeHTML(text)
+	// делим ПЛЕЙН-ТЕКСТ, чтобы не резать HTML
+	parts := splitTextByRuneLimit(m.Text, telegramMaxLen-200) // запас под title + html escape
+
+	for i, part := range parts {
+		text := escapeHTML(part)
+
+		// Title показываем только в первой части (чтобы не спамить жирным заголовком)
+		if i == 0 && m.Title != "" {
+			text = fmt.Sprintf("<b>%s</b>\n\n%s", escapeHTML(m.Title), text)
+		}
+
+		// доп. страховка: если после escape всё равно больше лимита — режем уже готовый текст
+		if len([]rune(text)) > telegramMaxLen {
+			rs := []rune(text)
+			text = string(rs[:telegramMaxLen-1]) + "…"
+		}
+
+		if err := s.client.SendMessage(
+			ctx,
+			*r.TelegramChatID,
+			text,
+			"HTML",
+			true,
+		); err != nil {
+			return err
+		}
 	}
 
-	// Telegram limit: 4096 символов
-	if len([]rune(text)) > telegramMaxLen {
-		rs := []rune(text)
-		text = string(rs[:telegramMaxLen-1]) + "…"
+	return nil
+}
+
+func splitTextByRuneLimit(s string, limit int) []string {
+	if limit <= 0 {
+		return []string{s}
+	}
+	rs := []rune(s)
+	if len(rs) <= limit {
+		return []string{s}
 	}
 
-	return s.client.SendMessage(
-		ctx,
-		*r.TelegramChatID,
-		text,
-		"HTML", // parse mode
-		true,   // disable web page preview
-	)
+	out := make([]string, 0, (len(rs)/limit)+1)
+	for len(rs) > 0 {
+		n := limit
+		if len(rs) < n {
+			n = len(rs)
+		}
+		out = append(out, string(rs[:n]))
+		rs = rs[n:]
+	}
+	return out
 }
 
 func (s *Sender) SendWithKeyboard(
@@ -99,3 +128,24 @@ func escapeHTML(s string) string {
 	}
 	return string(out)
 }
+
+// func splitByRuneLimit(s string, limit int) []string {
+// 	if limit <= 0 {
+// 		return []string{s}
+// 	}
+// 	rs := []rune(s)
+// 	if len(rs) <= limit {
+// 		return []string{s}
+// 	}
+
+// 	out := make([]string, 0, (len(rs)/limit)+1)
+// 	for len(rs) > 0 {
+// 		n := limit
+// 		if len(rs) < n {
+// 			n = len(rs)
+// 		}
+// 		out = append(out, string(rs[:n]))
+// 		rs = rs[n:]
+// 	}
+// 	return out
+// }

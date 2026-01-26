@@ -1,7 +1,9 @@
 // internal/service/subscription/entitlements.go
 package subscription
 
-import "context"
+import (
+	"context"
+)
 
 func (s *Service) AllowedTelegramChats(ctx context.Context, shopID int) (int, error) {
 	ent, err := s.GetCurrentEntitlements(ctx, shopID)

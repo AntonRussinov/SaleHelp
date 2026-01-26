@@ -39,6 +39,12 @@ func (e *AlertEngine) evalStockZeroEffective(
 		latest := snaps[0]
 		prev := snaps[1]
 
+		// Если WB stocks не был получен, StockTotal может быть nil (unknown).
+		// В этом случае нельзя трактовать nil как 0 и триггерить "всё закончилось".
+		if latest.StockTotal == nil || prev.StockTotal == nil {
+			continue
+		}
+
 		latestStock := derefInt(latest.StockTotal)
 		prevStock := derefInt(prev.StockTotal)
 
@@ -58,7 +64,7 @@ func (e *AlertEngine) evalStockZeroEffective(
 			Message:    msg,
 		}
 
-		_, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
+		ID, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
 		if err != nil {
 			return err
 		}
@@ -68,7 +74,7 @@ func (e *AlertEngine) evalStockZeroEffective(
 		}
 
 		// ВОТ ТУТ fanout
-		if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, tr.ID, tr.ShopID); err != nil {
+		if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, ID, tr.ShopID); err != nil {
 			return err
 		}
 
@@ -118,6 +124,11 @@ func (e *AlertEngine) evalStockZeroSizesEffective(
 			latest := snaps[0]
 			prev := snaps[1]
 
+			// Аналогично по размеру: nil = нет данных, не 0.
+			if latest.Stock == nil || prev.Stock == nil {
+				continue
+			}
+
 			latestStock := derefInt(latest.Stock)
 			prevStock := derefInt(prev.Stock)
 
@@ -137,7 +148,7 @@ func (e *AlertEngine) evalStockZeroSizesEffective(
 				Message:       msg,
 			}
 
-			_, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
+			ID, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
 			if err != nil {
 				return err
 			}
@@ -146,7 +157,7 @@ func (e *AlertEngine) evalStockZeroSizesEffective(
 			}
 
 			// ВОТ ТУТ fanout
-			if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, tr.ID, tr.ShopID); err != nil {
+			if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, ID, tr.ShopID); err != nil {
 				return err
 			}
 		}

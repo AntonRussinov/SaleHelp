@@ -2,6 +2,26 @@ package domain
 
 import "time"
 
+// Alert types (shared across API/service/storage).
+const (
+	AlertTypePriceDrop = "price_drop"
+	AlertTypeStockLow  = "stock_low"
+	AlertTypeStockZero = "stock_zero"
+)
+
+// Alert scopes.
+const (
+	AlertScopeAuto    = "auto"
+	AlertScopeProduct = "product"
+	AlertScopeSize    = "size"
+)
+
+// Alert statuses.
+const (
+	AlertStatusActive   = "active"
+	AlertStatusInactive = "inactive"
+)
+
 type Alert struct {
 	ID                 int
 	ShopID             int

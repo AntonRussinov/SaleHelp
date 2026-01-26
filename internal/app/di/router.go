@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"salehelp/internal/handler"
+	"salehelp/internal/handler/alert"
 	"salehelp/internal/handler/product"
 	"salehelp/internal/handler/shop"
 	"salehelp/internal/handler/telegram"
@@ -153,6 +154,7 @@ func (prov *Provider) registerV1Routes(group *echo.Group) {
 	registerTagRoutes(group, handlers.Product)
 	registerUserShopRoutes(group, handlers.Shop)
 	registerTelegramRoutes(group, handlers.TelegramBot)
+	registerAlertRoutes(group, handlers.Alert)
 }
 
 func registerUserShopRoutes(e *echo.Group, shopHandler *shop.Handler) {
@@ -169,4 +171,15 @@ func registerTagRoutes(e *echo.Group, tagHandler *product.Handler) {
 
 func registerTelegramRoutes(e *echo.Group, telegramHandler *telegram.Handler) {
 	e.POST("/telegram/webhook", telegramHandler.Webhook)
+}
+
+func registerAlertRoutes(e *echo.Group, alertHandler *alert.Handler) {
+	shops := e.Group("/shops/:shopId")
+	
+	alerts := shops.Group("/alerts")
+	alerts.POST("", alertHandler.CreateAlert)
+	alerts.GET("", alertHandler.ListAlerts)
+	alerts.GET("/:alertId", alertHandler.GetAlert)
+	alerts.PUT("/:alertId", alertHandler.UpdateAlert)
+	alerts.DELETE("/:alertId", alertHandler.DeleteAlert)
 }
