@@ -34,5 +34,6 @@ func (prov *Provider) InitHandlers() error {
 	prov.Handlers.TelegramBot = telegram.NewHandler(prov.Services.TelegramBot, prov.cfg.TelegramSecret)
 	//prov.Handlers.Product = product.NewHandler(prov.Services.Product, prov.Presenters.Product)
 	prov.Handlers.Subscription = subscription.NewHandler(prov.Services.Subscription)
+	prov.Handlers.Alert = alert.NewHandler(prov.Services.AlertService)
 	return nil
 }

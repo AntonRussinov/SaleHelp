@@ -18,6 +18,7 @@ import (
 type Services struct {
 	//User *user.Service
 	//Limit         *limit.Service
+	AlertService        *alert.AlertService
 	AlertEngine         *alert.AlertEngine
 	Monitoring          *monitoring.Service
 	Notifier            *notifications.Service //Dispatcher
@@ -68,6 +69,7 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.ProductSizesku,
 		prov.Repositories.WBWarehouse,
 		prov.Repositories.SellerWarehouse,
+		prov.Repositories.FBSOrder,
 		prov.Repositories.User,
 		tgAdapter,
 		prov.WBClient,
@@ -100,6 +102,9 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.ProductSizeSnapshot,
 		prov.Repositories.ProductSnapshot,
 		prov.Repositories.AlertTriggeredDelivery,
+		prov.Repositories.FBSOrder,
+		prov.Repositories.NotificationEndpoint,
+		tgAdapter,
 		prov.log,
 	)
 

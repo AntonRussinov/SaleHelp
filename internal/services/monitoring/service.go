@@ -23,6 +23,7 @@ type (
 		productSizeSKUsRepo    ProductSizeSKURepository
 		wbWarehousesRepo       WBWarehousesRepository
 		sellerWarehousesRepo   SellerWarehousesRepository
+		fbsOrdersRepo          FBSOrderRepository
 		userRepo               UserRepo
 
 		tg       TelegramAPI
@@ -86,6 +87,12 @@ type (
 		ListByShop(ctx context.Context, shopID int) ([]*domain.SellerWarehouse, error)
 	}
 
+	FBSOrderRepository interface {
+		Create(ctx context.Context, o *domain.FBSOrder) error
+		ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.FBSOrder, error)
+		MarkNotified(ctx context.Context, orderIDs []int, at time.Time) error
+	}
+
 	UserRepo interface {
 		GetByID(ctx context.Context, id int) (*domain.User, error)
 	}
@@ -98,6 +105,7 @@ type (
 		GetPricesByNmIDs(ctx context.Context, apiKey string, nmIDs []int64) ([]dto.PriceGood, error)
 		GetStocks(ctx context.Context, apiKey string, warehouseID int64, req dto.GetStocksRequest) (*dto.GetStocksResponse, error)
 		GetStocksByChrtIDs(ctx context.Context, apiKey string, warehouseID int64, chrtIDs []int64) ([]dto.StockItem, error)
+		GetNewOrders(ctx context.Context, apiKey string) (*dto.GetNewOrdersResponse, error)
 		GetWBWarehouses(ctx context.Context, apiKey string) ([]dto.WBWarehouse, error)
 		GetSellerWarehouses(ctx context.Context, apiKey string) ([]dto.SellerWarehouse, error)
 		CheckToken(ctx context.Context, token string) error
@@ -118,6 +126,7 @@ func NewMonitoringService(
 	productSizeSKUs ProductSizeSKURepository,
 	wbWarehousesRepo WBWarehousesRepository,
 	sellerWarehousesRepo SellerWarehousesRepository,
+	fbsOrdersRepo FBSOrderRepository,
 	userRepo UserRepo,
 	tg TelegramAPI,
 	wb WBClient,
@@ -133,6 +142,7 @@ func NewMonitoringService(
 		productSizeSKUsRepo:    productSizeSKUs,
 		wbWarehousesRepo:       wbWarehousesRepo,
 		sellerWarehousesRepo:   sellerWarehousesRepo,
+		fbsOrdersRepo:          fbsOrdersRepo,
 		userRepo:               userRepo,
 		tg:                     tg,
 		wbClient:               wb,

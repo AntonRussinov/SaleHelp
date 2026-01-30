@@ -90,6 +90,11 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 		return fmt.Errorf("sync shop: sync snapshots: %w", err)
 	}
 
+	// 3) новые сборочные задания FBS -> fbs_orders
+	if err = s.syncShopFBSOrders(ctx, shop); err != nil {
+		return fmt.Errorf("sync shop: sync FBS orders: %w", err)
+	}
+
 	// aha-moment (первый синк) — оставляем как у тебя
 	if shop.FirstSyncNotifiedAt == nil {
 		n, err2 := s.productsRepo.CountByShop(ctx, shopID)
@@ -110,6 +115,25 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 		}
 	}
 
+	return nil
+}
+
+// syncShopFBSOrders получает новые сборочные задания FBS из WB и сохраняет в fbs_orders.
+// Дубликаты (shop_id, wb_order_id) игнорируются.
+func (s *Service) syncShopFBSOrders(ctx context.Context, shop *domain.Shop) error {
+	resp, err := s.wbClient.GetNewOrders(ctx, shop.APIToken)
+	if err != nil {
+		return fmt.Errorf("wb get new orders: %w", err)
+	}
+	if len(resp.Orders) == 0 {
+		return nil
+	}
+	for i := range resp.Orders {
+		o := wbmapper.FBSOrderNewToDomain(resp.Orders[i], shop.ID)
+		if err := s.fbsOrdersRepo.Create(ctx, &o); err != nil {
+			return fmt.Errorf("create fbs_order wb_order_id=%d: %w", o.WBOrderID, err)
+		}
+	}
 	return nil
 }
 
