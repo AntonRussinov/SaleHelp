@@ -24,6 +24,7 @@ type (
 		wbWarehousesRepo       WBWarehousesRepository
 		sellerWarehousesRepo   SellerWarehousesRepository
 		fbsOrdersRepo          FBSOrderRepository
+		saleEventsRepo         SaleEventRepository
 		userRepo               UserRepo
 
 		tg       TelegramAPI
@@ -93,6 +94,13 @@ type (
 		MarkNotified(ctx context.Context, orderIDs []int, at time.Time) error
 	}
 
+	SaleEventRepository interface {
+		Create(ctx context.Context, e *domain.SaleEvent) error
+		ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.SaleEvent, error)
+		MarkNotified(ctx context.Context, eventIDs []int, at time.Time) error
+		GetMaxLastChangeDateByShop(ctx context.Context, shopID int) (time.Time, error)
+	}
+
 	UserRepo interface {
 		GetByID(ctx context.Context, id int) (*domain.User, error)
 	}
@@ -106,6 +114,7 @@ type (
 		GetStocks(ctx context.Context, apiKey string, warehouseID int64, req dto.GetStocksRequest) (*dto.GetStocksResponse, error)
 		GetStocksByChrtIDs(ctx context.Context, apiKey string, warehouseID int64, chrtIDs []int64) ([]dto.StockItem, error)
 		GetNewOrders(ctx context.Context, apiKey string) (*dto.GetNewOrdersResponse, error)
+		GetSales(ctx context.Context, apiKey string, dateFrom time.Time, flag int) (dto.GetSalesResponse, error)
 		GetWBWarehouses(ctx context.Context, apiKey string) ([]dto.WBWarehouse, error)
 		GetSellerWarehouses(ctx context.Context, apiKey string) ([]dto.SellerWarehouse, error)
 		CheckToken(ctx context.Context, token string) error
@@ -127,6 +136,7 @@ func NewMonitoringService(
 	wbWarehousesRepo WBWarehousesRepository,
 	sellerWarehousesRepo SellerWarehousesRepository,
 	fbsOrdersRepo FBSOrderRepository,
+	saleEventsRepo SaleEventRepository,
 	userRepo UserRepo,
 	tg TelegramAPI,
 	wb WBClient,
@@ -143,6 +153,7 @@ func NewMonitoringService(
 		wbWarehousesRepo:       wbWarehousesRepo,
 		sellerWarehousesRepo:   sellerWarehousesRepo,
 		fbsOrdersRepo:          fbsOrdersRepo,
+		saleEventsRepo:         saleEventsRepo,
 		userRepo:               userRepo,
 		tg:                     tg,
 		wbClient:               wb,

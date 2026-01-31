@@ -14,6 +14,7 @@ import (
 	"salehelp/internal/storage/pggorm/repository/productsizesku"
 	"salehelp/internal/storage/pggorm/repository/productsizesnapshot"
 	"salehelp/internal/storage/pggorm/repository/productsnapshot"
+	"salehelp/internal/storage/pggorm/repository/saleevent"
 	"salehelp/internal/storage/pggorm/repository/sellerwarehouse"
 	"salehelp/internal/storage/pggorm/repository/shop"
 	shopinvitetokens "salehelp/internal/storage/pggorm/repository/shop_invite_tokens"
@@ -34,7 +35,8 @@ type Repositories struct {
 	AlertTriggered                *alerttriggered.Repository
 	AlertTriggeredDelivery        *alerttriggereddeliveries.Repository
 	CronJob                       *cronjob.Repository
-	FBSOrder                       *fbsorder.Repository
+	FBSOrder                      *fbsorder.Repository
+	SaleEvent                     *saleevent.Repository
 	NotificationEndpoint          *notificationendpoint.Repository
 	ProductSnapshot               *productsnapshot.Repository
 	ProductSizeSnapshot           *productsizesnapshot.Repository
@@ -67,7 +69,8 @@ func (prov *Provider) InitRepositories() {
 		AlertTriggered:                alerttriggered.NewRepository(prov.log, prov.Database.GormDB),
 		AlertTriggeredDelivery:        alerttriggereddeliveries.NewRepository(prov.log, prov.Database.GormDB),
 		CronJob:                       cronjob.NewRepository(prov.log, prov.Database.GormDB),
-		FBSOrder:                       fbsorder.NewRepository(prov.log, prov.Database.GormDB),
+		FBSOrder:                      fbsorder.NewRepository(prov.log, prov.Database.GormDB),
+		SaleEvent:                     saleevent.NewRepository(prov.log, prov.Database.GormDB),
 		NotificationEndpoint:          notificationendpoint.NewRepository(prov.log, prov.Database.GormDB),
 		ProductSnapshot:               productsnapshot.NewRepository(prov.log, prov.Database.GormDB),
 		ProductSizeSnapshot:           productsizesnapshot.NewRepository(prov.log, prov.Database.GormDB),

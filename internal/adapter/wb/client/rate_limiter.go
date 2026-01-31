@@ -11,6 +11,7 @@ const (
 	RateContent     RateCategory = "content"     // content-api.wildberries.ru
 	RateMarketplace RateCategory = "marketplace" // marketplace-api.wildberries.ru
 	RatePrices      RateCategory = "prices"      // discounts-prices-api.wildberries.ru
+	RateStatistics  RateCategory = "statistics"  // statistics-api.wildberries.ru (sales, orders, stocks)
 )
 
 type (
@@ -44,6 +45,11 @@ var defaultPolicies = map[RateCategory]RatePolicy{
 		Limit:    20,
 		Interval: 6 * time.Second,
 		Burst:    20,
+	},
+	RateStatistics: {
+		Limit:    1,
+		Interval: time.Minute,
+		Burst:    1,
 	},
 }
 

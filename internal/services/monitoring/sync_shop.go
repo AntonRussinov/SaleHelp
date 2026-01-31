@@ -95,6 +95,11 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 		return fmt.Errorf("sync shop: sync FBS orders: %w", err)
 	}
 
+	// 4) продажи/возвраты WB -> sale_events
+	if err = s.syncShopSales(ctx, shop); err != nil {
+		return fmt.Errorf("sync shop: sync sales: %w", err)
+	}
+
 	// aha-moment (первый синк) — оставляем как у тебя
 	if shop.FirstSyncNotifiedAt == nil {
 		n, err2 := s.productsRepo.CountByShop(ctx, shopID)
@@ -133,6 +138,36 @@ func (s *Service) syncShopFBSOrders(ctx context.Context, shop *domain.Shop) erro
 		if err := s.fbsOrdersRepo.Create(ctx, &o); err != nil {
 			return fmt.Errorf("create fbs_order wb_order_id=%d: %w", o.WBOrderID, err)
 		}
+	}
+	return nil
+}
+
+// syncShopSales получает отчёт продаж/возвратов WB (GET /api/v1/supplier/sales) и сохраняет в sale_events.
+// Дубликаты (shop_id, srid) игнорируются. Пагинация по lastChangeDate (лимит WB ~80k строк за запрос).
+func (s *Service) syncShopSales(ctx context.Context, shop *domain.Shop) error {
+	dateFrom, err := s.saleEventsRepo.GetMaxLastChangeDateByShop(ctx, shop.ID)
+	if err != nil {
+		return fmt.Errorf("get max last_change_date: %w", err)
+	}
+	if dateFrom.IsZero() {
+		dateFrom = time.Date(2019, 6, 20, 0, 0, 0, 0, time.UTC)
+	}
+	for {
+		resp, err := s.wbClient.GetSales(ctx, shop.APIToken, dateFrom, 0)
+		if err != nil {
+			return fmt.Errorf("wb get sales: %w", err)
+		}
+		if len(resp) == 0 {
+			break
+		}
+		for i := range resp {
+			e := wbmapper.SaleItemToDomain(resp[i], shop.ID)
+			if err := s.saleEventsRepo.Create(ctx, &e); err != nil {
+				return fmt.Errorf("create sale_event srid=%s: %w", e.Srid, err)
+			}
+		}
+		lastChange, _ := resp[len(resp)-1].ParseLastChangeDate()
+		dateFrom = lastChange.Add(time.Millisecond)
 	}
 	return nil
 }
