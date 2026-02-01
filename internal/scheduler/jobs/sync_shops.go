@@ -44,6 +44,7 @@ type SyncActiveShopsConfig struct {
 	LeasedBy               string
 	BatchSize              int
 	SubscriptionNotifySpec string
+	StockReplenishSpec     string // cron для ежедневной рассылки о пополнении склада, напр. "0 10 * * *" (10:00)
 }
 
 type SyncActiveShopsJob struct {

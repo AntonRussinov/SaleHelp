@@ -38,13 +38,27 @@ func (prov *Provider) initScheduler(ctx context.Context) error {
 	notifyJob := jobs.NewNotifySubscriptionsJob(
 		prov.log,
 		jobs.NotifySubscriptionsConfig{
-			Spec: prov.cfg.Scheduler.SubscriptionNotifySpec, // добавишь в конфиг
+			Spec: prov.cfg.Scheduler.SubscriptionNotifySpec,
 		},
 		prov.Services.SubscriptionMonitor,
 	)
 
 	if err := prov.scheduler.Register(ctx, prov.cfg.Scheduler.SubscriptionNotifySpec, "notify_subscriptions", notifyJob.Run); err != nil {
 		return err
+	}
+
+	stockReplenishJob := jobs.NewStockReplenishJob(
+		prov.log,
+		jobs.StockReplenishConfig{
+			Spec: prov.cfg.Scheduler.StockReplenishSpec,
+		},
+		prov.Services.StockReplenish,
+	)
+
+	if prov.cfg.Scheduler.StockReplenishSpec != "" {
+		if err := prov.scheduler.Register(ctx, prov.cfg.Scheduler.StockReplenishSpec, "stock_replenish", stockReplenishJob.Run); err != nil {
+			return err
+		}
 	}
 
 	// регистрируем задачу

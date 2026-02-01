@@ -7,6 +7,7 @@ import (
 	"salehelp/internal/services/monitoring"
 	notifications "salehelp/internal/services/notification"
 	"salehelp/internal/services/product"
+	"salehelp/internal/services/stock_replenish"
 	"salehelp/internal/services/subscription"
 	subscriptionmonitor "salehelp/internal/services/subscription_monitor"
 	"salehelp/internal/services/telegrambot"
@@ -27,6 +28,7 @@ type Services struct {
 	TelegramBot         *telegrambot.Service
 	Subscription        *subscription.Service
 	SubscriptionMonitor *subscriptionmonitor.Monitor
+	StockReplenish      *stock_replenish.Service
 }
 
 func (prov *Provider) InitServices() {
@@ -153,6 +155,16 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.NotificationEndpoint,
 		tgAdapter,
 		loc,
+	)
+
+	prov.Services.StockReplenish = stock_replenish.New(
+		prov.Repositories.Shop,
+		prov.Repositories.Product,
+		prov.Repositories.ProductSnapshot,
+		prov.Repositories.SaleEvent,
+		prov.Repositories.NotificationEndpoint,
+		tgAdapter,
+		prov.log,
 	)
 
 }
