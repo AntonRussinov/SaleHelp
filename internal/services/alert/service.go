@@ -23,6 +23,8 @@ type AlertEngine struct {
 	snapshotsRepo            ProductSnapshotsRepo
 	deliveriesFanoutRepo     DeliveriesFanoutRepo
 	fbsOrdersRepo            FBSOrderRepo
+	dbwOrdersRepo            DBWOrderRepo
+	dbsOrdersRepo            DBSOrderRepo
 	saleEventsRepo           SaleEventRepo
 	endpointsRepo            EndpointsRepo
 	tg                       TelegramSender
@@ -71,6 +73,16 @@ type FBSOrderRepo interface {
 	MarkNotified(ctx context.Context, orderIDs []int, at time.Time) error
 }
 
+type DBWOrderRepo interface {
+	ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.DBWOrder, error)
+	MarkNotified(ctx context.Context, orderIDs []int, at time.Time) error
+}
+
+type DBSOrderRepo interface {
+	ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.DBSOrder, error)
+	MarkNotified(ctx context.Context, orderIDs []int, at time.Time) error
+}
+
 type SaleEventRepo interface {
 	ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.SaleEvent, error)
 	MarkNotified(ctx context.Context, eventIDs []int, at time.Time) error
@@ -94,6 +106,8 @@ func NewAlertEngine(
 	snapshotsRepo ProductSnapshotsRepo,
 	deliveriesFanoutRepo DeliveriesFanoutRepo,
 	fbsOrdersRepo FBSOrderRepo,
+	dbwOrdersRepo DBWOrderRepo,
+	dbsOrdersRepo DBSOrderRepo,
 	saleEventsRepo SaleEventRepo,
 	endpointsRepo EndpointsRepo,
 	tg TelegramSender,
@@ -109,6 +123,8 @@ func NewAlertEngine(
 		snapshotsRepo:            snapshotsRepo,
 		deliveriesFanoutRepo:     deliveriesFanoutRepo,
 		fbsOrdersRepo:            fbsOrdersRepo,
+		dbwOrdersRepo:            dbwOrdersRepo,
+		dbsOrdersRepo:            dbsOrdersRepo,
 		saleEventsRepo:           saleEventsRepo,
 		endpointsRepo:            endpointsRepo,
 		tg:                       tg,

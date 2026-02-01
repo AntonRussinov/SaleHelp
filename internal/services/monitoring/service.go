@@ -24,6 +24,8 @@ type (
 		wbWarehousesRepo       WBWarehousesRepository
 		sellerWarehousesRepo   SellerWarehousesRepository
 		fbsOrdersRepo          FBSOrderRepository
+		dbwOrdersRepo          DBWOrderRepository
+		dbsOrdersRepo          DBSOrderRepository
 		saleEventsRepo         SaleEventRepository
 		userRepo               UserRepo
 
@@ -94,6 +96,18 @@ type (
 		MarkNotified(ctx context.Context, orderIDs []int, at time.Time) error
 	}
 
+	DBWOrderRepository interface {
+		Create(ctx context.Context, o *domain.DBWOrder) error
+		ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.DBWOrder, error)
+		MarkNotified(ctx context.Context, orderIDs []int, at time.Time) error
+	}
+
+	DBSOrderRepository interface {
+		Create(ctx context.Context, o *domain.DBSOrder) error
+		ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.DBSOrder, error)
+		MarkNotified(ctx context.Context, orderIDs []int, at time.Time) error
+	}
+
 	SaleEventRepository interface {
 		Create(ctx context.Context, e *domain.SaleEvent) error
 		ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.SaleEvent, error)
@@ -114,6 +128,8 @@ type (
 		GetStocks(ctx context.Context, apiKey string, warehouseID int64, req dto.GetStocksRequest) (*dto.GetStocksResponse, error)
 		GetStocksByChrtIDs(ctx context.Context, apiKey string, warehouseID int64, chrtIDs []int64) ([]dto.StockItem, error)
 		GetNewOrders(ctx context.Context, apiKey string) (*dto.GetNewOrdersResponse, error)
+		GetNewDBWOrders(ctx context.Context, apiKey string) (*dto.GetNewDBWOrdersResponse, error)
+		GetNewDBSOrders(ctx context.Context, apiKey string) (*dto.GetNewDBSOrdersResponse, error)
 		GetSales(ctx context.Context, apiKey string, dateFrom time.Time, flag int) (dto.GetSalesResponse, error)
 		GetWBWarehouses(ctx context.Context, apiKey string) ([]dto.WBWarehouse, error)
 		GetSellerWarehouses(ctx context.Context, apiKey string) ([]dto.SellerWarehouse, error)
@@ -136,6 +152,8 @@ func NewMonitoringService(
 	wbWarehousesRepo WBWarehousesRepository,
 	sellerWarehousesRepo SellerWarehousesRepository,
 	fbsOrdersRepo FBSOrderRepository,
+	dbwOrdersRepo DBWOrderRepository,
+	dbsOrdersRepo DBSOrderRepository,
 	saleEventsRepo SaleEventRepository,
 	userRepo UserRepo,
 	tg TelegramAPI,
@@ -153,6 +171,8 @@ func NewMonitoringService(
 		wbWarehousesRepo:       wbWarehousesRepo,
 		sellerWarehousesRepo:   sellerWarehousesRepo,
 		fbsOrdersRepo:          fbsOrdersRepo,
+		dbwOrdersRepo:          dbwOrdersRepo,
+		dbsOrdersRepo:          dbsOrdersRepo,
 		saleEventsRepo:         saleEventsRepo,
 		userRepo:               userRepo,
 		tg:                     tg,

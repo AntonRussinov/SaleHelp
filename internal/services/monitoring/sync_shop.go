@@ -95,6 +95,16 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 		return fmt.Errorf("sync shop: sync FBS orders: %w", err)
 	}
 
+	// 3.1) новые сборочные задания DBW -> dbw_orders
+	if err = s.syncShopDBWOrders(ctx, shop); err != nil {
+		return fmt.Errorf("sync shop: sync DBW orders: %w", err)
+	}
+
+	// 3.2) новые сборочные задания DBS -> dbs_orders
+	if err = s.syncShopDBSOrders(ctx, shop); err != nil {
+		return fmt.Errorf("sync shop: sync DBS orders: %w", err)
+	}
+
 	// 4) продажи/возвраты WB -> sale_events
 	if err = s.syncShopSales(ctx, shop); err != nil {
 		return fmt.Errorf("sync shop: sync sales: %w", err)
@@ -137,6 +147,44 @@ func (s *Service) syncShopFBSOrders(ctx context.Context, shop *domain.Shop) erro
 		o := wbmapper.FBSOrderNewToDomain(resp.Orders[i], shop.ID)
 		if err := s.fbsOrdersRepo.Create(ctx, &o); err != nil {
 			return fmt.Errorf("create fbs_order wb_order_id=%d: %w", o.WBOrderID, err)
+		}
+	}
+	return nil
+}
+
+// syncShopDBWOrders получает новые сборочные задания DBW из WB и сохраняет в dbw_orders.
+// Дубликаты (shop_id, wb_order_id) игнорируются. Используется RateMarketplace (rate limiter).
+func (s *Service) syncShopDBWOrders(ctx context.Context, shop *domain.Shop) error {
+	resp, err := s.wbClient.GetNewDBWOrders(ctx, shop.APIToken)
+	if err != nil {
+		return fmt.Errorf("wb get new dbw orders: %w", err)
+	}
+	if len(resp.Orders) == 0 {
+		return nil
+	}
+	for i := range resp.Orders {
+		o := wbmapper.DBWOrderNewToDomain(resp.Orders[i], shop.ID)
+		if err := s.dbwOrdersRepo.Create(ctx, &o); err != nil {
+			return fmt.Errorf("create dbw_order wb_order_id=%d: %w", o.WBOrderID, err)
+		}
+	}
+	return nil
+}
+
+// syncShopDBSOrders получает новые сборочные задания DBS из WB и сохраняет в dbs_orders.
+// Дубликаты (shop_id, wb_order_id) игнорируются. Используется RateMarketplace (rate limiter).
+func (s *Service) syncShopDBSOrders(ctx context.Context, shop *domain.Shop) error {
+	resp, err := s.wbClient.GetNewDBSOrders(ctx, shop.APIToken)
+	if err != nil {
+		return fmt.Errorf("wb get new dbs orders: %w", err)
+	}
+	if len(resp.Orders) == 0 {
+		return nil
+	}
+	for i := range resp.Orders {
+		o := wbmapper.DBSOrderNewToDomain(resp.Orders[i], shop.ID)
+		if err := s.dbsOrdersRepo.Create(ctx, &o); err != nil {
+			return fmt.Errorf("create dbs_order wb_order_id=%d: %w", o.WBOrderID, err)
 		}
 	}
 	return nil

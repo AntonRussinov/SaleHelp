@@ -102,6 +102,16 @@ func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
 		return err
 	}
 
+	// новые DBW-заказы: отправить в Telegram и пометить как уведомлённые
+	if err := e.runShopDBWOrders(ctx, shopID, products); err != nil {
+		return err
+	}
+
+	// новые DBS-заказы: отправить в Telegram и пометить как уведомлённые
+	if err := e.runShopDBSOrders(ctx, shopID, products); err != nil {
+		return err
+	}
+
 	// новые выкупы/возвраты: отправить в Telegram и пометить как уведомлённые
 	if err := e.runShopSaleEvents(ctx, shopID, products); err != nil {
 		return err
