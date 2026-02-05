@@ -27,6 +27,10 @@ type (
 		dbwOrdersRepo          DBWOrderRepository
 		dbsOrdersRepo          DBSOrderRepository
 		saleEventsRepo         SaleEventRepository
+		orderRefusalsRepo      OrderRefusalRepository
+		wbOrdersRepo           WBOrdersRepository
+		orderSyncCursorRepo    OrderSyncCursorRepository
+		endpointsRepo          EndpointsRepo
 		userRepo               UserRepo
 
 		tg       TelegramAPI
@@ -110,13 +114,34 @@ type (
 
 	SaleEventRepository interface {
 		Create(ctx context.Context, e *domain.SaleEvent) error
+		CreateBatch(ctx context.Context, events []*domain.SaleEvent) error
 		ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.SaleEvent, error)
 		MarkNotified(ctx context.Context, eventIDs []int, at time.Time) error
+		MarkAllNotifiedByShop(ctx context.Context, shopID int, at time.Time) error
 		GetMaxLastChangeDateByShop(ctx context.Context, shopID int) (time.Time, error)
+	}
+
+	OrderRefusalRepository interface {
+		CreateBatch(ctx context.Context, refusals []*domain.OrderRefusal) error
+		MarkAllNotifiedByShop(ctx context.Context, shopID int, at time.Time) error
+	}
+
+	OrderSyncCursorRepository interface {
+		Get(ctx context.Context, shopID int) (time.Time, error)
+		Set(ctx context.Context, shopID int, lastChangeDate time.Time) error
+	}
+
+	WBOrdersRepository interface {
+		UpsertBatch(ctx context.Context, rows []*model.WBOrder) error
+		CountByShop(ctx context.Context, shopID int) (int, error)
 	}
 
 	UserRepo interface {
 		GetByID(ctx context.Context, id int) (*domain.User, error)
+	}
+
+	EndpointsRepo interface {
+		ListEnabledTelegramChatIDsByShopID(ctx context.Context, shopID int) ([]int64, error)
 	}
 
 	// Локальный интерфейс под WB-клиент
@@ -131,6 +156,7 @@ type (
 		GetNewDBWOrders(ctx context.Context, apiKey string) (*dto.GetNewDBWOrdersResponse, error)
 		GetNewDBSOrders(ctx context.Context, apiKey string) (*dto.GetNewDBSOrdersResponse, error)
 		GetSales(ctx context.Context, apiKey string, dateFrom time.Time, flag int) (dto.GetSalesResponse, error)
+		GetOrders(ctx context.Context, apiKey string, dateFrom time.Time, flag int) (dto.GetOrdersResponse, error)
 		GetWBWarehouses(ctx context.Context, apiKey string) ([]dto.WBWarehouse, error)
 		GetSellerWarehouses(ctx context.Context, apiKey string) ([]dto.SellerWarehouse, error)
 		CheckToken(ctx context.Context, token string) error
@@ -155,6 +181,10 @@ func NewMonitoringService(
 	dbwOrdersRepo DBWOrderRepository,
 	dbsOrdersRepo DBSOrderRepository,
 	saleEventsRepo SaleEventRepository,
+	orderRefusalsRepo OrderRefusalRepository,
+	wbOrdersRepo WBOrdersRepository,
+	orderSyncCursorRepo OrderSyncCursorRepository,
+	endpointsRepo EndpointsRepo,
 	userRepo UserRepo,
 	tg TelegramAPI,
 	wb WBClient,
@@ -174,6 +204,10 @@ func NewMonitoringService(
 		dbwOrdersRepo:          dbwOrdersRepo,
 		dbsOrdersRepo:          dbsOrdersRepo,
 		saleEventsRepo:         saleEventsRepo,
+		orderRefusalsRepo:      orderRefusalsRepo,
+		wbOrdersRepo:           wbOrdersRepo,
+		orderSyncCursorRepo:    orderSyncCursorRepo,
+		endpointsRepo:          endpointsRepo,
 		userRepo:               userRepo,
 		tg:                     tg,
 		wbClient:               wb,

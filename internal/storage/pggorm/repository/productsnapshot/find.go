@@ -93,7 +93,7 @@ func (r *Repository) GetLatestByProductIDs(ctx context.Context, productIDs []int
 			SELECT DISTINCT ON (product_id)
 				*
 			FROM product_snapshots
-			WHERE product_id = ANY (?)
+			WHERE product_id IN (?)
 			ORDER BY product_id, snapshot_time DESC
 		`, productIDs).
 		Scan(&rows).Error; err != nil {

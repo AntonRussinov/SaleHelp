@@ -6,10 +6,12 @@ import (
 	"salehelp/internal/storage/pggorm/repository/alerttriggered"
 	"salehelp/internal/storage/pggorm/repository/alerttriggereddeliveries"
 	"salehelp/internal/storage/pggorm/repository/cronjob"
-	"salehelp/internal/storage/pggorm/repository/dbworder"
 	"salehelp/internal/storage/pggorm/repository/dbsorder"
+	"salehelp/internal/storage/pggorm/repository/dbworder"
 	"salehelp/internal/storage/pggorm/repository/fbsorder"
 	"salehelp/internal/storage/pggorm/repository/notificationendpoint"
+	"salehelp/internal/storage/pggorm/repository/orderrefusal"
+	"salehelp/internal/storage/pggorm/repository/ordersynccursor"
 	"salehelp/internal/storage/pggorm/repository/product"
 	"salehelp/internal/storage/pggorm/repository/productsize"
 	"salehelp/internal/storage/pggorm/repository/productsizepricesnapshot"
@@ -27,6 +29,7 @@ import (
 	telegramchatstate "salehelp/internal/storage/pggorm/repository/telegram_chat_states"
 	"salehelp/internal/storage/pggorm/repository/telegramaccount"
 	"salehelp/internal/storage/pggorm/repository/user"
+	"salehelp/internal/storage/pggorm/repository/wborder"
 	"salehelp/internal/storage/pggorm/repository/wbwarehouse"
 	"salehelp/internal/storage/pggorm/txrunner"
 )
@@ -42,6 +45,9 @@ type Repositories struct {
 	FBSOrder                      *fbsorder.Repository
 	SaleEvent                     *saleevent.Repository
 	NotificationEndpoint          *notificationendpoint.Repository
+	OrderRefusal                  *orderrefusal.Repository
+	OrderSyncCursor               *ordersynccursor.Repository
+	WBOrder                       *wborder.Repository
 	ProductSnapshot               *productsnapshot.Repository
 	ProductSizeSnapshot           *productsizesnapshot.Repository
 	ProductSizePriceSnapshot      *productsizepricesnapshot.Repository
@@ -78,6 +84,9 @@ func (prov *Provider) InitRepositories() {
 		FBSOrder:                      fbsorder.NewRepository(prov.log, prov.Database.GormDB),
 		SaleEvent:                     saleevent.NewRepository(prov.log, prov.Database.GormDB),
 		NotificationEndpoint:          notificationendpoint.NewRepository(prov.log, prov.Database.GormDB),
+		OrderRefusal:                  orderrefusal.NewRepository(prov.log, prov.Database.GormDB),
+		OrderSyncCursor:               ordersynccursor.NewRepository(prov.log, prov.Database.GormDB),
+		WBOrder:                       wborder.NewRepository(prov.log, prov.Database.GormDB),
 		ProductSnapshot:               productsnapshot.NewRepository(prov.log, prov.Database.GormDB),
 		ProductSizeSnapshot:           productsizesnapshot.NewRepository(prov.log, prov.Database.GormDB),
 		ProductSizePriceSnapshot:      productsizepricesnapshot.NewRepository(prov.log, prov.Database.GormDB),

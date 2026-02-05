@@ -8,13 +8,18 @@ import (
 	"time"
 )
 
-// runShopSaleEvents отправляет уведомления о новых выкупах/возвратах в Telegram и помечает события как уведомлённые.
+// runShopSaleEvents отправляет уведомления о новых выкупах, возвратах и отказах (не забрали) в Telegram.
+// Объединяет sale_events (выкупы/возвраты) и order_refusals (отказы) в одно сообщение, помечает как уведомлённые.
 func (e *AlertEngine) runShopSaleEvents(ctx context.Context, shopID int, products []*domain.Product) error {
 	events, err := e.saleEventsRepo.ListUnnotifiedByShop(ctx, shopID, 50)
 	if err != nil {
 		return err
 	}
-	if len(events) == 0 {
+	refusals, err := e.orderRefusalsRepo.ListUnnotifiedByShop(ctx, shopID, 50)
+	if err != nil {
+		return err
+	}
+	if len(events) == 0 && len(refusals) == 0 {
 		return nil
 	}
 	if len(products) == 0 {
@@ -23,9 +28,12 @@ func (e *AlertEngine) runShopSaleEvents(ctx context.Context, shopID int, product
 			return err
 		}
 	}
-	nmIDSet := make(map[int64]struct{}, len(events))
+	nmIDSet := make(map[int64]struct{})
 	for _, ev := range events {
 		nmIDSet[ev.NmID] = struct{}{}
+	}
+	for _, r := range refusals {
+		nmIDSet[r.NmID] = struct{}{}
 	}
 	titleByNmID := make(map[int64]string)
 	for _, p := range products {
@@ -44,7 +52,7 @@ func (e *AlertEngine) runShopSaleEvents(ctx context.Context, shopID int, product
 	if err != nil {
 		return err
 	}
-	text := notifications.FormatSaleEventsMessageRU(events, titleByNmID)
+	text := notifications.FormatSalesAndRefusalsMessageRU(events, refusals, titleByNmID)
 	now := time.Now()
 	sent := false
 	for _, ep := range endpoints {
@@ -63,12 +71,23 @@ func (e *AlertEngine) runShopSaleEvents(ctx context.Context, shopID int, product
 		sent = true
 	}
 	if sent {
-		ids := make([]int, 0, len(events))
-		for _, ev := range events {
-			ids = append(ids, ev.ID)
+		if len(events) > 0 {
+			ids := make([]int, 0, len(events))
+			for _, ev := range events {
+				ids = append(ids, ev.ID)
+			}
+			if err := e.saleEventsRepo.MarkNotified(ctx, ids, now); err != nil {
+				return err
+			}
 		}
-		if err := e.saleEventsRepo.MarkNotified(ctx, ids, now); err != nil {
-			return err
+		if len(refusals) > 0 {
+			ids := make([]int, 0, len(refusals))
+			for _, r := range refusals {
+				ids = append(ids, r.ID)
+			}
+			if err := e.orderRefusalsRepo.MarkNotified(ctx, ids, now); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

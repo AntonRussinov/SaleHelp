@@ -10,7 +10,8 @@ import (
 )
 
 func (prov *Provider) initScheduler(ctx context.Context) error {
-	prov.scheduler = scheduler.New(prov.log)
+	// schedulerLoc выставляется в InitServices() (Europe/Moscow). Если по какой-то причине nil — fallback на Local внутри scheduler.New.
+	prov.scheduler = scheduler.New(prov.log, prov.schedulerLoc)
 
 	leasedBy := prov.cfg.InstanceID
 	if leasedBy == "" {

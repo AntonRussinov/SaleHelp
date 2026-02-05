@@ -7,7 +7,7 @@ import (
 	"salehelp/domain"
 )
 
-// Create вставляет новую запись продажи/возврата. При конфликте (shop_id, srid) ошибку не возвращаем —
+// Create вставляет новую запись продажи/возврата. При конфликте (shop_id, wb_sale_id) ошибку не возвращаем —
 // запись уже есть, считаем это успехом (идемпотентность).
 func (r *Repository) Create(ctx context.Context, e *domain.SaleEvent) error {
 	m := toModel(e)

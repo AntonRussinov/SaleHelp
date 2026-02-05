@@ -89,6 +89,9 @@ func NewSyncActiveShopsJob(
 	}
 }
 
+// Run выполняет синк магазинов. Не запускаем синк в горутине: AlertWorker раз в минуту
+// читает sale_events/order_refusals и отправляет алерты; если синк идёт в фоне, воркер
+// часто успевает отработать до записи данных в БД — алерты приходят с задержкой или не приходят.
 func (j *SyncActiveShopsJob) Run(ctx context.Context) {
 	if !j.running.CompareAndSwap(false, true) {
 		j.log.Warn("sync_active_shops: previous run still active, skipping")
@@ -139,6 +142,7 @@ func (j *SyncActiveShopsJob) Run(ctx context.Context) {
 				}
 				if !leased {
 					atomic.AddInt64(&skipCount, 1)
+					j.log.Info("sync_shop: skipped, lease taken", "shop_id", id)
 					return
 				}
 				defer func() { _ = j.lock.Release(parent, id, j.cfg.LeasedBy) }()

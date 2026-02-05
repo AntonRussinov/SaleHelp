@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	daysUrgent = 3
-	daysWarning = 7
+	daysUrgent   = 3
+	daysWarning  = 7
 	lookbackDays = 7
 )
 
@@ -31,6 +31,10 @@ type SaleEventRepo interface {
 	DailyConsumptionByNmID(ctx context.Context, shopID int, since time.Time) (map[int64]float64, error)
 }
 
+type WBOrdersRepo interface {
+	DailyDemandByNmID(ctx context.Context, shopID int, since time.Time) (map[int64]float64, error)
+}
+
 type ShopRepo interface {
 	ListActiveIDs(ctx context.Context, limit, offset int) ([]int, error)
 }
@@ -44,13 +48,14 @@ type TelegramSender interface {
 }
 
 type Service struct {
-	log           *slog.Logger
-	shops         ShopRepo
-	products      ProductRepo
-	snapshots     ProductSnapshotRepo
-	saleEvents    SaleEventRepo
-	endpoints     EndpointRepo
-	tg            TelegramSender
+	log        *slog.Logger
+	shops      ShopRepo
+	products   ProductRepo
+	snapshots  ProductSnapshotRepo
+	saleEvents SaleEventRepo
+	wbOrders   WBOrdersRepo
+	endpoints  EndpointRepo
+	tg         TelegramSender
 }
 
 func New(
@@ -58,6 +63,7 @@ func New(
 	products ProductRepo,
 	snapshots ProductSnapshotRepo,
 	saleEvents SaleEventRepo,
+	wbOrders WBOrdersRepo,
 	endpoints EndpointRepo,
 	tg TelegramSender,
 	log *slog.Logger,
@@ -68,15 +74,16 @@ func New(
 		products:   products,
 		snapshots:  snapshots,
 		saleEvents: saleEvents,
+		wbOrders:   wbOrders,
 		endpoints:  endpoints,
 		tg:         tg,
 	}
 }
 
 type productStockInfo struct {
-	product   *domain.Product
-	stock     int
-	daysLeft  float64
+	product     *domain.Product
+	stock       int
+	daysLeft    float64
 	consumption float64
 }
 
@@ -138,6 +145,10 @@ func (s *Service) processShop(ctx context.Context, shopID int) error {
 	if err != nil {
 		return fmt.Errorf("daily consumption: %w", err)
 	}
+	demandByNmID, err := s.wbOrders.DailyDemandByNmID(ctx, shopID, since)
+	if err != nil {
+		return fmt.Errorf("daily demand: %w", err)
+	}
 
 	var urgent, warning []productStockInfo
 	for _, p := range products {
@@ -160,7 +171,12 @@ func (s *Service) processShop(ctx context.Context, shopID int) error {
 			continue
 		}
 
-		daily := consumptionByNmID[nmID]
+		dailySales := consumptionByNmID[nmID]
+		dailyOrders := demandByNmID[nmID]
+		daily := dailySales
+		if dailyOrders > daily {
+			daily = dailyOrders
+		}
 		if daily <= 0 {
 			// fallback: sales_7d из снимка
 			if snap.Sales7d != nil && *snap.Sales7d > 0 {
@@ -239,7 +255,7 @@ func formatProductLines(items []productStockInfo) string {
 		if name == "" {
 			name = fmt.Sprintf("nm %s", it.product.ExternalID)
 		}
-		lines = append(lines, fmt.Sprintf("• %s — остаток %d шт, хватит на ~%d дн.", 
+		lines = append(lines, fmt.Sprintf("• %s — остаток %d шт, хватит на ~%d дн.",
 			truncateTitle(name, 50), it.stock, days))
 	}
 	return strings.Join(lines, "\n")

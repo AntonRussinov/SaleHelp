@@ -33,6 +33,39 @@ func FormatSaleEventsMessageRU(events []*domain.SaleEvent, productTitleByNmID ma
 	return strings.Join(parts, "\n\n")
 }
 
+// FormatOrderRefusalsMessageRU формирует текст блока об отказах (заказы не забраны).
+func FormatOrderRefusalsMessageRU(refusals []*domain.OrderRefusal, productTitleByNmID map[int64]string) string {
+	if len(refusals) == 0 {
+		return ""
+	}
+	lines := make([]string, 0, len(refusals)+1)
+	lines = append(lines, "🚫 Отказы (не забрали)")
+	for _, r := range refusals {
+		name := productTitleByNmID[r.NmID]
+		if name == "" {
+			name = r.SupplierArticle
+		}
+		if name == "" {
+			name = fmt.Sprintf("nm %d", r.NmID)
+		}
+		date := r.CancelDate.Format("02.01.2006 15:04")
+		lines = append(lines, fmt.Sprintf("• %s — %s", name, date))
+	}
+	return strings.Join(lines, "\n")
+}
+
+// FormatSalesAndRefusalsMessageRU объединяет выкупы, возвраты и отказы в одно сообщение.
+func FormatSalesAndRefusalsMessageRU(events []*domain.SaleEvent, refusals []*domain.OrderRefusal, productTitleByNmID map[int64]string) string {
+	var parts []string
+	if len(events) > 0 {
+		parts = append(parts, FormatSaleEventsMessageRU(events, productTitleByNmID))
+	}
+	if len(refusals) > 0 {
+		parts = append(parts, FormatOrderRefusalsMessageRU(refusals, productTitleByNmID))
+	}
+	return strings.Join(parts, "\n\n")
+}
+
 func formatSaleEventsBlockRU(header string, events []*domain.SaleEvent, productTitleByNmID map[int64]string) string {
 	lines := make([]string, 0, len(events)+1)
 	lines = append(lines, header)

@@ -8,6 +8,7 @@ import (
 	"salehelp/internal/config"
 	"salehelp/internal/scheduler"
 	"salehelp/pkg/extendedvalidator"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/robfig/cron/v3"
@@ -25,6 +26,7 @@ type Provider struct {
 	Router       *echo.Echo
 	Validator    *extendedvalidator.Validator
 	scheduler    *scheduler.Scheduler
+	schedulerLoc *time.Location
 	// AccessManager  *access.Manager
 	// KaspiAPI       kaspiAPI.API
 	// KaspiPortalAPI portalAPI.PortalAPI

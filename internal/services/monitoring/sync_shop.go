@@ -75,7 +75,6 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 		return fmt.Errorf("sync shop: sync warehouses: %w", err)
 	}
 
-	// 1) карточки -> products
 	products, err := s.syncShopProducts(ctx, shop)
 	if err != nil {
 		return fmt.Errorf("sync shop: sync products: %w", err)
@@ -90,24 +89,25 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 		return fmt.Errorf("sync shop: sync snapshots: %w", err)
 	}
 
-	// 3) новые сборочные задания FBS -> fbs_orders
+	// 3) FBS, DBW, DBS orders
 	if err = s.syncShopFBSOrders(ctx, shop); err != nil {
 		return fmt.Errorf("sync shop: sync FBS orders: %w", err)
 	}
-
-	// 3.1) новые сборочные задания DBW -> dbw_orders
 	if err = s.syncShopDBWOrders(ctx, shop); err != nil {
 		return fmt.Errorf("sync shop: sync DBW orders: %w", err)
 	}
-
-	// 3.2) новые сборочные задания DBS -> dbs_orders
 	if err = s.syncShopDBSOrders(ctx, shop); err != nil {
 		return fmt.Errorf("sync shop: sync DBS orders: %w", err)
 	}
 
-	// 4) продажи/возвраты WB -> sale_events
+	// 4) sales (выкупы/возвраты)
 	if err = s.syncShopSales(ctx, shop); err != nil {
 		return fmt.Errorf("sync shop: sync sales: %w", err)
+	}
+
+	// 5) orders → отказы (заказы не забраны, isCancel=true); связь с sales по srid
+	if err = s.syncShopOrderRefusals(ctx, shop); err != nil {
+		return fmt.Errorf("sync shop: sync order refusals: %w", err)
 	}
 
 	// aha-moment (первый синк) — оставляем как у тебя
@@ -192,14 +192,29 @@ func (s *Service) syncShopDBSOrders(ctx context.Context, shop *domain.Shop) erro
 
 // syncShopSales получает отчёт продаж/возвратов WB (GET /api/v1/supplier/sales) и сохраняет в sale_events.
 // Дубликаты (shop_id, srid) игнорируются. Пагинация по lastChangeDate (лимит WB ~80k строк за запрос).
+// При первом синке (нет записей в sale_events) загружаем последние 90 дней, помечаем как notified,
+// отправляем сводку (не отдельные выкупы). Со второго синка — уведомления в реальном времени.
 func (s *Service) syncShopSales(ctx context.Context, shop *domain.Shop) error {
 	dateFrom, err := s.saleEventsRepo.GetMaxLastChangeDateByShop(ctx, shop.ID)
 	if err != nil {
 		return fmt.Errorf("get max last_change_date: %w", err)
 	}
-	if dateFrom.IsZero() {
-		dateFrom = time.Date(2019, 6, 20, 0, 0, 0, 0, time.UTC)
+	isFirstSync := dateFrom.IsZero()
+	if isFirstSync {
+		dateFrom = time.Now().AddDate(0, 0, -90)
 	}
+
+	var buyouts, returns int
+	var revenue float64
+
+	// При первом синке сразу вставляем с notified_at, чтобы alert worker не успел разослать до MarkAllNotifiedByShop
+	var notifiedAt *time.Time
+	if isFirstSync {
+		now := time.Now()
+		notifiedAt = &now
+	}
+
+	var batch []*domain.SaleEvent
 	for {
 		resp, err := s.wbClient.GetSales(ctx, shop.APIToken, dateFrom, 0)
 		if err != nil {
@@ -208,16 +223,233 @@ func (s *Service) syncShopSales(ctx context.Context, shop *domain.Shop) error {
 		if len(resp) == 0 {
 			break
 		}
+		var maxLastChange time.Time
 		for i := range resp {
-			e := wbmapper.SaleItemToDomain(resp[i], shop.ID)
-			if err := s.saleEventsRepo.Create(ctx, &e); err != nil {
-				return fmt.Errorf("create sale_event srid=%s: %w", e.Srid, err)
+			item := resp[i]
+			e := wbmapper.SaleItemToDomain(item, shop.ID)
+			e.NotifiedAt = notifiedAt
+			ep := new(domain.SaleEvent)
+			*ep = e
+			batch = append(batch, ep)
+			if item.ForPay >= 0 {
+				buyouts++
+				revenue += item.ForPay
+			} else {
+				returns++
+				revenue += item.ForPay
+			}
+			if lc, err := item.ParseLastChangeDate(); err == nil && lc.After(maxLastChange) {
+				maxLastChange = lc
 			}
 		}
-		lastChange, _ := resp[len(resp)-1].ParseLastChangeDate()
-		dateFrom = lastChange.Add(time.Millisecond)
+		if !maxLastChange.IsZero() {
+			dateFrom = maxLastChange.Add(time.Millisecond)
+		} else if len(resp) > 0 {
+			if lastChange, _ := resp[len(resp)-1].ParseLastChangeDate(); !lastChange.IsZero() {
+				dateFrom = lastChange.Add(time.Millisecond)
+			}
+		}
 	}
+	if len(batch) > 0 {
+		if err := s.saleEventsRepo.CreateBatch(ctx, batch); err != nil {
+			return fmt.Errorf("create sale_events batch: %w", err)
+		}
+	}
+
+	if isFirstSync {
+		now := time.Now()
+		if err := s.saleEventsRepo.MarkAllNotifiedByShop(ctx, shop.ID, now); err != nil {
+			return fmt.Errorf("mark sale_events notified: %w", err)
+		}
+		msg := formatFirstSyncSalesSummaryRU(buyouts, returns, revenue)
+		if msg != "" {
+			chatIDs, err := s.endpointsRepo.ListEnabledTelegramChatIDsByShopID(ctx, shop.ID)
+			if err != nil {
+				s.log.Warn("first sync sales summary: list endpoints failed", "shop_id", shop.ID, "err", err)
+			}
+			if len(chatIDs) == 0 {
+				user, _ := s.userRepo.GetByID(ctx, shop.UserID)
+				if user != nil && user.TelegramChatID != nil && *user.TelegramChatID != 0 {
+					chatIDs = []int64{*user.TelegramChatID}
+				}
+			}
+			for _, chatID := range chatIDs {
+				if err := s.tg.SendMessage(ctx, chatID, msg); err != nil {
+					s.log.Warn("first sync sales summary: send failed", "shop_id", shop.ID, "chat_id", chatID, "err", err)
+				}
+			}
+		}
+	}
+
 	return nil
+}
+
+// syncShopOrderRefusals получает заказы WB (GET /api/v1/supplier/orders), сохраняет отказы (isCancel=true).
+// Связь с Sales по srid. При первом синке (нет курсора) — 90 дней, помечаем как notified.
+func (s *Service) syncShopOrderRefusals(ctx context.Context, shop *domain.Shop) error {
+	dateFrom, err := s.orderSyncCursorRepo.Get(ctx, shop.ID)
+	if err != nil {
+		return fmt.Errorf("get order sync cursor: %w", err)
+	}
+	// Если wb_orders пустая (например, миграцию только что применили), нужно сделать backfill,
+	// даже если курсор orders уже был установлен ранее.
+	cnt, err := s.wbOrdersRepo.CountByShop(ctx, shop.ID)
+	if err != nil {
+		return fmt.Errorf("count wb_orders: %w", err)
+	}
+	isFirstSync := dateFrom.IsZero() || cnt == 0
+	if isFirstSync {
+		dateFrom = time.Now().AddDate(0, 0, -90)
+	}
+
+	var notifiedAt *time.Time
+	var refusalsTotal int
+	if isFirstSync {
+		now := time.Now()
+		notifiedAt = &now
+	}
+
+	for {
+		resp, err := s.wbClient.GetOrders(ctx, shop.APIToken, dateFrom, 0)
+		if err != nil {
+			return fmt.Errorf("wb get orders: %w", err)
+		}
+		if len(resp) == 0 {
+			break
+		}
+		// сохраняем все заказы для расчёта спроса (orders_net/day)
+		now := time.Now()
+		all := make([]*model.WBOrder, 0, len(resp))
+		var batch []*domain.OrderRefusal
+		var maxLastChange time.Time
+		for i := range resp {
+			item := &resp[i]
+			dt, _ := item.ParseDate()
+			lc, _ := item.ParseLastChangeDate()
+			if lc.After(maxLastChange) {
+				maxLastChange = lc
+			}
+			var cancelDt *time.Time
+			if item.IsCancel {
+				if t, err := item.ParseCancelDate(); err == nil && !t.IsZero() {
+					cancelDt = &t
+				}
+			}
+			if dt.IsZero() {
+				dt = now
+			}
+			if lc.IsZero() {
+				lc = now
+			}
+			all = append(all, &model.WBOrder{
+				ShopID:          shop.ID,
+				Srid:            item.Srid,
+				NmID:            item.NmID,
+				Barcode:         item.Barcode,
+				SupplierArticle: item.SupplierArticle,
+				Date:            dt,
+				LastChangeDate:  lc,
+				IsCancel:        item.IsCancel,
+				CancelDate:      cancelDt,
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			})
+			if !item.IsCancel {
+				continue
+			}
+			r := wbmapper.OrderItemToRefusal(*item, shop.ID)
+			r.NotifiedAt = notifiedAt
+			batch = append(batch, &r)
+		}
+		if err := s.wbOrdersRepo.UpsertBatch(ctx, all); err != nil {
+			return fmt.Errorf("upsert wb_orders batch: %w", err)
+		}
+		if len(batch) > 0 {
+			refusalsTotal += len(batch)
+			if err := s.orderRefusalsRepo.CreateBatch(ctx, batch); err != nil {
+				return fmt.Errorf("create order_refusals batch: %w", err)
+			}
+		}
+		if !maxLastChange.IsZero() {
+			dateFrom = maxLastChange.Add(time.Millisecond)
+			if err := s.orderSyncCursorRepo.Set(ctx, shop.ID, maxLastChange); err != nil {
+				return fmt.Errorf("set order sync cursor: %w", err)
+			}
+		} else if len(resp) > 0 {
+			if lastChange, _ := resp[len(resp)-1].ParseLastChangeDate(); !lastChange.IsZero() {
+				dateFrom = lastChange.Add(time.Millisecond)
+				_ = s.orderSyncCursorRepo.Set(ctx, shop.ID, lastChange)
+			}
+		}
+	}
+
+	if isFirstSync {
+		now := time.Now()
+		if err := s.orderRefusalsRepo.MarkAllNotifiedByShop(ctx, shop.ID, now); err != nil {
+			return fmt.Errorf("mark order_refusals notified: %w", err)
+		}
+		if refusalsTotal > 0 {
+			msg := formatFirstSyncRefusalsSummaryRU(refusalsTotal)
+			chatIDs, err := s.endpointsRepo.ListEnabledTelegramChatIDsByShopID(ctx, shop.ID)
+			if err != nil {
+				s.log.Warn("first sync refusals summary: list endpoints failed", "shop_id", shop.ID, "err", err)
+			}
+			if len(chatIDs) == 0 {
+				user, _ := s.userRepo.GetByID(ctx, shop.UserID)
+				if user != nil && user.TelegramChatID != nil && *user.TelegramChatID != 0 {
+					chatIDs = []int64{*user.TelegramChatID}
+				}
+			}
+			for _, chatID := range chatIDs {
+				if err := s.tg.SendMessage(ctx, chatID, msg); err != nil {
+					s.log.Warn("first sync refusals summary: send failed", "shop_id", shop.ID, "chat_id", chatID, "err", err)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func formatFirstSyncRefusalsSummaryRU(refusalsCount int) string {
+	return fmt.Sprintf(
+		"✅ Синхронизация отказов завершена!\n\n"+
+			"🚫 Загружено отказов за последние 90 дней: %d\n\n"+
+			"Теперь вы будете получать уведомления об отказах (не забрали) в реальном времени.",
+		refusalsCount,
+	)
+}
+
+func formatFirstSyncSalesSummaryRU(buyouts, returns int, revenue float64) string {
+	return fmt.Sprintf(
+		"✅ Синхронизация завершена!\n\n"+
+			"📊 Загружено за последние 90 дней:\n"+
+			"- Выкупов: %d\n"+
+			"- Возвратов: %d\n"+
+			"- Выручка: %s\n\n"+
+			"Теперь вы будете получать уведомления о новых продажах в реальном времени.",
+		buyouts, returns, formatRevenueRU(revenue),
+	)
+}
+
+func formatRevenueRU(v float64) string {
+	sign := ""
+	if v < 0 {
+		sign = "-"
+		v = -v
+	}
+	s := fmt.Sprintf("%.0f", v)
+	if len(s) > 3 {
+		var b []byte
+		for i, c := range s {
+			if i > 0 && (len(s)-i)%3 == 0 {
+				b = append(b, ',')
+			}
+			b = append(b, byte(c))
+		}
+		s = string(b)
+	}
+	return sign + s + "₽"
 }
 
 // syncShopProducts синхронизирует карточки WB в таблицу products
@@ -327,13 +559,7 @@ func (s *Service) syncShopSnapshots(
 		return fmt.Errorf("list seller warehouses: %w", err)
 	}
 
-	// 4) sku rows (product_id + product_size_id + sku)
-	// skuRows, err := s.productSizeSKUsRepo.ListByProductIDs(ctx, productIDs)
-	// if err != nil {
-	// 	return fmt.Errorf("list product size skus: %w", err)
-	// }
-
-	// 5) sizes for products (product_size_id -> chrtID) сгруппировать по product_id
+	// 4) sizes for products
 	sizes, err := s.productSizesRepo.ListByProductIDs(ctx, productIDs)
 	if err != nil {
 		return fmt.Errorf("list product sizes: %w", err)
@@ -375,7 +601,7 @@ func (s *Service) syncShopSnapshots(
 		chrtIDs = append(chrtIDs, chrtID)
 	}
 
-	// 7) stocks by sku
+	// 5) stocks by warehouse
 	stockByChrtID := make(map[int64]int)
 	stocksUnavailable := false
 
@@ -394,12 +620,9 @@ func (s *Service) syncShopSnapshots(
 					"chrtIDs_count", len(chrtIDs),
 					"err", err,
 				)
-				// Важно: если WB stocks недоступен, нельзя трактовать это как "0" и перезаписывать сток.
-				// Иначе получим ложные алерты "всё закончилось".
 				stocksUnavailable = true
 				break
 			}
-
 			for _, st := range items {
 				stockByChrtID[st.ChrtID] += st.Amount
 			}

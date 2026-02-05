@@ -29,7 +29,7 @@ CREATE TABLE sale_events (
     notified_at       TIMESTAMPTZ,
     extra             JSONB,
 
-    UNIQUE (shop_id, srid)
+    UNIQUE (shop_id, wb_sale_id)
 );
 
 CREATE INDEX idx_sale_events_shop_id ON sale_events(shop_id);

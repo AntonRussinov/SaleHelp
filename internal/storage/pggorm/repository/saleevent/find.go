@@ -67,17 +67,20 @@ func (r *Repository) DailyConsumptionByNmID(ctx context.Context, shopID int, sin
 // GetMaxLastChangeDateByShop возвращает максимальную last_change_date по магазину (для пагинации WB API).
 // Если записей нет, возвращает zero time — вызывающий код подставит начальную дату (например 2019-06-20).
 func (r *Repository) GetMaxLastChangeDateByShop(ctx context.Context, shopID int) (time.Time, error) {
-	var maxTime *time.Time
+	type result struct {
+		MaxDate *time.Time `gorm:"column:max_date"`
+	}
+	var res result
 	err := r.DB.WithContext(ctx).
 		Model(&model.SaleEvent{}).
-		Select("MAX(last_change_date)").
+		Select("MAX(last_change_date) as max_date").
 		Where("shop_id = ?", shopID).
-		Scan(&maxTime).Error
+		Scan(&res).Error
 	if err != nil {
 		return time.Time{}, fmt.Errorf("sale_events get max last_change_date: %w", err)
 	}
-	if maxTime == nil {
+	if res.MaxDate == nil {
 		return time.Time{}, nil
 	}
-	return *maxTime, nil
+	return *res.MaxDate, nil
 }

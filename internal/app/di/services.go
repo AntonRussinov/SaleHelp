@@ -75,6 +75,10 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.DBWOrder,
 		prov.Repositories.DBSOrder,
 		prov.Repositories.SaleEvent,
+		prov.Repositories.OrderRefusal,
+		prov.Repositories.WBOrder,
+		prov.Repositories.OrderSyncCursor,
+		prov.Repositories.NotificationEndpoint,
 		prov.Repositories.User,
 		tgAdapter,
 		prov.WBClient,
@@ -111,6 +115,7 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.DBWOrder,
 		prov.Repositories.DBSOrder,
 		prov.Repositories.SaleEvent,
+		prov.Repositories.OrderRefusal,
 		prov.Repositories.NotificationEndpoint,
 		tgAdapter,
 		prov.log,
@@ -142,6 +147,8 @@ func (prov *Provider) initDependentServices() {
 	if err != nil {
 		panic(err)
 	}
+	// Единая TZ для всего приложения (cron + сервисы, которые опираются на локальное время).
+	prov.schedulerLoc = loc
 
 	now := time.Now().In(loc)
 	prov.log.Info("subscription monitor time check",
@@ -162,6 +169,7 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.Product,
 		prov.Repositories.ProductSnapshot,
 		prov.Repositories.SaleEvent,
+		prov.Repositories.WBOrder,
 		prov.Repositories.NotificationEndpoint,
 		tgAdapter,
 		prov.log,

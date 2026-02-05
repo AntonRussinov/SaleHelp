@@ -26,6 +26,7 @@ type AlertEngine struct {
 	dbwOrdersRepo            DBWOrderRepo
 	dbsOrdersRepo            DBSOrderRepo
 	saleEventsRepo           SaleEventRepo
+	orderRefusalsRepo        OrderRefusalRepo
 	endpointsRepo            EndpointsRepo
 	tg                       TelegramSender
 	log                      *slog.Logger
@@ -88,6 +89,11 @@ type SaleEventRepo interface {
 	MarkNotified(ctx context.Context, eventIDs []int, at time.Time) error
 }
 
+type OrderRefusalRepo interface {
+	ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.OrderRefusal, error)
+	MarkNotified(ctx context.Context, ids []int, at time.Time) error
+}
+
 type EndpointsRepo interface {
 	ListByShopID(ctx context.Context, shopID int, onlyEnabled bool) ([]*domain.NotificationEndpoint, error)
 }
@@ -109,6 +115,7 @@ func NewAlertEngine(
 	dbwOrdersRepo DBWOrderRepo,
 	dbsOrdersRepo DBSOrderRepo,
 	saleEventsRepo SaleEventRepo,
+	orderRefusalsRepo OrderRefusalRepo,
 	endpointsRepo EndpointsRepo,
 	tg TelegramSender,
 	log *slog.Logger,
@@ -126,6 +133,7 @@ func NewAlertEngine(
 		dbwOrdersRepo:            dbwOrdersRepo,
 		dbsOrdersRepo:            dbsOrdersRepo,
 		saleEventsRepo:           saleEventsRepo,
+		orderRefusalsRepo:        orderRefusalsRepo,
 		endpointsRepo:            endpointsRepo,
 		tg:                       tg,
 		log:                      log,
