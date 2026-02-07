@@ -27,9 +27,21 @@ type AlertEngine struct {
 	dbsOrdersRepo            DBSOrderRepo
 	saleEventsRepo           SaleEventRepo
 	orderRefusalsRepo        OrderRefusalRepo
+	wbFeedbacksRepo          WBFeedbackRepo
+	wbQuestionsRepo          WBQuestionRepo
 	endpointsRepo            EndpointsRepo
 	tg                       TelegramSender
 	log                      *slog.Logger
+}
+
+type WBFeedbackRepo interface {
+	ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.WBFeedback, error)
+	MarkNotified(ctx context.Context, ids []int, at time.Time) error
+}
+
+type WBQuestionRepo interface {
+	ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.WBQuestion, error)
+	MarkNotified(ctx context.Context, ids []int, at time.Time) error
 }
 
 type SubscriptionService interface {
@@ -116,6 +128,8 @@ func NewAlertEngine(
 	dbsOrdersRepo DBSOrderRepo,
 	saleEventsRepo SaleEventRepo,
 	orderRefusalsRepo OrderRefusalRepo,
+	wbFeedbacksRepo WBFeedbackRepo,
+	wbQuestionsRepo WBQuestionRepo,
 	endpointsRepo EndpointsRepo,
 	tg TelegramSender,
 	log *slog.Logger,
@@ -134,6 +148,8 @@ func NewAlertEngine(
 		dbsOrdersRepo:            dbsOrdersRepo,
 		saleEventsRepo:           saleEventsRepo,
 		orderRefusalsRepo:        orderRefusalsRepo,
+		wbFeedbacksRepo:          wbFeedbacksRepo,
+		wbQuestionsRepo:          wbQuestionsRepo,
 		endpointsRepo:            endpointsRepo,
 		tg:                       tg,
 		log:                      log,

@@ -12,14 +12,15 @@ import (
 // SaleItemToDomain конвертирует DTO записи продажи/возврата WB в домен.
 // eventType: по документации WB у возвратов saleID начинается с "R" (Return), у выкупов — с "S" (Sale).
 // Дополнительно: forPay < 0 считаем возвратом (данные forPay могут заполняться асинхронно в течение 24 ч).
-func SaleItemToDomain(item dto.SaleItem, shopID int) domain.SaleEvent {
+// reportLoc — пояс магазина для парсинга дат WB; nil = глобальный из конфига.
+func SaleItemToDomain(item dto.SaleItem, shopID int, reportLoc *time.Location) domain.SaleEvent {
 	eventType := domain.SaleEventTypeBuyout
 	saleIDUpper := strings.TrimSpace(item.SaleID)
 	if strings.HasPrefix(saleIDUpper, "R") || item.ForPay < 0 {
 		eventType = domain.SaleEventTypeReturn
 	}
-	date, _ := item.ParseDate()
-	lastChange, _ := item.ParseLastChangeDate()
+	date, _ := item.ParseDate(reportLoc)
+	lastChange, _ := item.ParseLastChangeDate(reportLoc)
 	if date.IsZero() {
 		date = time.Now()
 	}

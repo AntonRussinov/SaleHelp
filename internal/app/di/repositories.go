@@ -29,6 +29,8 @@ import (
 	telegramchatstate "salehelp/internal/storage/pggorm/repository/telegram_chat_states"
 	"salehelp/internal/storage/pggorm/repository/telegramaccount"
 	"salehelp/internal/storage/pggorm/repository/user"
+	"salehelp/internal/storage/pggorm/repository/wbfeedback"
+	"salehelp/internal/storage/pggorm/repository/wbquestion"
 	"salehelp/internal/storage/pggorm/repository/wborder"
 	"salehelp/internal/storage/pggorm/repository/wbwarehouse"
 	"salehelp/internal/storage/pggorm/txrunner"
@@ -48,6 +50,8 @@ type Repositories struct {
 	OrderRefusal                  *orderrefusal.Repository
 	OrderSyncCursor               *ordersynccursor.Repository
 	WBOrder                       *wborder.Repository
+	WBFeedback                    *wbfeedback.Repository
+	WBQuestion                    *wbquestion.Repository
 	ProductSnapshot               *productsnapshot.Repository
 	ProductSizeSnapshot           *productsizesnapshot.Repository
 	ProductSizePriceSnapshot      *productsizepricesnapshot.Repository
@@ -87,6 +91,8 @@ func (prov *Provider) InitRepositories() {
 		OrderRefusal:                  orderrefusal.NewRepository(prov.log, prov.Database.GormDB),
 		OrderSyncCursor:               ordersynccursor.NewRepository(prov.log, prov.Database.GormDB),
 		WBOrder:                       wborder.NewRepository(prov.log, prov.Database.GormDB),
+		WBFeedback:                    wbfeedback.NewRepository(prov.log, prov.Database.GormDB),
+		WBQuestion:                    wbquestion.NewRepository(prov.log, prov.Database.GormDB),
 		ProductSnapshot:               productsnapshot.NewRepository(prov.log, prov.Database.GormDB),
 		ProductSizeSnapshot:           productsizesnapshot.NewRepository(prov.log, prov.Database.GormDB),
 		ProductSizePriceSnapshot:      productsizepricesnapshot.NewRepository(prov.log, prov.Database.GormDB),

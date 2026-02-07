@@ -37,6 +37,7 @@ func toModel(s *domain.Shop) *model.Shop {
 		Name:                s.Name,
 		APIToken:            s.APIToken,
 		IsActive:            s.IsActive,
+		WBReportTimezone:    s.WBReportTimezone,
 		LastSyncAt:          s.LastSyncAt,
 		FirstSyncNotifiedAt: s.FirstSyncNotifiedAt,
 		LastSyncStatusCode:  s.LastSyncStatusCode,

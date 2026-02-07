@@ -61,6 +61,20 @@ func (prov *Provider) initDependentServices() {
 	tgAdapter := telegrambot.NewTelegramAdapter(tgSender)
 	registry := notifications.NewSenderRegistry(senders)
 
+	// Пояс по умолчанию для отчётов WB (sales, orders); при отсутствии у магазина wb_report_timezone.
+	wbReportTZ := prov.cfg.WBReportTimezone
+	if wbReportTZ == "" {
+		wbReportTZ = "Europe/Moscow"
+	}
+	wbReportLoc, errLoc := time.LoadLocation(wbReportTZ)
+	if errLoc != nil {
+		prov.log.Warn("wb default report timezone load failed, using Moscow", "tz", wbReportTZ, "err", errLoc)
+		wbReportLoc, _ = time.LoadLocation("Europe/Moscow")
+		if wbReportLoc == nil {
+			wbReportLoc = time.FixedZone("MSK", 3*3600)
+		}
+	}
+
 	prov.Services.Monitoring = monitoring.NewMonitoringService(
 		prov.Repositories.Shop,
 		prov.Repositories.Product,
@@ -78,10 +92,13 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.OrderRefusal,
 		prov.Repositories.WBOrder,
 		prov.Repositories.OrderSyncCursor,
+		prov.Repositories.WBFeedback,
+		prov.Repositories.WBQuestion,
 		prov.Repositories.NotificationEndpoint,
 		prov.Repositories.User,
 		tgAdapter,
 		prov.WBClient,
+		wbReportLoc,
 		prov.log,
 	)
 
@@ -116,6 +133,8 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.DBSOrder,
 		prov.Repositories.SaleEvent,
 		prov.Repositories.OrderRefusal,
+		prov.Repositories.WBFeedback,
+		prov.Repositories.WBQuestion,
 		prov.Repositories.NotificationEndpoint,
 		tgAdapter,
 		prov.log,

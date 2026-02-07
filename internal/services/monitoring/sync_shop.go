@@ -100,6 +100,13 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 		return fmt.Errorf("sync shop: sync DBS orders: %w", err)
 	}
 
+	if err = s.syncShopFeedbacks(ctx, shop); err != nil {
+		return fmt.Errorf("sync shop: sync feedbacks: %w", err)
+	}
+	if err = s.syncShopQuestions(ctx, shop); err != nil {
+		return fmt.Errorf("sync shop: sync questions: %w", err)
+	}
+
 	// 4) sales (выкупы/возвраты)
 	if err = s.syncShopSales(ctx, shop); err != nil {
 		return fmt.Errorf("sync shop: sync sales: %w", err)
@@ -190,11 +197,66 @@ func (s *Service) syncShopDBSOrders(ctx context.Context, shop *domain.Shop) erro
 	return nil
 }
 
+// syncShopFeedbacks получает необработанные отзывы WB (GET /api/v1/feedbacks) и сохраняет в wb_feedbacks.
+// Лимит: 3 запроса/сек. Пагинация take=1000.
+func (s *Service) syncShopFeedbacks(ctx context.Context, shop *domain.Shop) error {
+	const pageSize = 1000
+	skip := 0
+	for {
+		resp, err := s.wbClient.GetFeedbacks(ctx, shop.APIToken, false, pageSize, skip, "dateDesc", nil, nil)
+		if err != nil {
+			return fmt.Errorf("wb get feedbacks: %w", err)
+		}
+		if len(resp.Data.Feedbacks) == 0 {
+			break
+		}
+		for i := range resp.Data.Feedbacks {
+			f := wbmapper.WBFeedbackToDomain(resp.Data.Feedbacks[i], shop.ID)
+			if err := s.wbFeedbacksRepo.Create(ctx, &f); err != nil {
+				return fmt.Errorf("create wb_feedback id=%s: %w", f.WBFeedbackID, err)
+			}
+		}
+		if len(resp.Data.Feedbacks) < pageSize {
+			break
+		}
+		skip += pageSize
+	}
+	return nil
+}
+
+// syncShopQuestions получает неотвеченные вопросы WB (GET /api/v1/questions) и сохраняет в wb_questions.
+// Лимит: 3 запроса/сек. Пагинация take=1000.
+func (s *Service) syncShopQuestions(ctx context.Context, shop *domain.Shop) error {
+	const pageSize = 1000
+	skip := 0
+	for {
+		resp, err := s.wbClient.GetQuestions(ctx, shop.APIToken, false, pageSize, skip, "dateDesc", nil, nil)
+		if err != nil {
+			return fmt.Errorf("wb get questions: %w", err)
+		}
+		if len(resp.Data.Questions) == 0 {
+			break
+		}
+		for i := range resp.Data.Questions {
+			q := wbmapper.WBQuestionToDomain(resp.Data.Questions[i], shop.ID)
+			if err := s.wbQuestionsRepo.Create(ctx, &q); err != nil {
+				return fmt.Errorf("create wb_question id=%s: %w", q.WBQuestionID, err)
+			}
+		}
+		if len(resp.Data.Questions) < pageSize {
+			break
+		}
+		skip += pageSize
+	}
+	return nil
+}
+
 // syncShopSales получает отчёт продаж/возвратов WB (GET /api/v1/supplier/sales) и сохраняет в sale_events.
 // Дубликаты (shop_id, srid) игнорируются. Пагинация по lastChangeDate (лимит WB ~80k строк за запрос).
 // При первом синке (нет записей в sale_events) загружаем последние 90 дней, помечаем как notified,
 // отправляем сводку (не отдельные выкупы). Со второго синка — уведомления в реальном времени.
 func (s *Service) syncShopSales(ctx context.Context, shop *domain.Shop) error {
+	shopLoc := s.shopReportLocation(shop)
 	dateFrom, err := s.saleEventsRepo.GetMaxLastChangeDateByShop(ctx, shop.ID)
 	if err != nil {
 		return fmt.Errorf("get max last_change_date: %w", err)
@@ -202,6 +264,9 @@ func (s *Service) syncShopSales(ctx context.Context, shop *domain.Shop) error {
 	isFirstSync := dateFrom.IsZero()
 	if isFirstSync {
 		dateFrom = time.Now().AddDate(0, 0, -90)
+	} else {
+		// Запрашиваем строго после последней записи, чтобы не зависеть от трактовки >= на стороне WB
+		dateFrom = dateFrom.Add(time.Millisecond)
 	}
 
 	var buyouts, returns int
@@ -216,7 +281,7 @@ func (s *Service) syncShopSales(ctx context.Context, shop *domain.Shop) error {
 
 	var batch []*domain.SaleEvent
 	for {
-		resp, err := s.wbClient.GetSales(ctx, shop.APIToken, dateFrom, 0)
+		resp, err := s.wbClient.GetSales(ctx, shop.APIToken, dateFrom, 0, shopLoc)
 		if err != nil {
 			return fmt.Errorf("wb get sales: %w", err)
 		}
@@ -226,7 +291,7 @@ func (s *Service) syncShopSales(ctx context.Context, shop *domain.Shop) error {
 		var maxLastChange time.Time
 		for i := range resp {
 			item := resp[i]
-			e := wbmapper.SaleItemToDomain(item, shop.ID)
+			e := wbmapper.SaleItemToDomain(item, shop.ID, shopLoc)
 			e.NotifiedAt = notifiedAt
 			ep := new(domain.SaleEvent)
 			*ep = e
@@ -238,14 +303,14 @@ func (s *Service) syncShopSales(ctx context.Context, shop *domain.Shop) error {
 				returns++
 				revenue += item.ForPay
 			}
-			if lc, err := item.ParseLastChangeDate(); err == nil && lc.After(maxLastChange) {
+			if lc, err := item.ParseLastChangeDate(shopLoc); err == nil && lc.After(maxLastChange) {
 				maxLastChange = lc
 			}
 		}
 		if !maxLastChange.IsZero() {
 			dateFrom = maxLastChange.Add(time.Millisecond)
 		} else if len(resp) > 0 {
-			if lastChange, _ := resp[len(resp)-1].ParseLastChangeDate(); !lastChange.IsZero() {
+			if lastChange, _ := resp[len(resp)-1].ParseLastChangeDate(shopLoc); !lastChange.IsZero() {
 				dateFrom = lastChange.Add(time.Millisecond)
 			}
 		}
@@ -287,6 +352,7 @@ func (s *Service) syncShopSales(ctx context.Context, shop *domain.Shop) error {
 // syncShopOrderRefusals получает заказы WB (GET /api/v1/supplier/orders), сохраняет отказы (isCancel=true).
 // Связь с Sales по srid. При первом синке (нет курсора) — 90 дней, помечаем как notified.
 func (s *Service) syncShopOrderRefusals(ctx context.Context, shop *domain.Shop) error {
+	shopLoc := s.shopReportLocation(shop)
 	dateFrom, err := s.orderSyncCursorRepo.Get(ctx, shop.ID)
 	if err != nil {
 		return fmt.Errorf("get order sync cursor: %w", err)
@@ -310,7 +376,7 @@ func (s *Service) syncShopOrderRefusals(ctx context.Context, shop *domain.Shop) 
 	}
 
 	for {
-		resp, err := s.wbClient.GetOrders(ctx, shop.APIToken, dateFrom, 0)
+		resp, err := s.wbClient.GetOrders(ctx, shop.APIToken, dateFrom, 0, shopLoc)
 		if err != nil {
 			return fmt.Errorf("wb get orders: %w", err)
 		}
@@ -324,14 +390,14 @@ func (s *Service) syncShopOrderRefusals(ctx context.Context, shop *domain.Shop) 
 		var maxLastChange time.Time
 		for i := range resp {
 			item := &resp[i]
-			dt, _ := item.ParseDate()
-			lc, _ := item.ParseLastChangeDate()
+			dt, _ := item.ParseDate(shopLoc)
+			lc, _ := item.ParseLastChangeDate(shopLoc)
 			if lc.After(maxLastChange) {
 				maxLastChange = lc
 			}
 			var cancelDt *time.Time
 			if item.IsCancel {
-				if t, err := item.ParseCancelDate(); err == nil && !t.IsZero() {
+				if t, err := item.ParseCancelDate(shopLoc); err == nil && !t.IsZero() {
 					cancelDt = &t
 				}
 			}
@@ -357,7 +423,7 @@ func (s *Service) syncShopOrderRefusals(ctx context.Context, shop *domain.Shop) 
 			if !item.IsCancel {
 				continue
 			}
-			r := wbmapper.OrderItemToRefusal(*item, shop.ID)
+			r := wbmapper.OrderItemToRefusal(*item, shop.ID, shopLoc)
 			r.NotifiedAt = notifiedAt
 			batch = append(batch, &r)
 		}
@@ -376,7 +442,7 @@ func (s *Service) syncShopOrderRefusals(ctx context.Context, shop *domain.Shop) 
 				return fmt.Errorf("set order sync cursor: %w", err)
 			}
 		} else if len(resp) > 0 {
-			if lastChange, _ := resp[len(resp)-1].ParseLastChangeDate(); !lastChange.IsZero() {
+			if lastChange, _ := resp[len(resp)-1].ParseLastChangeDate(shopLoc); !lastChange.IsZero() {
 				dateFrom = lastChange.Add(time.Millisecond)
 				_ = s.orderSyncCursorRepo.Set(ctx, shop.ID, lastChange)
 			}

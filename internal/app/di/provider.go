@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	wbclient "salehelp/internal/adapter/wb/client"
+	wbdto "salehelp/internal/adapter/wb/dto"
 	"salehelp/internal/config"
 	"salehelp/internal/scheduler"
 	"salehelp/pkg/extendedvalidator"
@@ -51,8 +52,21 @@ func (prov *Provider) GetCron() *cron.Cron {
 func (prov *Provider) initWBClient() {
 	httpClient := &http.Client{}
 
-	// Создаём WB-клиент (New возвращает *Client)
-	prov.WBClient = wbclient.New(httpClient)
+	// Часовой пояс для отчётов WB (sales, orders): в каком поясе WB отдаёт даты и ждёт dateFrom.
+	reportTZ := prov.cfg.WBReportTimezone
+	if reportTZ == "" {
+		reportTZ = "Europe/Moscow"
+	}
+	loc, err := time.LoadLocation(reportTZ)
+	if err != nil {
+		prov.log.Warn("wb report timezone load failed, using Moscow", "tz", reportTZ, "err", err)
+		loc, _ = time.LoadLocation("Europe/Moscow")
+		if loc == nil {
+			loc = time.FixedZone("MSK", 3*3600)
+		}
+	}
+	wbdto.SetWBReportLocation(loc)
+	prov.WBClient = wbclient.New(httpClient, loc)
 }
 
 func (prov *Provider) Init(ctx context.Context) error {

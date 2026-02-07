@@ -117,5 +117,13 @@ func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
 		return err
 	}
 
+	// новые отзывы и вопросы: отправить в Telegram и пометить как уведомлённые
+	if err := e.runShopWBFeedbacks(ctx, shopID); err != nil {
+		return err
+	}
+	if err := e.runShopWBQuestions(ctx, shopID); err != nil {
+		return err
+	}
+
 	return nil
 }

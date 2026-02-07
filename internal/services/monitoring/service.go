@@ -30,12 +30,23 @@ type (
 		orderRefusalsRepo      OrderRefusalRepository
 		wbOrdersRepo           WBOrdersRepository
 		orderSyncCursorRepo    OrderSyncCursorRepository
+		wbFeedbacksRepo        WBFeedbackRepository
+		wbQuestionsRepo        WBQuestionRepository
 		endpointsRepo          EndpointsRepo
 		userRepo               UserRepo
 
-		tg       TelegramAPI
-		wbClient WBClient
-		log      *slog.Logger
+		tg                TelegramAPI
+		wbClient          WBClient
+		defaultReportLoc  *time.Location // пояс по умолчанию для отчётов WB (из конфига), если у магазина не задан wb_report_timezone
+		log               *slog.Logger
+	}
+
+	WBFeedbackRepository interface {
+		Create(ctx context.Context, f *domain.WBFeedback) error
+	}
+
+	WBQuestionRepository interface {
+		Create(ctx context.Context, q *domain.WBQuestion) error
 	}
 
 	// Локальный интерфейс под нужды сервиса
@@ -155,10 +166,12 @@ type (
 		GetNewOrders(ctx context.Context, apiKey string) (*dto.GetNewOrdersResponse, error)
 		GetNewDBWOrders(ctx context.Context, apiKey string) (*dto.GetNewDBWOrdersResponse, error)
 		GetNewDBSOrders(ctx context.Context, apiKey string) (*dto.GetNewDBSOrdersResponse, error)
-		GetSales(ctx context.Context, apiKey string, dateFrom time.Time, flag int) (dto.GetSalesResponse, error)
-		GetOrders(ctx context.Context, apiKey string, dateFrom time.Time, flag int) (dto.GetOrdersResponse, error)
+		GetSales(ctx context.Context, apiKey string, dateFrom time.Time, flag int, reportLoc *time.Location) (dto.GetSalesResponse, error)
+		GetOrders(ctx context.Context, apiKey string, dateFrom time.Time, flag int, reportLoc *time.Location) (dto.GetOrdersResponse, error)
 		GetWBWarehouses(ctx context.Context, apiKey string) ([]dto.WBWarehouse, error)
 		GetSellerWarehouses(ctx context.Context, apiKey string) ([]dto.SellerWarehouse, error)
+		GetFeedbacks(ctx context.Context, apiKey string, isAnswered bool, take, skip int, order string, dateFrom, dateTo *int64) (*dto.GetFeedbacksResponse, error)
+		GetQuestions(ctx context.Context, apiKey string, isAnswered bool, take, skip int, order string, dateFrom, dateTo *int64) (*dto.GetQuestionsResponse, error)
 		CheckToken(ctx context.Context, token string) error
 	}
 
@@ -184,10 +197,13 @@ func NewMonitoringService(
 	orderRefusalsRepo OrderRefusalRepository,
 	wbOrdersRepo WBOrdersRepository,
 	orderSyncCursorRepo OrderSyncCursorRepository,
+	wbFeedbacksRepo WBFeedbackRepository,
+	wbQuestionsRepo WBQuestionRepository,
 	endpointsRepo EndpointsRepo,
 	userRepo UserRepo,
 	tg TelegramAPI,
 	wb WBClient,
+	defaultReportLoc *time.Location,
 	log *slog.Logger,
 ) *Service {
 	return &Service{
@@ -207,12 +223,27 @@ func NewMonitoringService(
 		orderRefusalsRepo:      orderRefusalsRepo,
 		wbOrdersRepo:           wbOrdersRepo,
 		orderSyncCursorRepo:    orderSyncCursorRepo,
+		wbFeedbacksRepo:        wbFeedbacksRepo,
+		wbQuestionsRepo:        wbQuestionsRepo,
 		endpointsRepo:          endpointsRepo,
 		userRepo:               userRepo,
 		tg:                     tg,
 		wbClient:               wb,
+		defaultReportLoc:       defaultReportLoc,
 		log:                    log,
 	}
+}
+
+// shopReportLocation возвращает часовой пояс для отчётов WB по магазину: shop.WBReportTimezone или defaultReportLoc.
+func (s *Service) shopReportLocation(shop *domain.Shop) *time.Location {
+	if shop != nil && shop.WBReportTimezone != "" {
+		loc, err := time.LoadLocation(shop.WBReportTimezone)
+		if err == nil {
+			return loc
+		}
+		s.log.Warn("shop wb_report_timezone load failed, using default", "shop_id", shop.ID, "tz", shop.WBReportTimezone, "err", err)
+	}
+	return s.defaultReportLoc
 }
 
 func wbStatusCode(err error) (int, bool) {

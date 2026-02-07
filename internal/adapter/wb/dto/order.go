@@ -38,17 +38,17 @@ type OrderItem struct {
 // GetOrdersResponse — ответ GET /api/v1/supplier/orders (массив записей).
 type GetOrdersResponse []OrderItem
 
-// ParseDate парсит дату из WB.
-func (o *OrderItem) ParseDate() (time.Time, error) {
-	return parseWBTime(o.Date)
+// ParseDate парсит дату из WB. loc — пояс магазина; nil = глобальный из конфига.
+func (o *OrderItem) ParseDate(loc *time.Location) (time.Time, error) {
+	return parseWBTime(o.Date, loc)
 }
 
-// ParseLastChangeDate парсит lastChangeDate из WB.
-func (o *OrderItem) ParseLastChangeDate() (time.Time, error) {
-	return parseWBTime(o.LastChangeDate)
+// ParseLastChangeDate парсит lastChangeDate из WB. loc — пояс магазина; nil = глобальный.
+func (o *OrderItem) ParseLastChangeDate(loc *time.Location) (time.Time, error) {
+	return parseWBTime(o.LastChangeDate, loc)
 }
 
-// ParseCancelDate парсит cancelDate из WB.
-func (o *OrderItem) ParseCancelDate() (time.Time, error) {
-	return parseWBTime(o.CancelDate)
+// ParseCancelDate парсит cancelDate из WB. loc — пояс магазина; nil = глобальный.
+func (o *OrderItem) ParseCancelDate(loc *time.Location) (time.Time, error) {
+	return parseWBTime(o.CancelDate, loc)
 }

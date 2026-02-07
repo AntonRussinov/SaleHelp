@@ -21,7 +21,7 @@ func main() {
 		Timeout: 15 * time.Second,
 	}
 
-	client := wbclient.New(httpClient)
+	client := wbclient.New(httpClient, nil)
 
 	// минимальный запрос — можно потом усложнять
 	req := dto.GetCardsRequest{

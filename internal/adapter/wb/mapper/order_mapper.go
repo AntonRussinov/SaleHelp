@@ -9,10 +9,11 @@ import (
 
 // OrderItemToRefusal конвертирует DTO заказа WB в домен OrderRefusal.
 // Вызывать только для записей с isCancel == true (отказ / не забран).
-func OrderItemToRefusal(item dto.OrderItem, shopID int) domain.OrderRefusal {
-	date, _ := item.ParseDate()
-	lastChange, _ := item.ParseLastChangeDate()
-	cancelDate, _ := item.ParseCancelDate()
+// reportLoc — пояс магазина для парсинга дат WB; nil = глобальный из конфига.
+func OrderItemToRefusal(item dto.OrderItem, shopID int, reportLoc *time.Location) domain.OrderRefusal {
+	date, _ := item.ParseDate(reportLoc)
+	lastChange, _ := item.ParseLastChangeDate(reportLoc)
+	cancelDate, _ := item.ParseCancelDate(reportLoc)
 	if date.IsZero() {
 		date = time.Now()
 	}

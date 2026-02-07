@@ -24,6 +24,9 @@ type (
 		DB                  db.Config
 		InstanceID          string
 		Scheduler           jobs.SyncActiveShopsConfig
+		// WBReportTimezone — часовой пояс по умолчанию для отчётов WB (sales, orders). Любой IANA: Europe/Moscow, Asia/Almaty и т.д.
+		// У магазина может быть свой пояс (shop.wb_report_timezone); если не задан — используется этот. Пусто = Europe/Moscow.
+		WBReportTimezone string `mapstructure:"wb_report_timezone"`
 		//	GCS            gcs.Config
 	}
 
