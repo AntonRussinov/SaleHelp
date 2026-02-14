@@ -39,6 +39,8 @@ func toModel(d *domain.WBFeedback) *model.WBFeedback {
 		UserName:         d.UserName,
 		CreatedAt:        d.CreatedAt,
 		NotifiedAt:       d.NotifiedAt,
+		IsReplied:        d.IsReplied,
+		RepliedAt:        d.RepliedAt,
 		Extra:            d.Extra,
 	}
 }

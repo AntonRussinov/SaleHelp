@@ -3,6 +3,7 @@ package di
 import (
 	"log/slog"
 	"os"
+	"salehelp/internal/services/ai_reply"
 	"salehelp/internal/services/alert"
 	"salehelp/internal/services/monitoring"
 	notifications "salehelp/internal/services/notification"
@@ -11,6 +12,8 @@ import (
 	"salehelp/internal/services/subscription"
 	subscriptionmonitor "salehelp/internal/services/subscription_monitor"
 	"salehelp/internal/services/telegrambot"
+	"salehelp/pkg/ai"
+	"salehelp/pkg/ai/client"
 	"salehelp/pkg/notify"
 	"salehelp/pkg/notify/telegram"
 	"time"
@@ -29,6 +32,7 @@ type Services struct {
 	Subscription        *subscription.Service
 	SubscriptionMonitor *subscriptionmonitor.Monitor
 	StockReplenish      *stock_replenish.Service
+	AIReply             *ai_reply.Service
 }
 
 func (prov *Provider) InitServices() {
@@ -194,6 +198,36 @@ func (prov *Provider) initDependentServices() {
 		prov.log,
 	)
 
+	// AI Reply: OpenAI-клиент и сервис генерации ответов на отзывы
+	modelCfg := ai.DefaultModelConfig()
+	if prov.cfg.AI.ModelForPositive != "" {
+		modelCfg.ModelForPositive = prov.cfg.AI.ModelForPositive
+	}
+	if prov.cfg.AI.ModelForOther != "" {
+		modelCfg.ModelForOther = prov.cfg.AI.ModelForOther
+	}
+	includedLimit := prov.cfg.AI.IncludedLimit
+	if includedLimit <= 0 {
+		includedLimit = 50
+	}
+	aiClient, errAI := client.New(modelCfg, prov.cfg.AI.APIKey)
+	if errAI != nil {
+		prov.log.Warn("ai_reply: OpenAI client init failed, AI replies disabled", "err", errAI)
+	} else {
+		prov.Services.AIReply = ai_reply.New(
+			prov.Repositories.ShopAISettings,
+			prov.Repositories.WBFeedback,
+			prov.Repositories.AIFeedbackReply,
+			prov.Repositories.ShopAIReplyQuota,
+			prov.Repositories.ShopAIReplyLedger,
+			prov.Repositories.Shop,
+			prov.WBClient,
+			aiClient,
+			modelCfg,
+			includedLimit,
+			prov.log,
+		)
+	}
 }
 
 // Настроить поулчение корректного worker ID

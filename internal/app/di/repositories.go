@@ -1,6 +1,7 @@
 package di
 
 import (
+	aireplyrepo "salehelp/internal/storage/pggorm/repository/ai_feedback_reply"
 	"salehelp/internal/storage/pggorm/repository/airecommendation"
 	"salehelp/internal/storage/pggorm/repository/alert"
 	"salehelp/internal/storage/pggorm/repository/alerttriggered"
@@ -21,6 +22,9 @@ import (
 	"salehelp/internal/storage/pggorm/repository/saleevent"
 	"salehelp/internal/storage/pggorm/repository/sellerwarehouse"
 	"salehelp/internal/storage/pggorm/repository/shop"
+	shopaisettings "salehelp/internal/storage/pggorm/repository/shop_ai_settings"
+	shopairedger "salehelp/internal/storage/pggorm/repository/shop_ai_reply_ledger"
+	shopaireplyquota "salehelp/internal/storage/pggorm/repository/shop_ai_reply_quota"
 	shopinvitetokens "salehelp/internal/storage/pggorm/repository/shop_invite_tokens"
 	"salehelp/internal/storage/pggorm/repository/shopsyncleases"
 	"salehelp/internal/storage/pggorm/repository/subscription"
@@ -60,6 +64,10 @@ type Repositories struct {
 	Product                       *product.Repository
 	SellerWarehouse               *sellerwarehouse.Repository
 	Shop                          *shop.Repository
+	ShopAISettings                *shopaisettings.Repository
+	ShopAIReplyLedger             *shopairedger.Repository
+	ShopAIReplyQuota              *shopaireplyquota.Repository
+	AIFeedbackReply               *aireplyrepo.Repository
 	ShopInviteTokens              *shopinvitetokens.Repository
 	ShopSyncLeases                *shopsyncleases.Repository
 	Subscription                  *subscription.Repository
@@ -101,6 +109,10 @@ func (prov *Provider) InitRepositories() {
 		Product:                       product.NewRepository(prov.log, prov.Database.GormDB),
 		SellerWarehouse:               sellerwarehouse.NewRepository(prov.log, prov.Database.GormDB),
 		Shop:                          shop.NewRepository(prov.log, prov.Database.GormDB),
+		ShopAISettings:                shopaisettings.NewRepository(prov.log, prov.Database.GormDB),
+		ShopAIReplyLedger:             shopairedger.NewRepository(prov.log, prov.Database.GormDB),
+		ShopAIReplyQuota:              shopaireplyquota.NewRepository(prov.log, prov.Database.GormDB),
+		AIFeedbackReply:              aireplyrepo.NewRepository(prov.log, prov.Database.GormDB),
 		ShopInviteTokens:              shopinvitetokens.NewRepository(prov.log, prov.Database.GormDB),
 		ShopSyncLeases:                shopsyncleases.NewRepository(prov.log, prov.Database.GormDB),
 		Subscription:                  subscrRepo,

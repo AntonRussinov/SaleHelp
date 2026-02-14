@@ -62,6 +62,14 @@ func (prov *Provider) initScheduler(ctx context.Context) error {
 		}
 	}
 
+	// AI Reply: генерация ответов на отзывы (каждые 10 мин или по своему расписанию)
+	if prov.Services.AIReply != nil && prov.cfg.Scheduler.AIReplySpec != "" {
+		aiReplyJob := jobs.NewAIReplyJob(prov.log, prov.Repositories.ShopAISettings, prov.Services.AIReply, 10)
+		if err := prov.scheduler.Register(ctx, prov.cfg.Scheduler.AIReplySpec, "ai_reply", aiReplyJob.Run); err != nil {
+			return err
+		}
+	}
+
 	// регистрируем задачу
 	return prov.scheduler.Register(ctx, prov.cfg.Scheduler.Spec, "sync_active_shops", job.Run)
 }
