@@ -107,7 +107,7 @@ func FormatShopDigestMessagesRU(
 					szs = uniqueSorted(szs)
 
 					if len(szs) > 0 {
-						lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, strings.Join(szs, ", ")))
+						lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, formatSizeNamesLine(szs)))
 					} else {
 						// fallback
 						lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, sizeItems[0].Message))
@@ -135,9 +135,9 @@ func FormatShopDigestMessagesRU(
 						msg := msgKeys[0]
 						szs := uniqueSorted(byMsg[msg])
 						if len(szs) > 0 && msg != "" {
-							lines = append(lines, fmt.Sprintf("• %s — %s — %s", prodLine, strings.Join(szs, ", "), msg))
+							lines = append(lines, fmt.Sprintf("• %s — %s — %s", prodLine, formatSizeNamesLine(szs), msg))
 						} else if len(szs) > 0 {
-							lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, strings.Join(szs, ", ")))
+							lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, formatSizeNamesLine(szs)))
 						} else {
 							lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, msg))
 						}
@@ -146,9 +146,9 @@ func FormatShopDigestMessagesRU(
 						for _, msg := range msgKeys {
 							szs := uniqueSorted(byMsg[msg])
 							if len(szs) > 0 && msg != "" {
-								lines = append(lines, fmt.Sprintf("  – %s — %s", strings.Join(szs, ", "), msg))
+								lines = append(lines, fmt.Sprintf("  – %s — %s", formatSizeNamesLine(szs), msg))
 							} else if len(szs) > 0 {
-								lines = append(lines, fmt.Sprintf("  – %s", strings.Join(szs, ", ")))
+								lines = append(lines, fmt.Sprintf("  – %s", formatSizeNamesLine(szs)))
 							} else {
 								lines = append(lines, fmt.Sprintf("  – %s", msg))
 							}
@@ -183,6 +183,14 @@ func FormatShopDigestMessagesRU(
 		})
 	}
 	return msgs
+}
+
+// formatSizeNamesLine форматирует список названий размеров для отчёта: "размер M, размер L".
+func formatSizeNamesLine(szs []string) string {
+	if len(szs) == 0 {
+		return ""
+	}
+	return "размер " + strings.Join(szs, ", размер ")
 }
 
 func sectionTitleRU(alertType string) string {
@@ -229,11 +237,6 @@ func displaySizeName(
 		return ""
 	}
 
-	cnt := 0
-	if sizesCountByProduct != nil {
-		cnt = sizesCountByProduct[tr.ProductID]
-	}
-
 	name := ""
 	if sz.TechSizeName != nil && strings.TrimSpace(*sz.TechSizeName) != "" {
 		name = strings.TrimSpace(*sz.TechSizeName)
@@ -241,10 +244,8 @@ func displaySizeName(
 		name = strings.TrimSpace(sz.ExternalID)
 	}
 
-	if cnt == 1 && isPhantomSizeName(name) {
-		return ""
-	}
-	if strings.TrimSpace(name) == "" {
+	// Не показывать «0» как размер — выглядит как остаток и путает; пустое имя тоже скрываем.
+	if isPhantomSizeName(name) || strings.TrimSpace(name) == "" {
 		return ""
 	}
 	return name

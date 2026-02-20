@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"salehelp/domain"
@@ -55,11 +56,22 @@ func (e *AlertEngine) runShopWBFeedbacks(ctx context.Context, shopID int) error 
 }
 
 // formatWBFeedbackMessageRU форматирует сообщение о новом отзыве для Telegram.
+// Текст отзыва может быть пустым — покупатель мог указать только достоинства или только недостатки.
+// Выводим только те поля, которые заполнены: общий текст, достоинства, недостатки.
 func formatWBFeedbackMessageRU(f *domain.WBFeedback) string {
 	productName := f.ProductName
 	if productName == "" {
 		productName = fmt.Sprintf("nmId %d", f.NmID)
 	}
-	return fmt.Sprintf("⭐ Новый отзыв о товаре\n\nТовар: %s\nОтзыв: \"%s\"",
-		productName, f.Text)
+	lines := []string{"⭐ Новый отзыв о товаре", "", "Товар: " + productName}
+	if f.Text != "" {
+		lines = append(lines, "Отзыв: \""+f.Text+"\"")
+	}
+	if strings.TrimSpace(f.Pros) != "" {
+		lines = append(lines, "Достоинства: "+strings.TrimSpace(f.Pros))
+	}
+	if strings.TrimSpace(f.Cons) != "" {
+		lines = append(lines, "Недостатки: "+strings.TrimSpace(f.Cons))
+	}
+	return strings.Join(lines, "\n")
 }
