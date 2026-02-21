@@ -31,6 +31,7 @@ type AlertEngine struct {
 	wbQuestionsRepo          WBQuestionRepo
 	endpointsRepo            EndpointsRepo
 	tg                       TelegramSender
+	abcSnapshotRepo          ABCSnapshotRepo
 	log                      *slog.Logger
 }
 
@@ -132,6 +133,7 @@ func NewAlertEngine(
 	wbQuestionsRepo WBQuestionRepo,
 	endpointsRepo EndpointsRepo,
 	tg TelegramSender,
+	abcSnapshotRepo ABCSnapshotRepo,
 	log *slog.Logger,
 ) *AlertEngine {
 	return &AlertEngine{
@@ -152,6 +154,12 @@ func NewAlertEngine(
 		wbQuestionsRepo:          wbQuestionsRepo,
 		endpointsRepo:            endpointsRepo,
 		tg:                       tg,
+		abcSnapshotRepo:          abcSnapshotRepo,
 		log:                      log,
 	}
+}
+
+// ABCSnapshotRepo опционально: для приоритизации A-товаров в алертах по остаткам.
+type ABCSnapshotRepo interface {
+	GetLatestByShopAndPeriod(ctx context.Context, shopID, periodDays int) (*domain.ABCSnapshot, error)
 }

@@ -3,6 +3,7 @@ package di
 import (
 	aireplyrepo "salehelp/internal/storage/pggorm/repository/ai_feedback_reply"
 	"salehelp/internal/storage/pggorm/repository/airecommendation"
+	"salehelp/internal/storage/pggorm/repository/abcsnapshot"
 	"salehelp/internal/storage/pggorm/repository/alert"
 	"salehelp/internal/storage/pggorm/repository/alerttriggered"
 	"salehelp/internal/storage/pggorm/repository/alerttriggereddeliveries"
@@ -22,6 +23,7 @@ import (
 	"salehelp/internal/storage/pggorm/repository/saleevent"
 	"salehelp/internal/storage/pggorm/repository/sellerwarehouse"
 	"salehelp/internal/storage/pggorm/repository/shop"
+	"salehelp/internal/storage/pggorm/repository/shopabcsettings"
 	shopaisettings "salehelp/internal/storage/pggorm/repository/shop_ai_settings"
 	shopairedger "salehelp/internal/storage/pggorm/repository/shop_ai_reply_ledger"
 	shopaireplyquota "salehelp/internal/storage/pggorm/repository/shop_ai_reply_quota"
@@ -41,6 +43,7 @@ import (
 )
 
 type Repositories struct {
+	ABCSnapshot                   *abcsnapshot.Repository
 	AIRecommendation              *airecommendation.Repository
 	Alert                         *alert.Repository
 	AlertTriggered                *alerttriggered.Repository
@@ -64,6 +67,7 @@ type Repositories struct {
 	Product                       *product.Repository
 	SellerWarehouse               *sellerwarehouse.Repository
 	Shop                          *shop.Repository
+	ShopABCSettings               *shopabcsettings.Repository
 	ShopAISettings                *shopaisettings.Repository
 	ShopAIReplyLedger             *shopairedger.Repository
 	ShopAIReplyQuota              *shopaireplyquota.Repository
@@ -85,7 +89,8 @@ func (prov *Provider) InitRepositories() {
 	subscrRepo := subscription.NewRepository(prov.log, prov.Database.GormDB)
 	subscrAddonRepo := subscriptionaddon.NewRepository(prov.log, prov.Database.GormDB)
 
-	repository := &Repositories{
+		repository := &Repositories{
+		ABCSnapshot:                   abcsnapshot.NewRepository(prov.log, prov.Database.GormDB),
 		AIRecommendation:              airecommendation.NewRepository(prov.log, prov.Database.GormDB),
 		Alert:                         alert.NewRepository(prov.log, prov.Database.GormDB),
 		AlertTriggered:                alerttriggered.NewRepository(prov.log, prov.Database.GormDB),
@@ -109,6 +114,7 @@ func (prov *Provider) InitRepositories() {
 		Product:                       product.NewRepository(prov.log, prov.Database.GormDB),
 		SellerWarehouse:               sellerwarehouse.NewRepository(prov.log, prov.Database.GormDB),
 		Shop:                          shop.NewRepository(prov.log, prov.Database.GormDB),
+		ShopABCSettings:               shopabcsettings.NewRepository(prov.log, prov.Database.GormDB),
 		ShopAISettings:                shopaisettings.NewRepository(prov.log, prov.Database.GormDB),
 		ShopAIReplyLedger:             shopairedger.NewRepository(prov.log, prov.Database.GormDB),
 		ShopAIReplyQuota:              shopaireplyquota.NewRepository(prov.log, prov.Database.GormDB),

@@ -11,17 +11,18 @@ import (
 func WBFeedbackToDomain(f dto.WBFeedback, shopID int) domain.WBFeedback {
 	createdAt := parseWBDateTime(f.CreatedDate)
 	return domain.WBFeedback{
-		ShopID:           shopID,
-		WBFeedbackID:     f.ID,
-		NmID:             f.ProductDetails.NmID,
-		ProductName:      f.ProductDetails.ProductName,
-		Text:             f.Text,
-		Pros:             f.Pros,
-		Cons:             f.Cons,
+		ShopID:       shopID,
+		WBFeedbackID: f.ID,
+		NmID:         f.ProductDetails.NmID,
+		ProductName:  f.ProductDetails.ProductName,
+		Text:         f.Text,
+		Pros:         f.Pros,
+		Cons:         f.Cons,
 		ProductValuation: f.ProductValuation,
-		UserName:         f.UserName,
-		CreatedAt:        createdAt,
-		NotifiedAt:       nil,
+		UserName:     f.UserName,
+		CreatedAt:    createdAt,
+		NotifiedAt:   nil,
+		OrderStatus:  f.OrderStatus, // "buyout" | "returned" — для AI-ответа важно не предлагать возврат, если уже возвращён
 	}
 }
 

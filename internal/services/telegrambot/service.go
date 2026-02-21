@@ -75,6 +75,16 @@ type (
 		SumRevenueGraceByCurrency(ctx context.Context, now time.Time) ([]model.MoneyByCurrency, error)
 	}
 
+	// ABCReportService — для команды /abc_now (отчёт по магазину за 30 дней).
+	ABCReportService interface {
+		SaveSnapshot(ctx context.Context, shopID, periodDays int) (*domain.ABCSnapshot, error)
+		GetTwoLatestSnapshots(ctx context.Context, shopID, periodDays int) ([]*domain.ABCSnapshot, error)
+	}
+
+	ProductsRepoForABC interface {
+		ListByShop(ctx context.Context, shopID int, limit, offset int) ([]*domain.Product, error)
+	}
+
 	Service struct {
 		log              *slog.Logger
 		tg               TelegramAPI
@@ -86,6 +96,8 @@ type (
 		monitoring       MonitoringService
 		subEntitlements  SubscriptionEntitlementsService
 		subscriptionRepo SubscriptionRepo
+		abcSvc           ABCReportService
+		productsRepo     ProductsRepoForABC
 		botUsername      string
 		adminChatID      int64
 	}
@@ -103,6 +115,8 @@ func NewService(
 	botUsername string,
 	subEntitlements SubscriptionEntitlementsService,
 	subscriptionRepo SubscriptionRepo,
+	abcSvc ABCReportService,
+	productsRepo ProductsRepoForABC,
 	adminChatID int64,
 ) *Service {
 	return &Service{
@@ -117,6 +131,8 @@ func NewService(
 		botUsername:      botUsername,
 		subEntitlements:  subEntitlements,
 		subscriptionRepo: subscriptionRepo,
+		abcSvc:           abcSvc,
+		productsRepo:     productsRepo,
 		adminChatID:      adminChatID,
 	}
 }

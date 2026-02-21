@@ -3,6 +3,7 @@ package di
 import (
 	"log/slog"
 	"os"
+	"salehelp/internal/services/abc_analysis"
 	"salehelp/internal/services/ai_reply"
 	"salehelp/internal/services/alert"
 	"salehelp/internal/services/monitoring"
@@ -20,6 +21,7 @@ import (
 )
 
 type Services struct {
+	ABCAnalysis         *abc_analysis.Service
 	//User *user.Service
 	//Limit         *limit.Service
 	AlertService        *alert.AlertService
@@ -63,6 +65,7 @@ func (prov *Provider) initDependentServices() {
 	}
 
 	tgAdapter := telegrambot.NewTelegramAdapter(tgSender)
+	prov.telegramAdapter = tgAdapter
 	registry := notifications.NewSenderRegistry(senders)
 
 	// Пояс по умолчанию для отчётов WB (sales, orders); при отсутствии у магазина wb_report_timezone.
@@ -141,6 +144,7 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.WBQuestion,
 		prov.Repositories.NotificationEndpoint,
 		tgAdapter,
+		prov.Repositories.ABCSnapshot,
 		prov.log,
 	)
 
@@ -149,6 +153,13 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.Shop,
 		prov.Services.AlertEngine,
 		1*time.Minute,
+	)
+
+	prov.Services.ABCAnalysis = abc_analysis.New(
+		prov.Repositories.SaleEvent,
+		prov.Repositories.Product,
+		prov.Repositories.ABCSnapshot,
+		prov.log,
 	)
 
 	prov.Services.TelegramBot = telegrambot.NewService(
@@ -163,6 +174,8 @@ func (prov *Provider) initDependentServices() {
 		prov.cfg.TelegramBotUsername,
 		prov.Services.Subscription,
 		prov.Repositories.Subscription,
+		prov.Services.ABCAnalysis,
+		prov.Repositories.Product,
 		prov.cfg.TelegramAdminID,
 	)
 

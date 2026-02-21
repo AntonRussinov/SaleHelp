@@ -2,14 +2,16 @@ package ai
 
 // FeedbackReplyInput — входные данные для генерации ответа на отзыв.
 type FeedbackReplyInput struct {
-	BrandName    string
+	BrandName       string
 	ToneInstruction string
-	ProductName  string
-	Rating       int
-	Text         string
-	Pros         string
-	Cons         string
-	CustomRules  string
+	ProductName     string
+	Rating          int
+	Text            string
+	Pros            string
+	Cons            string
+	CustomRules     string
+	// OrderStatus — статус заказа из WB: "buyout" (выкуп), "returned" (товар возвращён). Если "returned" — не предлагать оформлять возврат.
+	OrderStatus     string
 }
 
 // FeedbackReplyResult — результат генерации ответа (текст + метаданные).

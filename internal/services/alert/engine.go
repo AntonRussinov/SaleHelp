@@ -65,14 +65,25 @@ func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
 			return err
 		}
 
+		aProductIDs := make(map[int]bool)
+		if e.abcSnapshotRepo != nil {
+			if snap, err := e.abcSnapshotRepo.GetLatestByShopAndPeriod(ctx, shopID, 30); err == nil && snap != nil {
+				for _, row := range snap.Rows {
+					if row.ProductID != nil && row.Category == domain.ABCCategoryA {
+						aProductIDs[*row.ProductID] = true
+					}
+				}
+			}
+		}
+
 		// --- stock_low: global + overrides ---
 		globalLow, lowOverrides := buildEffectiveAlertsByProduct(alerts, domain.AlertTypeStockLow)
 		if globalLow != nil || len(lowOverrides) > 0 {
-			if err := e.evalStockLowEffective(ctx, products, sizesByProduct, snapshotsByProduct, globalLow, lowOverrides); err != nil {
+			if err := e.evalStockLowEffective(ctx, products, sizesByProduct, snapshotsByProduct, globalLow, lowOverrides, aProductIDs); err != nil {
 				return err
 			}
 
-			if err := e.evalStockLowSizesEffective(ctx, products, sizesByProduct, sizeSnapsBySize, globalLow, lowOverrides); err != nil {
+			if err := e.evalStockLowSizesEffective(ctx, products, sizesByProduct, sizeSnapsBySize, globalLow, lowOverrides, aProductIDs); err != nil {
 				return err
 			}
 		}

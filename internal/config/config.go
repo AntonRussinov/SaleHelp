@@ -29,7 +29,15 @@ type (
 		WBReportTimezone string `mapstructure:"wb_report_timezone"`
 		// AI — настройки AI-ответов на отзывы (OpenAI).
 		AI AIConfig `mapstructure:"ai"`
+		// ABCAnalysis — расписание и параметры ABC-анализа товаров.
+		ABCAnalysis ABCAnalysisConfig `mapstructure:"abc_analysis"`
 		//	GCS            gcs.Config
+	}
+	ABCAnalysisConfig struct {
+		WeeklySchedule    string `mapstructure:"weekly_schedule"`    // cron, напр. "0 23 * * 0" (воскресенье 23:00)
+		MonthlySchedule   string `mapstructure:"monthly_schedule"`   // cron, напр. "0 1 1 * *" (1-го числа в 01:00)
+		MinSalesThreshold int    `mapstructure:"min_sales_threshold"` // минимум продаж за период для отправки отчёта (по умолчанию 10)
+		DefaultPeriodDays int    `mapstructure:"default_period_days"` // период по умолчанию для расчёта (30)
 	}
 	AIConfig struct {
 		// APIKey — ключ OpenAI API. Можно задать в конфиге или через env OPENAI_API_KEY (env имеет приоритет при пустом значении в конфиге).

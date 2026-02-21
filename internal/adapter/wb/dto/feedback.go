@@ -25,17 +25,19 @@ type GetFeedbacksData struct {
 }
 
 type WBFeedback struct {
-	ID                 string              `json:"id"`
-	Text               string              `json:"text"`
-	Pros               string              `json:"pros"`
-	Cons               string              `json:"cons"`
-	ProductValuation   int                 `json:"productValuation"`
-	CreatedDate        string              `json:"createdDate"`
-	Answer             *WBFeedbackAnswer   `json:"answer"`
-	State              string              `json:"state"`
-	ProductDetails     WBProductDetails   `json:"productDetails"`
-	WasViewed          bool                `json:"wasViewed"`
-	UserName string `json:"userName"`
+	ID                   string              `json:"id"`
+	Text                 string              `json:"text"`
+	Pros                 string              `json:"pros"`
+	Cons                 string              `json:"cons"`
+	ProductValuation     int                 `json:"productValuation"`
+	CreatedDate          string              `json:"createdDate"`
+	Answer               *WBFeedbackAnswer   `json:"answer"`
+	State                string              `json:"state"`
+	ProductDetails       WBProductDetails    `json:"productDetails"`
+	WasViewed            bool                `json:"wasViewed"`
+	UserName             string              `json:"userName"`
+	OrderStatus          string              `json:"orderStatus"`          // "buyout" — выкуп, "returned" — товар возвращён
+	ReturnProductOrdersDate string           `json:"returnProductOrdersDate"` // дата возврата заказов по товару (если есть)
 }
 
 type WBFeedbackAnswer struct {

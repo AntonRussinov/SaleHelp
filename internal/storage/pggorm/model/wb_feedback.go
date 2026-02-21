@@ -20,6 +20,7 @@ type WBFeedback struct {
 	NotifiedAt       *time.Time `gorm:"column:notified_at"`
 	IsReplied        bool       `gorm:"column:is_replied;not null;default:false"`
 	RepliedAt        *time.Time `gorm:"column:replied_at"`
+	OrderStatus      string     `gorm:"column:order_status;type:text;not null;default:''"`
 	Extra            []byte     `gorm:"column:extra;type:jsonb"`
 }
 
@@ -42,6 +43,7 @@ func (m *WBFeedback) ToDomain() *domain.WBFeedback {
 		NotifiedAt:       m.NotifiedAt,
 		IsReplied:        m.IsReplied,
 		RepliedAt:        m.RepliedAt,
+		OrderStatus:      m.OrderStatus,
 		Extra:            m.Extra,
 	}
 }

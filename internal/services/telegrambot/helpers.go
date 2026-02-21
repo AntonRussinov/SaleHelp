@@ -38,6 +38,7 @@ func mainMenuKeyboard() map[string]any {
 			},
 			{
 				{"text": "/invite"},
+				{"text": "/abc_now"},
 			},
 			{
 				{"text": "/cancel"},

@@ -41,6 +41,7 @@ func toModel(d *domain.WBFeedback) *model.WBFeedback {
 		NotifiedAt:       d.NotifiedAt,
 		IsReplied:        d.IsReplied,
 		RepliedAt:        d.RepliedAt,
+		OrderStatus:      d.OrderStatus,
 		Extra:            d.Extra,
 	}
 }

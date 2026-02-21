@@ -70,6 +70,58 @@ func (prov *Provider) initScheduler(ctx context.Context) error {
 		}
 	}
 
+	// ABC-анализ: еженедельный дайджест (воскресенье 23:00)
+	abcWeeklySpec := prov.cfg.ABCAnalysis.WeeklySchedule
+	if abcWeeklySpec == "" {
+		abcWeeklySpec = "0 23 * * 0"
+	}
+	if prov.Services.ABCAnalysis != nil && abcWeeklySpec != "" {
+		minSales := prov.cfg.ABCAnalysis.MinSalesThreshold
+		if minSales <= 0 {
+			minSales = 10
+		}
+		abcWeeklyJob := jobs.NewABCAnalysisJob(
+			prov.log,
+			jobs.ABCJobConfig{PeriodDays: 7, MinSalesThreshold: minSales, IsWeekly: true},
+			prov.Repositories.Shop,
+			prov.Services.ABCAnalysis,
+			prov.Repositories.ShopABCSettings,
+			prov.Services.Subscription,
+			prov.Repositories.NotificationEndpoint,
+			prov.TelegramAdapter(),
+			prov.Repositories.Product,
+		)
+		if err := prov.scheduler.Register(ctx, abcWeeklySpec, "abc_weekly", abcWeeklyJob.Run); err != nil {
+			return err
+		}
+	}
+
+	// ABC-анализ: месячный отчёт (1-го числа в 01:00)
+	abcMonthlySpec := prov.cfg.ABCAnalysis.MonthlySchedule
+	if abcMonthlySpec == "" {
+		abcMonthlySpec = "0 1 1 * *"
+	}
+	if prov.Services.ABCAnalysis != nil && abcMonthlySpec != "" {
+		minSales := prov.cfg.ABCAnalysis.MinSalesThreshold
+		if minSales <= 0 {
+			minSales = 10
+		}
+		abcMonthlyJob := jobs.NewABCAnalysisJob(
+			prov.log,
+			jobs.ABCJobConfig{PeriodDays: 30, MinSalesThreshold: minSales, IsWeekly: false},
+			prov.Repositories.Shop,
+			prov.Services.ABCAnalysis,
+			prov.Repositories.ShopABCSettings,
+			prov.Services.Subscription,
+			prov.Repositories.NotificationEndpoint,
+			prov.TelegramAdapter(),
+			prov.Repositories.Product,
+		)
+		if err := prov.scheduler.Register(ctx, abcMonthlySpec, "abc_monthly", abcMonthlyJob.Run); err != nil {
+			return err
+		}
+	}
+
 	// регистрируем задачу
 	return prov.scheduler.Register(ctx, prov.cfg.Scheduler.Spec, "sync_active_shops", job.Run)
 }

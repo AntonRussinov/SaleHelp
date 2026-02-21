@@ -26,12 +26,18 @@ type Provider struct {
 	Handlers     Handlers
 	Router       *echo.Echo
 	Validator    *extendedvalidator.Validator
-	scheduler    *scheduler.Scheduler
-	schedulerLoc *time.Location
+	scheduler       *scheduler.Scheduler
+	schedulerLoc    *time.Location
+	telegramAdapter interface{ SendMessage(context.Context, int64, string) error }
 	// AccessManager  *access.Manager
 	// KaspiAPI       kaspiAPI.API
 	// KaspiPortalAPI portalAPI.PortalAPI
 	WBClient *wbclient.Client
+}
+
+// TelegramAdapter возвращает адаптер для отправки сообщений в Telegram (для cron-задач).
+func (prov *Provider) TelegramAdapter() interface{ SendMessage(context.Context, int64, string) error } {
+	return prov.telegramAdapter
 }
 
 func NewProvider(log *slog.Logger, cfg *config.ServiceConfig) *Provider {

@@ -142,6 +142,7 @@ func (s *Service) ProcessOne(ctx context.Context, f *domain.WBFeedback) error {
 		Pros:            sanitize.Text(f.Pros),
 		Cons:            sanitize.Text(f.Cons),
 		CustomRules:     settings.CustomRules,
+		OrderStatus:     f.OrderStatus, // "returned" — товар уже возвращён, не предлагать возврат в ответе
 	}
 	promptStr, err := prompt.FormatFeedbackReply(in)
 	if err != nil {

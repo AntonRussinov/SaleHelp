@@ -13,6 +13,12 @@ const (
 
 // WBFeedback — отзыв покупателя из WB API (Вопросы и отзывы).
 // Используется для уведомлений о новых отзывах в Telegram и для AI-ответов.
+// OrderStatusBuyout — покупатель выкупил товар.
+const OrderStatusBuyout = "buyout"
+
+// OrderStatusReturned — товар возвращён (отказ от товара).
+const OrderStatusReturned = "returned"
+
 type WBFeedback struct {
 	ID               int
 	ShopID           int
@@ -28,6 +34,7 @@ type WBFeedback struct {
 	NotifiedAt       *time.Time
 	IsReplied        bool       // true, если сгенерирован и сохранён AI-ответ
 	RepliedAt        *time.Time // время проставления ответа
+	OrderStatus      string     // "buyout" — выкуп, "returned" — товар возвращён (из WB API)
 	Extra            []byte     // JSON при необходимости
 }
 

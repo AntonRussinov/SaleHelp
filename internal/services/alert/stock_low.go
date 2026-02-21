@@ -3,6 +3,8 @@ package alert
 import (
 	"context"
 	"fmt"
+	"strconv"
+
 	"salehelp/domain"
 )
 
@@ -13,6 +15,7 @@ func (e *AlertEngine) evalStockLowEffective(
 	snapshotsByProduct map[int][]*domain.ProductSnapshot,
 	global *domain.Alert,
 	overrides map[int]*domain.Alert,
+	aProductIDs map[int]bool,
 ) error {
 
 	// парсим конфиг глобального один раз
@@ -89,12 +92,25 @@ func (e *AlertEngine) evalStockLowEffective(
 			cfg = globalCfg
 		}
 
+		effectiveThreshold := cfg.Threshold
+		if aProductIDs[p.ID] {
+			// A-товары: порог выше (раньше предупреждать)
+			if effectiveThreshold < 10 {
+				effectiveThreshold = 10
+			}
+			effectiveThreshold += 10
+		}
 		// edge: пересекли порог сверху вниз
-		if !(prevStock > cfg.Threshold && latestStock <= cfg.Threshold) {
+		if !(prevStock > effectiveThreshold && latestStock <= effectiveThreshold) {
 			continue
 		}
 
-		msg := fmt.Sprintf("Stock is low: %d (threshold %d)", latestStock, cfg.Threshold)
+		var msg string
+		if aProductIDs[p.ID] {
+			msg = "⚠️ A-товар заканчивается! " + p.Title + " — осталось " + strconv.Itoa(latestStock) + " шт"
+		} else {
+			msg = fmt.Sprintf("Stock is low: %d (threshold %d)", latestStock, effectiveThreshold)
+		}
 
 		tr := domain.AlertTriggered{
 			AlertID:    a.ID,
@@ -130,6 +146,7 @@ func (e *AlertEngine) evalStockLowSizesEffective(
 	sizeSnapsBySize map[int][]*domain.ProductSizeSnapshot,
 	global *domain.Alert,
 	overrides map[int]*domain.Alert,
+	aProductIDs map[int]bool,
 ) error {
 
 	var globalCfg stockLowCfg
@@ -211,11 +228,23 @@ func (e *AlertEngine) evalStockLowSizesEffective(
 				continue
 			}
 
-			if !(prevStock > cfg.Threshold && latestStock <= cfg.Threshold) {
+			effectiveThreshold := cfg.Threshold
+			if aProductIDs[p.ID] {
+				if effectiveThreshold < 10 {
+					effectiveThreshold = 10
+				}
+				effectiveThreshold += 10
+			}
+			if !(prevStock > effectiveThreshold && latestStock <= effectiveThreshold) {
 				continue
 			}
 
-			msg := fmt.Sprintf("Низкий остаток: %d шт (порог %d)", latestStock, cfg.Threshold)
+			var msg string
+			if aProductIDs[p.ID] {
+				msg = "⚠️ A-товар заканчивается! " + p.Title + " — осталось " + strconv.Itoa(latestStock) + " шт"
+			} else {
+				msg = fmt.Sprintf("Низкий остаток: %d шт (порог %d)", latestStock, effectiveThreshold)
+			}
 
 			tr := domain.AlertTriggered{
 				AlertID:       a.ID,
