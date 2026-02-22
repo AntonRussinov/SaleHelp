@@ -12,10 +12,12 @@ import (
 )
 
 type (
-	// TelegramAPI — низкоуровневый клиент Telegram (sendMessage).
+	// TelegramAPI — низкоуровневый клиент Telegram (sendMessage, inline-кнопки, callback).
 	TelegramAPI interface {
 		SendMessage(ctx context.Context, chatID int64, text string) error
 		SendMessageWithKeyboard(ctx context.Context, chatID int64, text string, keyboard map[string]any) error
+		SendMessageWithInlineKeyboard(ctx context.Context, chatID int64, text string, inlineKeyboard map[string]any) error
+		AnswerCallbackQuery(ctx context.Context, callbackQueryID string) error
 	}
 
 	// TelegramChatStatesRepo — твой репозиторий состояний мастера.

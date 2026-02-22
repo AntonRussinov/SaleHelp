@@ -176,7 +176,7 @@ func (s *Service) stepShopName(ctx context.Context, chatID int64, st *domain.Tel
 	_ = s.tg.SendMessageWithKeyboard(ctx, chatID,
 		"Готово ✅ Магазин подключен.\n\n"+
 			"В ближайший час придёт первый sync/алерты (если они сработают).",
-		mainMenuKeyboard(),
+		removeKeyboard(),
 	)
 }
 

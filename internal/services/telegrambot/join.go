@@ -66,6 +66,6 @@ func (s *Service) handleJoin(
 	_ = s.tg.SendMessageWithKeyboard(ctx, chatID,
 		"Готово ✅\n\n"+
 			"Ты подключён к магазину и будешь получать уведомления.",
-		mainMenuKeyboard(),
+		removeKeyboard(),
 	)
 }

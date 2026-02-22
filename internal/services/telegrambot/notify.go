@@ -45,6 +45,6 @@ func (s *Service) handleNotifyToggle(
 
 	_ = s.tg.SendMessageWithKeyboard(ctx, chatID,
 		fmt.Sprintf("Уведомления %s для магазина %d.", status, shopID),
-		mainMenuKeyboard(),
+		removeKeyboard(),
 	)
 }

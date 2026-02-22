@@ -19,8 +19,8 @@ func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) 
 		_ = s.tg.SendMessageWithKeyboard(
 			ctx,
 			chatID,
-			"Привет! 👋\n\nВыбери действие:",
-			mainMenuKeyboard(),
+			"Привет! 👋\n\nКоманды — в меню (☰ рядом с полем ввода).",
+			removeKeyboard(),
 		)
 		return
 
@@ -30,7 +30,7 @@ func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) 
 			ctx,
 			chatID,
 			"Ок, отменил. Можешь начать заново.",
-			mainMenuKeyboard(),
+			removeKeyboard(),
 		)
 		return
 

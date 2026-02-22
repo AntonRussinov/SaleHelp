@@ -22,6 +22,53 @@ func NewSender(token string) (*Sender, error) {
 	}, nil
 }
 
+// DefaultRussianCommands возвращает команды для Bot Command Menu (☰) на русском.
+func DefaultRussianCommands() []BotCommand {
+	return []BotCommand{
+		{Command: "start", Description: "Старт"},
+		{Command: "addshop", Description: "Добавить магазин"},
+		{Command: "myshops", Description: "Мои магазины"},
+		{Command: "invite", Description: "Пригласить в магазин"},
+		{Command: "abc_now", Description: "ABC-анализ"},
+		{Command: "cancel", Description: "Отмена"},
+	}
+}
+
+// SetMyCommands задаёт список команд в меню бота (иконка ☰ рядом с полем ввода).
+func (s *Sender) SetMyCommands(ctx context.Context, commands []BotCommand) error {
+	return s.client.SetMyCommands(ctx, commands)
+}
+
+// SendWithInlineKeyboard отправляет сообщение с inline-кнопками (callback_data при нажатии).
+// inlineKeyboard — reply_markup, например: map[string]any{"inline_keyboard": [][]map[string]string{...}}
+func (s *Sender) SendWithInlineKeyboard(
+	ctx context.Context,
+	chatID int64,
+	text string,
+	inlineKeyboard map[string]any,
+) error {
+	if chatID == 0 {
+		return fmt.Errorf("telegram chat_id is 0")
+	}
+	if text == "" {
+		return fmt.Errorf("telegram text is empty")
+	}
+	text = escapeHTML(text)
+	payload := map[string]any{
+		"chat_id":                  chatID,
+		"text":                     text,
+		"parse_mode":               "HTML",
+		"disable_web_page_preview":  true,
+		"reply_markup":             inlineKeyboard,
+	}
+	return s.client.SendRaw(ctx, payload)
+}
+
+// AnswerCallbackQuery снимает индикатор загрузки с inline-кнопки.
+func (s *Sender) AnswerCallbackQuery(ctx context.Context, callbackQueryID string) error {
+	return s.client.AnswerCallbackQuery(ctx, callbackQueryID)
+}
+
 func (s *Sender) Channel() notify.Channel {
 	return notify.ChannelTelegram
 }

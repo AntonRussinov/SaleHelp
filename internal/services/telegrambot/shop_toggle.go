@@ -58,6 +58,6 @@ func (s *Service) handleShopToggle(
 
 	_ = s.tg.SendMessageWithKeyboard(ctx, chatID,
 		fmt.Sprintf("Магазин \"%s\" теперь %s.", shop.Name, status),
-		mainMenuKeyboard(),
+		removeKeyboard(),
 	)
 }

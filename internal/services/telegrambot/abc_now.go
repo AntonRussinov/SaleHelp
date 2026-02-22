@@ -36,15 +36,14 @@ func (s *Service) handleABCNow(ctx context.Context, chatID int64, args []string)
 		return
 	}
 
-	// /abc_now без id — подсказка
+	// /abc_now без id — показываем выбор магазина inline-кнопками (поддержка нескольких магазинов)
 	if len(args) < 2 || args[1] == "" {
-		var b strings.Builder
-		b.WriteString("📊 ABC-анализ за последние 30 дней\n\n")
-		b.WriteString("Напиши /abc_now <id>, где id — номер магазина:\n\n")
-		for _, sh := range shopsByID {
-			b.WriteString(fmt.Sprintf("• %s — /abc_now %d\n", sh.Name, sh.ID))
-		}
-		_ = s.tg.SendMessage(ctx, chatID, b.String())
+		_ = s.tg.SendMessageWithInlineKeyboard(
+			ctx,
+			chatID,
+			"📊 ABC-анализ за последние 30 дней\n\nВыбери магазин:",
+			inlineKeyboardABCShops(shopsByID),
+		)
 		return
 	}
 

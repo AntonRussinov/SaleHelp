@@ -1,6 +1,7 @@
 package di
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"salehelp/internal/services/abc_analysis"
@@ -59,6 +60,9 @@ func (prov *Provider) initDependentServices() {
 	tgSender, err := telegram.NewSender(prov.cfg.TelegramToken)
 	if err != nil {
 		panic(err) // или вернуть ошибку из InitServices
+	}
+	if err := tgSender.SetMyCommands(context.Background(), telegram.DefaultRussianCommands()); err != nil {
+		prov.log.Warn("telegram setMyCommands failed", "err", err)
 	}
 	senders := []notify.Sender{
 		tgSender,
