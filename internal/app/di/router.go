@@ -7,7 +7,6 @@ import (
 	"salehelp/internal/handler/alert"
 	"salehelp/internal/handler/product"
 	auth_google_handler "salehelp/internal/handler/auth_google"
-	"salehelp/internal/handler/shop"
 	shopaisettings "salehelp/internal/handler/shop_ai_settings"
 	"salehelp/internal/handler/subscription"
 	"salehelp/internal/handler/telegram"
@@ -155,24 +154,23 @@ func (prov *Provider) registerV1Routes(group *echo.Group) {
 	//protected := group.Group("", handlers.Auth.HeaderMiddleware())
 
 	registerTagRoutes(group, handlers.Product)
-	registerUserShopRoutes(group, handlers.Shop)
-	registerSubscriptionRoutes(group, handlers.Subscription)
 	registerAuthGoogleRoutes(group, prov)
 	registerTelegramRoutes(group, handlers.TelegramBot)
-	registerAlertRoutes(group, handlers.Alert)
-	registerShopAISettingsRoutes(group, handlers.ShopAISettings)
 }
 
-func registerUserShopRoutes(e *echo.Group, shopHandler *shop.Handler) {
-	e.POST("/shop/:id/sync", shopHandler.SyncShopByID)
-}
-
-func registerSubscriptionRoutes(e *echo.Group, subHandler *subscription.Handler) {
+func registerSubscriptionStatusRoute(e *echo.Group, subHandler *subscription.Handler) {
 	if subHandler == nil {
 		return
 	}
 	shopSub := e.Group("/shop/:id")
 	shopSub.GET("/subscription/status", subHandler.GetSubscriptionStatusByShopID)
+}
+
+func registerSubscriptionGrantRoute(e *echo.Group, subHandler *subscription.Handler) {
+	if subHandler == nil {
+		return
+	}
+	shopSub := e.Group("/shop/:id")
 	shopSub.POST("/subscription/grant", subHandler.GrantSubscriptionByShopID)
 }
 
@@ -188,6 +186,12 @@ func registerAuthGoogleRoutes(e *echo.Group, prov *Provider) {
 	protected.GET("/shops", prov.Handlers.Shop.ListShops)
 	protected.POST("/shops", prov.Handlers.Shop.CreateShop)
 	protected.GET("/shops/:shopId/products", prov.Handlers.Shop.ListShopProducts)
+	protected.POST("/shop/:id/sync", prov.Handlers.Shop.SyncShopByID)
+	registerAlertRoutes(protected, prov.Handlers.Alert)
+	registerShopAISettingsRoutes(protected, prov.Handlers.ShopAISettings)
+	registerSubscriptionStatusRoute(protected, prov.Handlers.Subscription)
+	adminProtected := e.Group("", middleware.AdminAuth(prov.Services.AuthGoogle, auth_google_handler.SetJWTContext))
+	registerSubscriptionGrantRoute(adminProtected, prov.Handlers.Subscription)
 }
 
 func registerTagRoutes(e *echo.Group, tagHandler *product.Handler) {

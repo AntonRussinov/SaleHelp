@@ -9,9 +9,10 @@ import (
 
 // ListAlerts получает список алертов
 // @Summary Получить список алертов
-// @Description Получает список алертов с фильтрацией и пагинацией
+// @Description Получает список алертов с фильтрацией и пагинацией. Доступ только у владельца магазина (JWT).
 // @Tags alerts
 // @Produce json
+// @Security BearerAuth
 // @Param shopId path int true "ID магазина"
 // @Param productId query int false "ID товара для фильтрации"
 // @Param type query string false "Тип алерта" Enums(price_drop, stock_low, stock_zero)
@@ -20,12 +21,14 @@ import (
 // @Param offset query int false "Смещение (по умолчанию 0)"
 // @Success 200 {object} api.ListAlertsResponse
 // @Failure 400 {object} api.HTTPError
+// @Failure 401 {object} api.HTTPError
+// @Failure 403 {object} api.HTTPError
 // @Failure 500 {object} api.HTTPError
 // @Router /v1/shops/{shopId}/alerts [get]
 func (h *Handler) ListAlerts(c echo.Context) error {
-	shopID, err := h.getShopIDFromParam(c)
+	shopID, err := h.ensureShopAccess(c)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid shop ID")
+		return err
 	}
 
 	var req api.ListAlertsRequest

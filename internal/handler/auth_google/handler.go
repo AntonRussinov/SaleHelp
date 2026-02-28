@@ -12,6 +12,7 @@ type (
 		RegisterEmail(ctx context.Context, email, password string) (*domain.User, string, error)
 		LoginEmail(ctx context.Context, email, password string) (*domain.User, string, error)
 		ValidateJWT(tokenString string) (userID int, email string, err error)
+		ValidateJWTAndRequireAdmin(tokenString string) (userID int, email string, err error)
 	}
 
 	Handler struct {

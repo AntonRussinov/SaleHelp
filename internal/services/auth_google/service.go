@@ -43,6 +43,7 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 	UserID int    `json:"user_id"`
 	Email  string `json:"email,omitempty"`
+	Role   string `json:"role,omitempty"`
 }
 
 func NewService(log *slog.Logger, userRepo UserRepo, googleClientID, jwtSecret string, jwtExpire time.Duration) (*Service, error) {
@@ -91,7 +92,7 @@ func (s *Service) LoginByGoogle(ctx context.Context, idToken string) (*domain.Us
 		return nil, "", fmt.Errorf("get user by google_id: %w", err)
 	}
 	if u != nil {
-		tok, err := s.issueJWT(u.ID, email)
+		tok, err := s.issueJWT(u.ID, email, s.userRole(u))
 		return u, tok, err
 	}
 
@@ -105,7 +106,7 @@ func (s *Service) LoginByGoogle(ctx context.Context, idToken string) (*domain.Us
 			if err := s.userRepo.SetGoogleID(ctx, u.ID, sub); err != nil {
 				s.log.Warn("set google_id for existing user failed", "user_id", u.ID, "err", err)
 			}
-			tok, err := s.issueJWT(u.ID, email)
+			tok, err := s.issueJWT(u.ID, email, s.userRole(u))
 			return u, tok, err
 		}
 	}
@@ -120,14 +121,25 @@ func (s *Service) LoginByGoogle(ctx context.Context, idToken string) (*domain.Us
 		Email:    emailPtr,
 		GoogleID: &subPtr,
 	}
+	u.Role = "user"
 	if err := s.userRepo.Create(ctx, u); err != nil {
 		return nil, "", fmt.Errorf("create user: %w", err)
 	}
-	tok, err := s.issueJWT(u.ID, email)
+	tok, err := s.issueJWT(u.ID, email, u.Role)
 	return u, tok, err
 }
 
-func (s *Service) issueJWT(userID int, email string) (string, error) {
+func (s *Service) userRole(u *domain.User) string {
+	if u == nil || u.Role == "" {
+		return "user"
+	}
+	return u.Role
+}
+
+func (s *Service) issueJWT(userID int, email, role string) (string, error) {
+	if role == "" {
+		role = "user"
+	}
 	now := time.Now()
 	claims := JWTClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -137,6 +149,7 @@ func (s *Service) issueJWT(userID int, email string) (string, error) {
 		},
 		UserID: userID,
 		Email:  email,
+		Role:   role,
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return tok.SignedString(s.jwtSecret)
@@ -153,6 +166,24 @@ func (s *Service) ValidateJWT(tokenString string) (userID int, email string, err
 	}
 	if !tok.Valid {
 		return 0, "", fmt.Errorf("invalid jwt")
+	}
+	return claims.UserID, claims.Email, nil
+}
+
+// ValidateJWTAndRequireAdmin проверяет JWT и возвращает userID, email только если в claims роль admin. Иначе — ошибка.
+func (s *Service) ValidateJWTAndRequireAdmin(tokenString string) (userID int, email string, err error) {
+	var claims JWTClaims
+	tok, err := jwt.ParseWithClaims(tokenString, &claims, func(*jwt.Token) (interface{}, error) {
+		return s.jwtSecret, nil
+	})
+	if err != nil {
+		return 0, "", fmt.Errorf("invalid jwt: %w", err)
+	}
+	if !tok.Valid {
+		return 0, "", fmt.Errorf("invalid jwt")
+	}
+	if claims.Role != "admin" {
+		return 0, "", fmt.Errorf("admin role required")
 	}
 	return claims.UserID, claims.Email, nil
 }
@@ -186,10 +217,11 @@ func (s *Service) RegisterEmail(ctx context.Context, email, password string) (*d
 		Email:        &email,
 		PasswordHash: &hashStr,
 	}
+	u.Role = "user"
 	if err := s.userRepo.Create(ctx, u); err != nil {
 		return nil, "", fmt.Errorf("create user: %w", err)
 	}
-	tok, err := s.issueJWT(u.ID, email)
+	tok, err := s.issueJWT(u.ID, email, u.Role)
 	return u, tok, err
 }
 
@@ -216,6 +248,6 @@ func (s *Service) LoginEmail(ctx context.Context, email, password string) (*doma
 	if u.Email != nil {
 		emailVal = *u.Email
 	}
-	tok, err := s.issueJWT(u.ID, emailVal)
+	tok, err := s.issueJWT(u.ID, emailVal, s.userRole(u))
 	return u, tok, err
 }

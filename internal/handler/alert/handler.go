@@ -3,12 +3,19 @@ package alert
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"salehelp/api"
 	"salehelp/domain"
+	auth_google_handler "salehelp/internal/handler/auth_google"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
 )
+
+// ShopGetter нужен для проверки доступа: владелец магазина = user_id из JWT.
+type ShopGetter interface {
+	GetByID(ctx context.Context, id int) (*domain.Shop, error)
+}
 
 type (
 	Service interface {
@@ -20,14 +27,36 @@ type (
 	}
 
 	Handler struct {
-		service Service
+		service    Service
+		shopGetter ShopGetter
 	}
 )
 
-func NewHandler(service Service) *Handler {
+func NewHandler(service Service, shopGetter ShopGetter) *Handler {
 	return &Handler{
-		service: service,
+		service:    service,
+		shopGetter: shopGetter,
 	}
+}
+
+// ensureShopAccess проверяет JWT (userID) и что пользователь — владелец магазина shopId. Возвращает ошибку 401/403.
+func (h *Handler) ensureShopAccess(c echo.Context) (int, error) {
+	userID := auth_google_handler.UserIDFromContext(c.Request().Context())
+	if userID == 0 {
+		return 0, c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+	}
+	shopID, err := h.getShopIDFromParam(c)
+	if err != nil {
+		return 0, echo.NewHTTPError(http.StatusBadRequest, "invalid shop ID")
+	}
+	shop, err := h.shopGetter.GetByID(c.Request().Context(), shopID)
+	if err != nil {
+		return 0, echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	if shop == nil || shop.UserID != userID {
+		return 0, c.JSON(http.StatusForbidden, map[string]string{"error": "access denied"})
+	}
+	return shopID, nil
 }
 
 // Вспомогательные методы

@@ -10,17 +10,20 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// GrantSubscriptionByShopID выдать или продлить подписку по магазину.
+// GrantSubscriptionByShopID выдать или продлить подписку по магазину. Доступ только у пользователя с ролью admin (JWT).
 //
 // @Summary     Выдать/продлить подписку
-// @Description Создаёт запись подписки (period_months: 1|3|6), опционально аддоны на доп. Telegram-чаты
+// @Description Создаёт запись подписки (period_months: 1|3|6), опционально аддоны на доп. Telegram-чаты. Вызывать может только админ.
 // @Tags        subscription
 // @Accept      json
 // @Produce     json
+// @Security    BearerAuth
 // @Param       id   path int true "ID магазина"
 // @Param       body body subscription.GrantInput true "Период, валюта, суммы, доп. чаты"
 // @Success     200  {object} subscription.GrantResult
 // @Failure     400  {object} api.HTTPError
+// @Failure     401  {object} api.HTTPError
+// @Failure     403  {object} api.HTTPError
 // @Failure     500  {object} api.HTTPError
 // @Router      /v1/shop/{id}/subscription/grant [post]
 func (hand *Handler) GrantSubscriptionByShopID(c echo.Context) error {
@@ -28,7 +31,7 @@ func (hand *Handler) GrantSubscriptionByShopID(c echo.Context) error {
 
 	shopID, err := hand.getIDFromParam(c)
 	if err != nil {
-		return echo.ErrNotFound
+		return err
 	}
 
 	var req subscription.GrantInput

@@ -2,9 +2,11 @@ package shop
 
 import (
 	"context"
+	"net/http"
 	"strconv"
 
 	"salehelp/domain"
+	auth_google_handler "salehelp/internal/handler/auth_google"
 
 	"github.com/labstack/echo/v4"
 )
@@ -50,13 +52,31 @@ func NewHandler(service Service, shopsRepo ShopsRepo, productRepo ProductRepo, w
 	}
 }
 
-func (*Handler) getIDFromParam(c echo.Context) (int, error) {
+func (hand *Handler) getIDFromParam(c echo.Context) (int, error) {
 	paramID := c.Param("id")
-
 	id, err := strconv.Atoi(paramID)
-	if err != nil {
+	if err != nil || id <= 0 {
 		return 0, echo.ErrBadRequest
 	}
-
 	return id, nil
+}
+
+// ensureShopAccessByID проверяет JWT и что пользователь — владелец магазина (параметр пути "id"). Для роутов /shop/:id/...
+func (hand *Handler) ensureShopAccessByID(c echo.Context) (int, error) {
+	userID := auth_google_handler.UserIDFromContext(c.Request().Context())
+	if userID == 0 {
+		return 0, c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+	}
+	shopID, err := hand.getIDFromParam(c)
+	if err != nil {
+		return 0, err
+	}
+	shop, err := hand.shopsRepo.GetByID(c.Request().Context(), shopID)
+	if err != nil {
+		return 0, echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	if shop == nil || shop.UserID != userID {
+		return 0, c.JSON(http.StatusForbidden, map[string]string{"error": "access denied"})
+	}
+	return shopID, nil
 }

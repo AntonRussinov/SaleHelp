@@ -10,22 +10,25 @@ import (
 
 // UpdateAlert обновляет существующий алерт
 // @Summary Обновить алерт
-// @Description Обновляет существующий алерт
+// @Description Обновляет существующий алерт. Доступ только у владельца магазина (JWT).
 // @Tags alerts
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param shopId path int true "ID магазина"
 // @Param alertId path int true "ID алерта"
 // @Param request body api.UpdateAlertRequest true "Данные для обновления"
 // @Success 200 {object} api.AlertResponse
 // @Failure 400 {object} api.HTTPError
+// @Failure 401 {object} api.HTTPError
+// @Failure 403 {object} api.HTTPError
 // @Failure 404 {object} api.HTTPError
 // @Failure 500 {object} api.HTTPError
 // @Router /v1/shops/{shopId}/alerts/{alertId} [put]
 func (h *Handler) UpdateAlert(c echo.Context) error {
-	shopID, err := h.getShopIDFromParam(c)
+	shopID, err := h.ensureShopAccess(c)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid shop ID")
+		return err
 	}
 
 	alertID, err := h.getAlertIDFromParam(c)

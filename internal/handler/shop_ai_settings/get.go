@@ -7,22 +7,25 @@ import (
 )
 
 // GetAISettings возвращает настройки AI для магазина.
-// Если настройки не заданы — 404.
+// Если настройки не заданы — 404. Доступ только у владельца магазина (JWT).
 //
 // @Summary Получить настройки AI
 // @Description Возвращает настройки AI-ответов на отзывы для магазина (бренд, тон, доп. правила)
 // @Tags shop-ai-settings
 // @Produce json
+// @Security BearerAuth
 // @Param shopId path int true "ID магазина"
 // @Success 200 {object} api.AISettingsResponse
 // @Failure 400 {object} api.HTTPError
+// @Failure 401 {object} api.HTTPError
+// @Failure 403 {object} api.HTTPError
 // @Failure 404 {object} api.HTTPError
 // @Failure 500 {object} api.HTTPError
 // @Router /v1/shops/{shopId}/ai-settings [get]
 func (h *Handler) GetAISettings(c echo.Context) error {
-	shopID, err := h.getShopIDFromParam(c)
+	shopID, err := h.ensureShopAccess(c)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid shop ID")
+		return err
 	}
 
 	settings, err := h.repo.GetByShopID(c.Request().Context(), shopID)
