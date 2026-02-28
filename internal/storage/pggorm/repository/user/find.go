@@ -60,3 +60,20 @@ func (r *Repository) GetByTelegramChatID(ctx context.Context, chatID int64) (*do
 
 	return nil, fmt.Errorf("user get by telegram_chat_id %d: %w", chatID, err)
 }
+
+func (r *Repository) GetByGoogleID(ctx context.Context, googleID string) (*domain.User, error) {
+	if googleID == "" {
+		return nil, nil
+	}
+	var m model.User
+	err := r.DB.WithContext(ctx).
+		Where("google_id = ?", googleID).
+		First(&m).Error
+	if err == nil {
+		return m.ToDomain(), nil
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return nil, fmt.Errorf("user get by google_id: %w", err)
+}

@@ -36,8 +36,9 @@ func (r *Repository) EnsureByTelegramChatID(ctx context.Context, chatID int64) (
 
 	// 2) try create
 	m := &model.User{
-		Email:          nil, // ⚠️ если email nullable в БД — ЛУЧШЕ сделать *string и хранить nil
+		Email:          nil,
 		PasswordHash:   nil,
+		GoogleID:       nil,
 		TelegramChatID: &chatID,
 	}
 

@@ -31,7 +31,15 @@ type (
 		AI AIConfig `mapstructure:"ai"`
 		// ABCAnalysis — расписание и параметры ABC-анализа товаров.
 		ABCAnalysis ABCAnalysisConfig `mapstructure:"abc_analysis"`
+		// GoogleAuth — для входа через Google (фронт).
+		GoogleAuth GoogleAuthConfig `mapstructure:"google_auth"`
+		// JWTSecret — секрет для подписи JWT (выдача после успешного Google-логина). Через env: JWT_SECRET.
+		JWTSecret string `mapstructure:"jwt_secret"`
 		//	GCS            gcs.Config
+	}
+	GoogleAuthConfig struct {
+		// ClientID — OAuth2 Client ID из Google Cloud Console (audience для проверки id_token).
+		ClientID string `mapstructure:"client_id"`
 	}
 	ABCAnalysisConfig struct {
 		WeeklySchedule    string `mapstructure:"weekly_schedule"`    // cron, напр. "0 23 * * 0" (воскресенье 23:00)

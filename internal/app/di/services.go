@@ -7,6 +7,7 @@ import (
 	"salehelp/internal/services/abc_analysis"
 	"salehelp/internal/services/ai_reply"
 	"salehelp/internal/services/alert"
+	auth_google "salehelp/internal/services/auth_google"
 	"salehelp/internal/services/monitoring"
 	notifications "salehelp/internal/services/notification"
 	"salehelp/internal/services/product"
@@ -36,6 +37,7 @@ type Services struct {
 	SubscriptionMonitor *subscriptionmonitor.Monitor
 	StockReplenish      *stock_replenish.Service
 	AIReply             *ai_reply.Service
+	AuthGoogle          *auth_google.Service
 }
 
 func (prov *Provider) InitServices() {
@@ -244,6 +246,30 @@ func (prov *Provider) initDependentServices() {
 			includedLimit,
 			prov.log,
 		)
+	}
+
+	// Google Auth + JWT для фронта (вход по Google, выдача своего JWT)
+	jwtSecret := prov.cfg.JWTSecret
+	if jwtSecret == "" {
+		jwtSecret = os.Getenv("JWT_SECRET")
+	}
+	googleClientID := prov.cfg.GoogleAuth.ClientID
+	if googleClientID == "" {
+		googleClientID = os.Getenv("GOOGLE_CLIENT_ID")
+	}
+	if jwtSecret != "" && googleClientID != "" {
+		authGoogleSvc, errAuth := auth_google.NewService(
+			prov.log,
+			prov.Repositories.User,
+			googleClientID,
+			jwtSecret,
+			24*time.Hour,
+		)
+		if errAuth != nil {
+			prov.log.Warn("auth_google service init failed", "err", errAuth)
+		} else {
+			prov.Services.AuthGoogle = authGoogleSvc
+		}
 	}
 }
 

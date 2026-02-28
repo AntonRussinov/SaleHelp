@@ -4,6 +4,8 @@ import (
 	"context"
 	"strconv"
 
+	"salehelp/domain"
+
 	"github.com/labstack/echo/v4"
 )
 
@@ -16,16 +18,35 @@ type (
 		SyncShop(ctx context.Context, shopID int) error
 	}
 
+	ShopsRepo interface {
+		GetByID(ctx context.Context, id int) (*domain.Shop, error)
+		ListByUser(ctx context.Context, userID, limit, offset int) ([]*domain.Shop, error)
+		Create(ctx context.Context, s *domain.Shop) error
+	}
+
+	ProductRepo interface {
+		ListByShop(ctx context.Context, shopID, limit, offset int) ([]*domain.Product, error)
+		CountByShop(ctx context.Context, shopID int) (int, error)
+	}
+
+	WBTokenChecker interface {
+		CheckWBToken(ctx context.Context, token string) error
+	}
+
 	Handler struct {
-		service Service
-		// presenter Presenter
+		service    Service
+		shopsRepo  ShopsRepo
+		productRepo ProductRepo
+		wbCheck    WBTokenChecker
 	}
 )
 
-func NewHandler(service Service) *Handler {
+func NewHandler(service Service, shopsRepo ShopsRepo, productRepo ProductRepo, wbCheck WBTokenChecker) *Handler {
 	return &Handler{
-		service: service,
-		// presenter: presenter,
+		service:    service,
+		shopsRepo:  shopsRepo,
+		productRepo: productRepo,
+		wbCheck:    wbCheck,
 	}
 }
 

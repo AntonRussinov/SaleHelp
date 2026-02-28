@@ -6,8 +6,10 @@ import (
 	"salehelp/internal/handler"
 	"salehelp/internal/handler/alert"
 	"salehelp/internal/handler/product"
+	auth_google_handler "salehelp/internal/handler/auth_google"
 	"salehelp/internal/handler/shop"
 	shopaisettings "salehelp/internal/handler/shop_ai_settings"
+	"salehelp/internal/handler/subscription"
 	"salehelp/internal/handler/telegram"
 	"salehelp/internal/middleware"
 
@@ -154,6 +156,8 @@ func (prov *Provider) registerV1Routes(group *echo.Group) {
 
 	registerTagRoutes(group, handlers.Product)
 	registerUserShopRoutes(group, handlers.Shop)
+	registerSubscriptionRoutes(group, handlers.Subscription)
+	registerAuthGoogleRoutes(group, prov)
 	registerTelegramRoutes(group, handlers.TelegramBot)
 	registerAlertRoutes(group, handlers.Alert)
 	registerShopAISettingsRoutes(group, handlers.ShopAISettings)
@@ -161,6 +165,27 @@ func (prov *Provider) registerV1Routes(group *echo.Group) {
 
 func registerUserShopRoutes(e *echo.Group, shopHandler *shop.Handler) {
 	e.POST("/shop/:id/sync", shopHandler.SyncShopByID)
+}
+
+func registerSubscriptionRoutes(e *echo.Group, subHandler *subscription.Handler) {
+	if subHandler == nil {
+		return
+	}
+	shopSub := e.Group("/shop/:id")
+	shopSub.GET("/subscription/status", subHandler.GetSubscriptionStatusByShopID)
+	shopSub.POST("/subscription/grant", subHandler.GrantSubscriptionByShopID)
+}
+
+func registerAuthGoogleRoutes(e *echo.Group, prov *Provider) {
+	if prov.Handlers.AuthGoogle == nil || prov.Services.AuthGoogle == nil {
+		return
+	}
+	e.POST("/auth/google", prov.Handlers.AuthGoogle.LoginGoogle)
+	protected := e.Group("", middleware.JWTAuth(prov.Services.AuthGoogle, auth_google_handler.SetJWTContext))
+	protected.GET("/me", prov.Handlers.AuthGoogle.Me)
+	protected.GET("/shops", prov.Handlers.Shop.ListShops)
+	protected.POST("/shops", prov.Handlers.Shop.CreateShop)
+	protected.GET("/shops/:shopId/products", prov.Handlers.Shop.ListShopProducts)
 }
 
 func registerTagRoutes(e *echo.Group, tagHandler *product.Handler) {

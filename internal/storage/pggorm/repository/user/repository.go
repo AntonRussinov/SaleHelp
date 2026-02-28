@@ -31,6 +31,7 @@ func toModel(u *domain.User) *model.User {
 		ID:             u.ID,
 		Email:          u.Email,
 		PasswordHash:   u.PasswordHash,
+		GoogleID:       u.GoogleID,
 		TelegramChatID: u.TelegramChatID,
 		CreatedAt:      u.CreatedAt,
 		UpdatedAt:      u.UpdatedAt,
