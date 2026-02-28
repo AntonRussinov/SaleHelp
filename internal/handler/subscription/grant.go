@@ -10,19 +10,19 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// GrantSubscriptionByShopID
-// @id           GrantSubscriptionByShopID
-// @Summary      Grant/extend subscription for shop (manual v0)
-// @Description  Creates a new subscription row (history-preserving) and upserts addons for this subscription.
-// @Security     sandstorm-backend
-// @Tags         subscription
-// @Accept       json
-// @Produce      json
-// @Param        id   path      string true "Shop ID"
-// @Param        body body      subscription.GrantInput true "Grant subscription payload"
-// @Success      200  {object}  subscription.GrantResult
-// @Failure      400,401,403,404,500 {object} api.HTTPError
-// @Router       /v1/shop/{id}/subscription/grant [post]
+// GrantSubscriptionByShopID выдать или продлить подписку по магазину.
+//
+// @Summary     Выдать/продлить подписку
+// @Description Создаёт запись подписки (period_months: 1|3|6), опционально аддоны на доп. Telegram-чаты
+// @Tags        subscription
+// @Accept      json
+// @Produce     json
+// @Param       id   path int true "ID магазина"
+// @Param       body body subscription.GrantInput true "Период, валюта, суммы, доп. чаты"
+// @Success     200  {object} subscription.GrantResult
+// @Failure     400  {object} api.HTTPError
+// @Failure     500  {object} api.HTTPError
+// @Router      /v1/shop/{id}/subscription/grant [post]
 func (hand *Handler) GrantSubscriptionByShopID(c echo.Context) error {
 	const op = "handler.Subscription.GrantSubscriptionByShopID"
 

@@ -11,7 +11,18 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// ListShops GET /shops — список магазинов текущего пользователя (JWT).
+// ListShops возвращает список магазинов текущего пользователя.
+//
+// @Summary     Список магазинов
+// @Description Магазины пользователя (JWT). Query: limit, offset
+// @Tags        shops
+// @Produce     json
+// @Security    BearerAuth
+// @Param       limit  query int false "Лимит" default(20)
+// @Param       offset query int false "Смещение" default(0)
+// @Success     200 {array} api.ShopResponse
+// @Failure     401 {object} api.HTTPError
+// @Router      /v1/shops [get]
 func (h *Handler) ListShops(c echo.Context) error {
 	userID := auth_google_handler.UserIDFromContext(c.Request().Context())
 	if userID == 0 {

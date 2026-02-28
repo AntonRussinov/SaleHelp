@@ -21,7 +21,7 @@ import (
 // @Success 200 {object} api.ListAlertsResponse
 // @Failure 400 {object} api.HTTPError
 // @Failure 500 {object} api.HTTPError
-// @Router /api/v1/shops/{shopId}/alerts [get]
+// @Router /v1/shops/{shopId}/alerts [get]
 func (h *Handler) ListAlerts(c echo.Context) error {
 	shopID, err := h.getShopIDFromParam(c)
 	if err != nil {

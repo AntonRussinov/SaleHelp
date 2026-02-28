@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"salehelp/domain"
 	"salehelp/pkg/logger/sl"
 
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/idtoken"
 )
 
@@ -44,9 +46,6 @@ type JWTClaims struct {
 }
 
 func NewService(log *slog.Logger, userRepo UserRepo, googleClientID, jwtSecret string, jwtExpire time.Duration) (*Service, error) {
-	if googleClientID == "" {
-		return nil, fmt.Errorf("google_auth client_id is required")
-	}
 	if jwtSecret == "" {
 		return nil, fmt.Errorf("jwt_secret is required")
 	}
@@ -64,6 +63,9 @@ func NewService(log *slog.Logger, userRepo UserRepo, googleClientID, jwtSecret s
 
 // VerifyGoogleIDToken проверяет id_token от Google и возвращает sub (google_id) и email.
 func (s *Service) VerifyGoogleIDToken(ctx context.Context, idToken string) (sub, email string, err error) {
+	if s.googleCID == "" {
+		return "", "", fmt.Errorf("google auth not configured")
+	}
 	payload, err := idtoken.Validate(ctx, idToken, s.googleCID)
 	if err != nil {
 		return "", "", fmt.Errorf("invalid google id_token: %w", err)
@@ -153,4 +155,67 @@ func (s *Service) ValidateJWT(tokenString string) (userID int, email string, err
 		return 0, "", fmt.Errorf("invalid jwt")
 	}
 	return claims.UserID, claims.Email, nil
+}
+
+const bcryptCost = 12
+
+// RegisterEmail создаёт пользователя по email и паролю, возвращает user и JWT.
+func (s *Service) RegisterEmail(ctx context.Context, email, password string) (*domain.User, string, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	if email == "" {
+		return nil, "", fmt.Errorf("email is required")
+	}
+	if len(password) < 8 {
+		return nil, "", fmt.Errorf("password must be at least 8 characters")
+	}
+
+	existing, err := s.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		return nil, "", fmt.Errorf("get user by email: %w", err)
+	}
+	if existing != nil {
+		return nil, "", fmt.Errorf("email already registered")
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
+	if err != nil {
+		return nil, "", fmt.Errorf("hash password: %w", err)
+	}
+	hashStr := string(hash)
+	u := &domain.User{
+		Email:        &email,
+		PasswordHash: &hashStr,
+	}
+	if err := s.userRepo.Create(ctx, u); err != nil {
+		return nil, "", fmt.Errorf("create user: %w", err)
+	}
+	tok, err := s.issueJWT(u.ID, email)
+	return u, tok, err
+}
+
+// LoginEmail проверяет email и пароль, возвращает user и JWT.
+func (s *Service) LoginEmail(ctx context.Context, email, password string) (*domain.User, string, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	if email == "" || password == "" {
+		return nil, "", fmt.Errorf("email and password are required")
+	}
+
+	u, err := s.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		return nil, "", fmt.Errorf("get user by email: %w", err)
+	}
+	if u == nil || u.PasswordHash == nil {
+		return nil, "", fmt.Errorf("invalid email or password")
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(*u.PasswordHash), []byte(password)); err != nil {
+		return nil, "", fmt.Errorf("invalid email or password")
+	}
+
+	emailVal := ""
+	if u.Email != nil {
+		emailVal = *u.Email
+	}
+	tok, err := s.issueJWT(u.ID, emailVal)
+	return u, tok, err
 }

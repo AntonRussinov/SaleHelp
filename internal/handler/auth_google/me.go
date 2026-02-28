@@ -6,7 +6,16 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// Me GET /api/v1/me — текущий пользователь из JWT (middleware уже проверил токен и положил userID в context).
+// Me возвращает текущего пользователя из JWT.
+//
+// @Summary     Текущий пользователь
+// @Description Данные пользователя из JWT (id, email)
+// @Tags        auth
+// @Produce     json
+// @Security    BearerAuth
+// @Success     200  {object} auth_google.UserResponse
+// @Failure     401  {object} api.HTTPError
+// @Router      /v1/me [get]
 func (h *Handler) Me(c echo.Context) error {
 	userID := UserIDFromContext(c.Request().Context())
 	if userID == 0 {

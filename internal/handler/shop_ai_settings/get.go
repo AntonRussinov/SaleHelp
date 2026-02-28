@@ -18,7 +18,7 @@ import (
 // @Failure 400 {object} api.HTTPError
 // @Failure 404 {object} api.HTTPError
 // @Failure 500 {object} api.HTTPError
-// @Router /api/v1/shops/{shopId}/ai-settings [get]
+// @Router /v1/shops/{shopId}/ai-settings [get]
 func (h *Handler) GetAISettings(c echo.Context) error {
 	shopID, err := h.getShopIDFromParam(c)
 	if err != nil {

@@ -3,8 +3,8 @@ package api
 import "time"
 
 type GetHealthCheckResponse struct {
-	Version   string
-	GitCommit string
-	GoVersion string
-	Built     time.Time
+	Version   string    `json:"version"`
+	GitCommit string    `json:"gitCommit"`
+	GoVersion string    `json:"goVersion"`
+	Built     time.Time `json:"built"`
 }

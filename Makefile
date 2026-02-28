@@ -34,8 +34,8 @@ coverage: ### run all tests and generate coverage report
 	go tool cover -html=coverage.out
 .PHONY: coverage
 
-swagger: ### generate swagger docs
-	swag init -g cmd/swagger/main.go
+swagger: ### generate swagger docs (swag версии из go.mod, например: go install github.com/swaggo/swag/cmd/swag@v1.8.12)
+	swag init -g cmd/swagger/main.go -o docs --parseDependency --parseInternal
 .PHONY: swagger
 
 compose: ### run docker-compose

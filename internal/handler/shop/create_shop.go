@@ -11,7 +11,19 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// CreateShop POST /shops — создать магазин (JWT). Проверяет WB-токен, создаёт запись.
+// CreateShop создаёт магазин (проверка WB-токена, создание записи).
+//
+// @Summary     Создать магазин
+// @Description Подключение магазина WB: проверка apiToken, создание shop. Требует JWT.
+// @Tags        shops
+// @Accept      json
+// @Produce     json
+// @Security    BearerAuth
+// @Param       body body api.CreateShopRequest true "Название, токен WB, маркетплейс"
+// @Success     201  {object} api.ShopResponse
+// @Failure     400  {object} api.HTTPError
+// @Failure     401  {object} api.HTTPError
+// @Router      /v1/shops [post]
 func (h *Handler) CreateShop(c echo.Context) error {
 	userID := auth_google_handler.UserIDFromContext(c.Request().Context())
 	if userID == 0 {

@@ -16,7 +16,7 @@ import (
 // @Failure 400 {object} api.HTTPError
 // @Failure 404 {object} api.HTTPError
 // @Failure 500 {object} api.HTTPError
-// @Router /api/v1/shops/{shopId}/alerts/{alertId} [delete]
+// @Router /v1/shops/{shopId}/alerts/{alertId} [delete]
 func (h *Handler) DeleteAlert(c echo.Context) error {
 	shopID, err := h.getShopIDFromParam(c)
 	if err != nil {

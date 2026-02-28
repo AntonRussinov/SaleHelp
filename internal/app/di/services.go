@@ -257,7 +257,8 @@ func (prov *Provider) initDependentServices() {
 	if googleClientID == "" {
 		googleClientID = os.Getenv("GOOGLE_CLIENT_ID")
 	}
-	if jwtSecret != "" && googleClientID != "" {
+	// Сервис авторизации: достаточно JWT_SECRET (email/пароль). Google — опционально.
+	if jwtSecret != "" {
 		authGoogleSvc, errAuth := auth_google.NewService(
 			prov.log,
 			prov.Repositories.User,
@@ -266,7 +267,7 @@ func (prov *Provider) initDependentServices() {
 			24*time.Hour,
 		)
 		if errAuth != nil {
-			prov.log.Warn("auth_google service init failed", "err", errAuth)
+			prov.log.Warn("auth service init failed", "err", errAuth)
 		} else {
 			prov.Services.AuthGoogle = authGoogleSvc
 		}

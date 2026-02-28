@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+
+	_ "salehelp/docs" // Swagger-документация (генерируется: make swagger)
 )
 
 const shutdownTimeout = 15 * time.Second

@@ -11,6 +11,8 @@
 | Метод | Путь | Назначение | Статус |
 |-------|------|------------|--------|
 | POST | `/api/v1/auth/google` | Вход по Google: тело `{ "idToken": "..." }`. Бэкенд проверяет токен, находит/создаёт user по `google_id` или `email`, возвращает JWT. | **Реализовано** |
+| POST | `/api/v1/auth/register` | Регистрация по email и паролю: тело `{ "email", "password" }` (password не менее 8 символов). Возвращает JWT и user. При дубликате email — 409. | **Реализовано** |
+| POST | `/api/v1/auth/login` | Вход по email и паролю: тело `{ "email", "password" }`. Возвращает JWT и user. | **Реализовано** |
 | POST | `/api/v1/auth/refresh` | Обновление JWT (если используете refresh token). | По необходимости |
 
 **Логика POST /auth/google (рекомендуемая):**

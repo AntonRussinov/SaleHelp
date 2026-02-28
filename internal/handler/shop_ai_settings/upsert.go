@@ -21,7 +21,7 @@ import (
 // @Success 200 {object} api.AISettingsResponse
 // @Failure 400 {object} api.HTTPError
 // @Failure 500 {object} api.HTTPError
-// @Router /api/v1/shops/{shopId}/ai-settings [put]
+// @Router /v1/shops/{shopId}/ai-settings [put]
 func (h *Handler) UpsertAISettings(c echo.Context) error {
 	shopID, err := h.getShopIDFromParam(c)
 	if err != nil {

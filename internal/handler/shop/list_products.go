@@ -19,7 +19,20 @@ type ProductResponse struct {
 	Brand      string `json:"brand,omitempty"`
 }
 
-// ListShopProducts GET /shops/:shopId/products — список товаров магазина (JWT, проверка доступа).
+// ListShopProducts возвращает список товаров магазина с пагинацией.
+//
+// @Summary     Товары магазина
+// @Description Список товаров по shopId. Проверка доступа по JWT. Query: limit, offset
+// @Tags        shops
+// @Produce     json
+// @Security    BearerAuth
+// @Param       shopId path int true "ID магазина"
+// @Param       limit  query int false "Лимит" default(20)
+// @Param       offset query int false "Смещение" default(0)
+// @Success     200 {object} map[string]interface{} "items, total, limit, offset"
+// @Failure     401 {object} api.HTTPError
+// @Failure     403 {object} api.HTTPError
+// @Router      /v1/shops/{shopId}/products [get]
 func (h *Handler) ListShopProducts(c echo.Context) error {
 	userID := auth_google_handler.UserIDFromContext(c.Request().Context())
 	if userID == 0 {

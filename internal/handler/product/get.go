@@ -7,17 +7,17 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// GetUserProductByUserID
-// @id           GetUserProductByUserID
-// @Summary      Get user product data by userid
-// @Description  Get user product data by userid
-// @Security     sandstorm-backend
-// @Tags         config, access
-// @Produce      json
-// @Param        id               path      string  true  "User ID"
-// @Success      200                  {object}  api.GetUserProductResponse
-// @Failure      400,401,403,404,500  {object}  api.HTTPError
-// @Router       /v1/user-products/{id}  [get]
+// GetProductByMerchantID возвращает список товаров (по merchant/shop ID из query).
+//
+// @Summary     Список товаров
+// @Description Товары по идентификатору (query). Используйте GET /v1/shops/{shopId}/products для списка по магазину с JWT.
+// @Tags        products
+// @Produce     json
+// @Param       id query string false "Идентификатор магазина/мерчанта"
+// @Success     200 {array} domain.Product
+// @Failure     400 {object} api.HTTPError
+// @Failure     500 {object} api.HTTPError
+// @Router      /v1/products [get]
 func (hand *Handler) GetProductByMerchantID(c echo.Context) error {
 	const op = "handler.UserProduct.GetUserProductByUserID"
 

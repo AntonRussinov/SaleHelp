@@ -6,7 +6,18 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// LoginGoogle POST /api/v1/auth/google — вход по Google id_token, возвращает JWT и данные пользователя.
+// LoginGoogle вход по Google id_token.
+//
+// @Summary     Вход через Google
+// @Description Принимает id_token от Google Sign-In, проверяет его, находит или создаёт пользователя, возвращает JWT
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Param       body body auth_google.LoginByGoogleRequest true "Google id_token"
+// @Success     200  {object} auth_google.LoginByGoogleResponse
+// @Failure     400  {object} api.HTTPError
+// @Failure     401  {object} api.HTTPError
+// @Router      /v1/auth/google [post]
 func (h *Handler) LoginGoogle(c echo.Context) error {
 	var req LoginByGoogleRequest
 	if err := c.Bind(&req); err != nil {

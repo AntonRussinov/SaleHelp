@@ -1,0 +1,1479 @@
+{
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "schemes": [
+        "http",
+        "https"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "API для сервиса SaleHelp: мониторинг магазинов Wildberries, алерты, уведомления, AI-ответы на отзывы.",
+        "title": "SaleHelp API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api",
+    "paths": {
+        "/v1/auth/google": {
+            "post": {
+                "description": "Принимает id_token от Google Sign-In, проверяет его, находит или создаёт пользователя, возвращает JWT",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Вход через Google",
+                "parameters": [
+                    {
+                        "description": "Google id_token",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth_google.LoginByGoogleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth_google.LoginByGoogleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/login": {
+            "post": {
+                "description": "Проверяет email и пароль, возвращает JWT и данные пользователя",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Вход по email",
+                "parameters": [
+                    {
+                        "description": "Email и пароль",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth_google.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth_google.LoginByGoogleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/register": {
+            "post": {
+                "description": "Создаёт пользователя по email и паролю (не менее 8 символов), возвращает JWT",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Регистрация",
+                "parameters": [
+                    {
+                        "description": "Email и пароль",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth_google.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/auth_google.LoginByGoogleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "409": {
+                        "description": "email already registered",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Данные пользователя из JWT (id, email)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Текущий пользователь",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth_google.UserResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/products": {
+            "get": {
+                "description": "Товары по идентификатору (query). Используйте GET /v1/shops/{shopId}/products для списка по магазину с JWT.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Список товаров",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Идентификатор магазина/мерчанта",
+                        "name": "id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.Product"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shop/{id}/subscription/grant": {
+            "post": {
+                "description": "Создаёт запись подписки (period_months: 1|3|6), опционально аддоны на доп. Telegram-чаты",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscription"
+                ],
+                "summary": "Выдать/продлить подписку",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Период, валюта, суммы, доп. чаты",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/subscription.GrantInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/subscription.GrantResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shop/{id}/subscription/status": {
+            "get": {
+                "description": "Активная подписка (если есть), срок, лимиты и использование Telegram-чатов",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscription"
+                ],
+                "summary": "Статус подписки",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/subscription.StatusResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shop/{id}/sync": {
+            "post": {
+                "description": "Запуск синка по ID магазина (товары, заказы, остатки и т.д.)",
+                "tags": [
+                    "shops"
+                ],
+                "summary": "Синхронизация магазина",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shops": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Магазины пользователя (JWT). Query: limit, offset",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shops"
+                ],
+                "summary": "Список магазинов",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Лимит",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Смещение",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.ShopResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Подключение магазина WB: проверка apiToken, создание shop. Требует JWT.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shops"
+                ],
+                "summary": "Создать магазин",
+                "parameters": [
+                    {
+                        "description": "Название, токен WB, маркетплейс",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateShopRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.ShopResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shops/{shopId}/ai-settings": {
+            "get": {
+                "description": "Возвращает настройки AI-ответов на отзывы для магазина (бренд, тон, доп. правила)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shop-ai-settings"
+                ],
+                "summary": "Получить настройки AI",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AISettingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Задаёт настройки для формирования промпта ИИ: бренд, тон ответа, доп. правила, вкл/выкл генерации",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shop-ai-settings"
+                ],
+                "summary": "Создать/обновить настройки AI",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Настройки AI",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpsertAISettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AISettingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shops/{shopId}/alerts": {
+            "get": {
+                "description": "Получает список алертов с фильтрацией и пагинацией",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Получить список алертов",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID товара для фильтрации",
+                        "name": "productId",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "price_drop",
+                            "stock_low",
+                            "stock_zero"
+                        ],
+                        "type": "string",
+                        "description": "Тип алерта",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "active",
+                            "inactive"
+                        ],
+                        "type": "string",
+                        "description": "Статус алерта",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Лимит записей (по умолчанию 20, максимум 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Смещение (по умолчанию 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ListAlertsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Создает новый алерт для магазина",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Создать алерт",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные алерта",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateAlertRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.AlertResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shops/{shopId}/alerts/{alertId}": {
+            "get": {
+                "description": "Получает алерт по ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Получить алерт",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID алерта",
+                        "name": "alertId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AlertResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Обновляет существующий алерт",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Обновить алерт",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID алерта",
+                        "name": "alertId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные для обновления",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateAlertRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AlertResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Удаляет алерт по ID",
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Удалить алерт",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID алерта",
+                        "name": "alertId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shops/{shopId}/products": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Список товаров по shopId. Проверка доступа по JWT. Query: limit, offset",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shops"
+                ],
+                "summary": "Товары магазина",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Лимит",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Смещение",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "items, total, limit, offset",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/telegram/webhook": {
+            "post": {
+                "description": "Принимает Update от Telegram Bot API. Опционально проверяет заголовок X-Telegram-Bot-Api-Secret-Token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "telegram"
+                ],
+                "summary": "Telegram webhook",
+                "parameters": [
+                    {
+                        "description": "Telegram Update (JSON)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    }
+                }
+            }
+        },
+        "/version": {
+            "get": {
+                "description": "Версия приложения, Go, коммит, время сборки",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.GetHealthCheckResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "api.AISettingsResponse": {
+            "type": "object",
+            "properties": {
+                "brandName": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "customRules": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "shopId": {
+                    "type": "integer"
+                },
+                "toneOfVoice": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.AlertResponse": {
+            "type": "object",
+            "properties": {
+                "aiRecommendationId": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "productId": {
+                    "type": "integer"
+                },
+                "productSizeId": {
+                    "type": "integer"
+                },
+                "resolvedAt": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "integer"
+                },
+                "shopId": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "triggeredAt": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CreateAlertRequest": {
+            "type": "object",
+            "required": [
+                "message",
+                "payload",
+                "scope",
+                "severity",
+                "status",
+                "type"
+            ],
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "productId": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "productSizeId": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1
+                },
+                "status": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CreateShopRequest": {
+            "type": "object",
+            "required": [
+                "apiToken",
+                "marketplace",
+                "name"
+            ],
+            "properties": {
+                "apiToken": {
+                    "type": "string"
+                },
+                "marketplace": {
+                    "type": "string",
+                    "enum": [
+                        "wildberries"
+                    ]
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255
+                }
+            }
+        },
+        "api.GetHealthCheckResponse": {
+            "type": "object",
+            "properties": {
+                "built": {
+                    "type": "string"
+                },
+                "gitCommit": {
+                    "type": "string"
+                },
+                "goVersion": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.HTTPError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "details": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "validationErrors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ValidationError"
+                    }
+                }
+            }
+        },
+        "api.ListAlertsResponse": {
+            "type": "object",
+            "properties": {
+                "alerts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.AlertResponse"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.ShopResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "lastSyncAt": {
+                    "type": "string"
+                },
+                "lastSyncStatusCode": {
+                    "type": "integer"
+                },
+                "marketplace": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.UpdateAlertRequest": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "productId": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "productSizeId": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.UpsertAISettingsRequest": {
+            "type": "object",
+            "required": [
+                "toneOfVoice"
+            ],
+            "properties": {
+                "brandName": {
+                    "description": "BrandName — название бренда для промпта (опционально)",
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "customRules": {
+                    "description": "CustomRules — доп. правила для промпта (опционально)",
+                    "type": "string",
+                    "maxLength": 2000
+                },
+                "isActive": {
+                    "description": "IsActive — включена ли генерация AI-ответов для магазина",
+                    "type": "boolean"
+                },
+                "toneOfVoice": {
+                    "description": "ToneOfVoice: standard | friendly | official | empathic | minimalist",
+                    "type": "string",
+                    "enum": [
+                        "standard",
+                        "friendly",
+                        "official",
+                        "empathic",
+                        "minimalist"
+                    ]
+                }
+            }
+        },
+        "api.ValidationError": {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "type": "string"
+                },
+                "field": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth_google.LoginByGoogleRequest": {
+            "type": "object",
+            "required": [
+                "idToken"
+            ],
+            "properties": {
+                "idToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth_google.LoginByGoogleResponse": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/auth_google.UserResponse"
+                }
+            }
+        },
+        "auth_google.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth_google.RegisterRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8
+                }
+            }
+        },
+        "auth_google.UserResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.Product": {
+            "type": "object",
+            "properties": {
+                "brand": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "externalID": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "imageURL": {
+                    "type": "string"
+                },
+                "shopID": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "subscription.GrantInput": {
+            "type": "object",
+            "properties": {
+                "base_amount_minor": {
+                    "description": "База за период (в minor units: копейки/тиыны)",
+                    "type": "integer"
+                },
+                "comment": {
+                    "description": "опционально",
+                    "type": "string"
+                },
+                "currency_code": {
+                    "description": "\"RUB\"|\"KZT\"|...",
+                    "type": "string"
+                },
+                "extra_telegram_chats": {
+                    "description": "Сколько доп. телеграм чатов купить (помимо 1 базового)",
+                    "type": "integer"
+                },
+                "paid_at": {
+                    "description": "опционально",
+                    "type": "string"
+                },
+                "period_months": {
+                    "description": "1|3|6",
+                    "type": "integer"
+                },
+                "shopID": {
+                    "type": "integer"
+                },
+                "source": {
+                    "description": "manual|...",
+                    "type": "string"
+                },
+                "telegram_addon_amount_minor": {
+                    "description": "Цена аддона за весь период (minor units).\nНапример: 2 доп чата на 1 месяц * 500₽ = 100000 (копеек)",
+                    "type": "integer"
+                }
+            }
+        },
+        "subscription.GrantResult": {
+            "type": "object",
+            "properties": {
+                "allowed_telegram_chats": {
+                    "type": "integer"
+                },
+                "subscription_id": {
+                    "type": "integer"
+                },
+                "valid_from": {
+                    "type": "string"
+                },
+                "valid_to": {
+                    "type": "string"
+                }
+            }
+        },
+        "subscription.StatusResult": {
+            "type": "object",
+            "properties": {
+                "allowed_telegram_chats": {
+                    "type": "integer"
+                },
+                "base_amount_minor": {
+                    "type": "integer"
+                },
+                "currency_code": {
+                    "type": "string"
+                },
+                "enabled_telegram_chats": {
+                    "type": "integer"
+                },
+                "has_active_subscription": {
+                    "type": "boolean"
+                },
+                "period_months": {
+                    "type": "integer"
+                },
+                "plan": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "valid_from": {
+                    "type": "string"
+                },
+                "valid_to": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

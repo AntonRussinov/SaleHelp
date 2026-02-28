@@ -20,7 +20,7 @@ import (
 // @Success 201 {object} api.AlertResponse
 // @Failure 400 {object} api.HTTPError
 // @Failure 500 {object} api.HTTPError
-// @Router /api/v1/shops/{shopId}/alerts [post]
+// @Router /v1/shops/{shopId}/alerts [post]
 func (h *Handler) CreateAlert(c echo.Context) error {
 	shopID, err := h.getShopIDFromParam(c)
 	if err != nil {
