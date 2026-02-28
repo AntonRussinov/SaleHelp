@@ -183,6 +183,8 @@ func registerAuthGoogleRoutes(e *echo.Group, prov *Provider) {
 	e.POST("/auth/login", prov.Handlers.AuthGoogle.LoginEmail)
 	protected := e.Group("", middleware.JWTAuth(prov.Services.AuthGoogle, auth_google_handler.SetJWTContext))
 	protected.GET("/me", prov.Handlers.AuthGoogle.Me)
+	protected.POST("/auth/link-telegram", prov.Handlers.AuthGoogle.LinkTelegram)
+	protected.POST("/auth/confirm-telegram-link", prov.Handlers.AuthGoogle.ConfirmTelegramLink)
 	protected.GET("/shops", prov.Handlers.Shop.ListShops)
 	protected.POST("/shops", prov.Handlers.Shop.CreateShop)
 	protected.GET("/shops/:shopId/products", prov.Handlers.Shop.ListShopProducts)

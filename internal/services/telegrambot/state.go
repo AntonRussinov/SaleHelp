@@ -14,6 +14,7 @@ const (
 	StateWaitWBToken      = "wait_wb_token"
 	StateWaitShopName     = "wait_shop_name"
 	StateInviteChooseShop = "invite_choose_shop"
+	StateWaitEmailForLink = "wait_email_for_link"
 )
 
 const (
@@ -44,6 +45,9 @@ func (s *Service) handleState(ctx context.Context, chatID int64, text string) {
 		return
 	case StateInviteChooseShop:
 		s.handleInviteChooseShop(ctx, chatID, text, st)
+		return
+	case StateWaitEmailForLink:
+		s.stepEmailForLink(ctx, chatID, text)
 		return
 	default:
 		_ = s.statesRepo.Clear(ctx, chatID)

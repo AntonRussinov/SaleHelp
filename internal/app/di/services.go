@@ -174,6 +174,7 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.TelegramChatState,
 		prov.Repositories.ShopInviteTokens,
 		prov.Repositories.User,
+		prov.Repositories.LinkTokens,
 		prov.Repositories.NotificationEndpoint,
 		prov.Repositories.Shop,
 		prov.Services.Monitoring,
@@ -262,6 +263,8 @@ func (prov *Provider) initDependentServices() {
 		authGoogleSvc, errAuth := auth_google.NewService(
 			prov.log,
 			prov.Repositories.User,
+			prov.Repositories.LinkTokens,
+			prov.Repositories.Shop,
 			googleClientID,
 			jwtSecret,
 			24*time.Hour,

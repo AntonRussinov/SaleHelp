@@ -66,6 +66,14 @@ func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) 
 		s.handleABCNow(ctx, chatID, cmd)
 		return
 
+	case len(cmd) >= 2 && cmd[0] == "/link":
+		s.handleLink(ctx, chatID, strings.Join(cmd[1:], " "))
+		return
+
+	case len(cmd) > 0 && cmd[0] == "/link_email":
+		s.startLinkEmail(ctx, chatID)
+		return
+
 	case len(cmd) > 0 && cmd[0] == "/admin_stats":
 		s.handleAdminStats(ctx, chatID)
 		return

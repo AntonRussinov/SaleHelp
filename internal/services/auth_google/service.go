@@ -2,6 +2,7 @@ package auth_google
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -15,20 +16,40 @@ import (
 	"google.golang.org/api/idtoken"
 )
 
+const linkTokenTTL = 10 * time.Minute
+const linkTokenLength = 6
+
+// charset для кода привязки (только цифры и заглавные буквы, без 0/O)
+const linkTokenCharset = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+
 type (
 	UserRepo interface {
 		GetByGoogleID(ctx context.Context, googleID string) (*domain.User, error)
 		GetByEmail(ctx context.Context, email string) (*domain.User, error)
+		GetByTelegramChatID(ctx context.Context, chatID int64) (*domain.User, error)
 		Create(ctx context.Context, u *domain.User) error
 		SetGoogleID(ctx context.Context, userID int, googleID string) error
+		SetTelegramChatID(ctx context.Context, userID int, chatID int64) error
+		ClearTelegramChatID(ctx context.Context, userID int) error
+	}
+
+	LinkTokensRepo interface {
+		Create(ctx context.Context, t *domain.LinkToken) error
+		ConsumeForWeb(ctx context.Context, token string, now time.Time) (telegramChatID int64, err error)
+	}
+
+	ShopsRepoForLink interface {
+		ReassignShopsToUser(ctx context.Context, fromUserID, toUserID int) error
 	}
 
 	Service struct {
-		log        *slog.Logger
-		userRepo   UserRepo
-		googleCID  string // Google OAuth2 Client ID (audience для id_token)
-		jwtSecret  []byte
-		jwtExpire  time.Duration
+		log            *slog.Logger
+		userRepo       UserRepo
+		linkTokensRepo LinkTokensRepo
+		shopsRepo      ShopsRepoForLink
+		googleCID      string
+		jwtSecret      []byte
+		jwtExpire      time.Duration
 	}
 )
 
@@ -46,7 +67,7 @@ type JWTClaims struct {
 	Role   string `json:"role,omitempty"`
 }
 
-func NewService(log *slog.Logger, userRepo UserRepo, googleClientID, jwtSecret string, jwtExpire time.Duration) (*Service, error) {
+func NewService(log *slog.Logger, userRepo UserRepo, linkTokensRepo LinkTokensRepo, shopsRepo ShopsRepoForLink, googleClientID, jwtSecret string, jwtExpire time.Duration) (*Service, error) {
 	if jwtSecret == "" {
 		return nil, fmt.Errorf("jwt_secret is required")
 	}
@@ -54,11 +75,13 @@ func NewService(log *slog.Logger, userRepo UserRepo, googleClientID, jwtSecret s
 		jwtExpire = 24 * time.Hour
 	}
 	return &Service{
-		log:       log.With(sl.Module("AuthGoogle")),
-		userRepo:  userRepo,
-		googleCID: googleClientID,
-		jwtSecret: []byte(jwtSecret),
-		jwtExpire: jwtExpire,
+		log:            log.With(sl.Module("AuthGoogle")),
+		userRepo:       userRepo,
+		linkTokensRepo: linkTokensRepo,
+		shopsRepo:      shopsRepo,
+		googleCID:     googleClientID,
+		jwtSecret:     []byte(jwtSecret),
+		jwtExpire:     jwtExpire,
 	}, nil
 }
 
@@ -250,4 +273,75 @@ func (s *Service) LoginEmail(ctx context.Context, email, password string) (*doma
 	}
 	tok, err := s.issueJWT(u.ID, emailVal, s.userRole(u))
 	return u, tok, err
+}
+
+// CreateLinkToken создаёт одноразовый код для привязки Telegram к аккаунту. Возвращает код и время истечения.
+func (s *Service) CreateLinkToken(ctx context.Context, userID int) (linkCode string, expiresAt time.Time, err error) {
+	if userID <= 0 {
+		return "", time.Time{}, fmt.Errorf("user_id is required")
+	}
+	code, err := generateLinkCode(linkTokenLength)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("generate link code: %w", err)
+	}
+	expiresAt = time.Now().Add(linkTokenTTL)
+	t := &domain.LinkToken{
+		Token:     code,
+		UserID:    &userID,
+		ExpiresAt: expiresAt,
+		CreatedAt: time.Now(),
+	}
+	if err := s.linkTokensRepo.Create(ctx, t); err != nil {
+		return "", time.Time{}, fmt.Errorf("create link token: %w", err)
+	}
+	return code, expiresAt, nil
+}
+
+func generateLinkCode(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	for i := range b {
+		b[i] = linkTokenCharset[int(b[i])%len(linkTokenCharset)]
+	}
+	return string(b), nil
+}
+
+// ConfirmTelegramLink подтверждает привязку Telegram со стороны сайта: пользователь ввёл в боте email,
+// получил код, зашёл на сайт под этим email и вводит код. Токен создан в боте (telegram_chat_id), потребляется здесь.
+func (s *Service) ConfirmTelegramLink(ctx context.Context, userID int, code string) error {
+	if userID <= 0 {
+		return fmt.Errorf("user_id is required")
+	}
+	code = strings.TrimSpace(strings.ToUpper(code))
+	if code == "" {
+		return fmt.Errorf("code is required")
+	}
+
+	chatID, err := s.linkTokensRepo.ConsumeForWeb(ctx, code, time.Now())
+	if err != nil {
+		return fmt.Errorf("consume link token: %w", err)
+	}
+	if chatID == 0 {
+		return fmt.Errorf("code not found or expired")
+	}
+
+	telegramUser, err := s.userRepo.GetByTelegramChatID(ctx, chatID)
+	if err != nil {
+		return fmt.Errorf("get user by telegram chat: %w", err)
+	}
+
+	if telegramUser != nil && telegramUser.ID != userID {
+		if err := s.shopsRepo.ReassignShopsToUser(ctx, telegramUser.ID, userID); err != nil {
+			return fmt.Errorf("reassign shops: %w", err)
+		}
+		if err := s.userRepo.ClearTelegramChatID(ctx, telegramUser.ID); err != nil {
+			s.log.Warn("clear old user telegram_chat_id failed", "user_id", telegramUser.ID, "err", err)
+		}
+	}
+	if err := s.userRepo.SetTelegramChatID(ctx, userID, chatID); err != nil {
+		return fmt.Errorf("set telegram_chat_id: %w", err)
+	}
+	return nil
 }

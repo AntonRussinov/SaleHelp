@@ -41,15 +41,25 @@ type (
 		ListByUser(ctx context.Context, userID int, limit, offset int) ([]*domain.Shop, error)
 		ListByTelegramChat(ctx context.Context, chatID int64) ([]*domain.Shop, error)
 		SetActive(ctx context.Context, shopID int, active bool) error
+		ReassignShopsToUser(ctx context.Context, fromUserID, toUserID int) error
 
 		CountAll(ctx context.Context) (int, error)
 		CountActive(ctx context.Context) (int, error)
-		CountByLastSyncStatusCode(ctx context.Context, code int) (int, error) // ты уже добавлял
-
+		CountByLastSyncStatusCode(ctx context.Context, code int) (int, error)
 	}
 
 	UsersRepo interface {
 		EnsureByTelegramChatID(ctx context.Context, chatID int64) (*domain.User, error)
+		GetByTelegramChatID(ctx context.Context, chatID int64) (*domain.User, error)
+		GetByEmail(ctx context.Context, email string) (*domain.User, error)
+		SetTelegramChatID(ctx context.Context, userID int, chatID int64) error
+		ClearTelegramChatID(ctx context.Context, userID int) error
+		Update(ctx context.Context, u *domain.User) error
+	}
+
+	LinkTokensRepo interface {
+		Consume(ctx context.Context, token string, now time.Time) (userID int, err error)
+		CreateFromTelegram(ctx context.Context, chatID int64) (code string, expiresAt time.Time, err error)
 	}
 
 	ShopNotificationEndpointsRepo interface {
@@ -93,6 +103,7 @@ type (
 		statesRepo       TelegramChatStatesRepo
 		invitesRepo      ShopInviteTokensRepo
 		usersRepo        UsersRepo
+		linkTokensRepo   LinkTokensRepo
 		endpointsRepo    ShopNotificationEndpointsRepo
 		shopsRepo        ShopsRepo
 		monitoring       MonitoringService
@@ -111,6 +122,7 @@ func NewService(
 	statesRepo TelegramChatStatesRepo,
 	invitesRepo ShopInviteTokensRepo,
 	usersRepo UsersRepo,
+	linkTokensRepo LinkTokensRepo,
 	endpointsRepo ShopNotificationEndpointsRepo,
 	shopsRepo ShopsRepo,
 	monitoring MonitoringService,
@@ -127,6 +139,7 @@ func NewService(
 		statesRepo:       statesRepo,
 		invitesRepo:      invitesRepo,
 		usersRepo:        usersRepo,
+		linkTokensRepo:   linkTokensRepo,
 		endpointsRepo:    endpointsRepo,
 		shopsRepo:        shopsRepo,
 		monitoring:       monitoring,

@@ -27,6 +27,7 @@ import (
 	shopaisettings "salehelp/internal/storage/pggorm/repository/shop_ai_settings"
 	shopairedger "salehelp/internal/storage/pggorm/repository/shop_ai_reply_ledger"
 	shopaireplyquota "salehelp/internal/storage/pggorm/repository/shop_ai_reply_quota"
+	linktokens "salehelp/internal/storage/pggorm/repository/link_tokens"
 	shopinvitetokens "salehelp/internal/storage/pggorm/repository/shop_invite_tokens"
 	"salehelp/internal/storage/pggorm/repository/shopsyncleases"
 	"salehelp/internal/storage/pggorm/repository/subscription"
@@ -72,6 +73,7 @@ type Repositories struct {
 	ShopAIReplyLedger             *shopairedger.Repository
 	ShopAIReplyQuota              *shopaireplyquota.Repository
 	AIFeedbackReply               *aireplyrepo.Repository
+	LinkTokens                    *linktokens.Repository
 	ShopInviteTokens              *shopinvitetokens.Repository
 	ShopSyncLeases                *shopsyncleases.Repository
 	Subscription                  *subscription.Repository
@@ -119,6 +121,7 @@ func (prov *Provider) InitRepositories() {
 		ShopAIReplyLedger:             shopairedger.NewRepository(prov.log, prov.Database.GormDB),
 		ShopAIReplyQuota:              shopaireplyquota.NewRepository(prov.log, prov.Database.GormDB),
 		AIFeedbackReply:              aireplyrepo.NewRepository(prov.log, prov.Database.GormDB),
+		LinkTokens:                    linktokens.NewRepository(prov.log, prov.Database.GormDB),
 		ShopInviteTokens:              shopinvitetokens.NewRepository(prov.log, prov.Database.GormDB),
 		ShopSyncLeases:                shopsyncleases.NewRepository(prov.log, prov.Database.GormDB),
 		Subscription:                  subscrRepo,

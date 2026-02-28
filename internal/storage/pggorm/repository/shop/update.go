@@ -98,3 +98,18 @@ func (r *Repository) UpdateSyncStatus(ctx context.Context, shopID int, upd model
 
 	return nil
 }
+
+// ReassignShopsToUser переносит все магазины от fromUserID к toUserID (для объединения аккаунтов).
+func (r *Repository) ReassignShopsToUser(ctx context.Context, fromUserID, toUserID int) error {
+	if fromUserID <= 0 || toUserID <= 0 || fromUserID == toUserID {
+		return fmt.Errorf("from_user_id and to_user_id must be distinct positive")
+	}
+	res := r.DB.WithContext(ctx).
+		Model(&model.Shop{}).
+		Where("user_id = ?", fromUserID).
+		Update("user_id", toUserID)
+	if res.Error != nil {
+		return fmt.Errorf("shops reassign to user: %w", res.Error)
+	}
+	return nil
+}

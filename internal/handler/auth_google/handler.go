@@ -2,6 +2,7 @@ package auth_google
 
 import (
 	"context"
+	"time"
 
 	"salehelp/domain"
 )
@@ -13,6 +14,8 @@ type (
 		LoginEmail(ctx context.Context, email, password string) (*domain.User, string, error)
 		ValidateJWT(tokenString string) (userID int, email string, err error)
 		ValidateJWTAndRequireAdmin(tokenString string) (userID int, email string, err error)
+		CreateLinkToken(ctx context.Context, userID int) (linkCode string, expiresAt time.Time, err error)
+		ConfirmTelegramLink(ctx context.Context, userID int, code string) error
 	}
 
 	Handler struct {
