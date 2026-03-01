@@ -2,6 +2,7 @@ package prompt
 
 import (
 	"fmt"
+	"strings"
 
 	"salehelp/pkg/ai"
 
@@ -12,11 +13,11 @@ const feedbackReplyTemplate = `Ты — менеджер бренда {{.brand_n
 Твой стиль: {{.tone_instruction}}.
 Твоя задача — ответить на отзыв покупателя о товаре {{.product_name}}.
 
-Данные отзыва: Оценка: {{.rating}}. Текст: {{.text}}. Плюсы: {{.pros}}. Минусы: {{.cons}}.
+{{.review_data}}
 {{.order_status_hint}}
 
 ОБЩИЙ СТИЛЬ:
-Пиши как живой человек — коротко, тепло, без канцелярита.
+Пиши как живой человек — коротко, тепло, без канцелярита. Не хвали сам себя. 
 Избегай: "максимально", "данный", "являемся", "надеемся что", двойных "спасибо" в одном ответе, общих фраз которые подошли бы любому товару.
 Не пересказывай отзыв покупателю обратно.
 
@@ -42,10 +43,25 @@ const feedbackReplyTemplate = `Ты — менеджер бренда {{.brand_n
 var feedbackReplyPrompt = prompts.NewPromptTemplate(
 	feedbackReplyTemplate,
 	[]string{
-		"brand_name", "tone_instruction", "product_name", "rating",
-		"text", "pros", "cons", "custom_rules", "order_status_hint",
+		"brand_name", "tone_instruction", "product_name", "review_data",
+		"custom_rules", "order_status_hint",
 	},
 )
+
+// buildReviewData формирует строку «Данные отзыва», включая только непустые поля (оценка всегда, текст/плюсы/минусы — при наличии).
+func buildReviewData(rating int, text, pros, cons string) string {
+	parts := []string{fmt.Sprintf("Оценка: %d", rating)}
+	if strings.TrimSpace(text) != "" {
+		parts = append(parts, "Текст: "+strings.TrimSpace(text))
+	}
+	if strings.TrimSpace(pros) != "" {
+		parts = append(parts, "Плюсы: "+strings.TrimSpace(pros))
+	}
+	if strings.TrimSpace(cons) != "" {
+		parts = append(parts, "Минусы: "+strings.TrimSpace(cons))
+	}
+	return "Данные отзыва: " + strings.Join(parts, ". ")
+}
 
 // orderStatusHint возвращает подсказку для промпта, если товар уже возвращён — чтобы не предлагать возврат в ответе.
 func orderStatusHint(orderStatus string) string {
@@ -63,11 +79,8 @@ func FormatFeedbackReply(in *ai.FeedbackReplyInput) (string, error) {
 	return feedbackReplyPrompt.Format(map[string]any{
 		"brand_name":        in.BrandName,
 		"tone_instruction":  in.ToneInstruction,
-		"product_name":     in.ProductName,
-		"rating":            in.Rating,
-		"text":              in.Text,
-		"pros":              in.Pros,
-		"cons":              in.Cons,
+		"product_name":      in.ProductName,
+		"review_data":       buildReviewData(in.Rating, in.Text, in.Pros, in.Cons),
 		"custom_rules":      in.CustomRules,
 		"order_status_hint": orderStatusHint(in.OrderStatus),
 	})

@@ -64,7 +64,7 @@ func (prov *Provider) registerSwaggerRoutes(router *echo.Echo) {
 	if prov.cfg.Environment != "production" {
 		router.GET("/swagger/*", echoswag.WrapHandler)
 		router.Debug = true
-		router.Use(echomw.Logger())
+		router.Use(echomw.RequestLogger())
 	}
 }
 
@@ -124,7 +124,7 @@ func RegisterValidator(echo *echo.Echo) {
 // 	if cfg.Environment != "production" {
 // 		router.GET("/swagger/*", echoswag.WrapHandler)
 // 		router.Debug = true
-// 		router.Use(echomw.Logger())
+// 		router.Use(echomw.RequestLogger())
 // 	}
 
 // 	apiGroup := router.Group("/api")
