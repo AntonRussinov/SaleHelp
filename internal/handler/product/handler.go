@@ -31,7 +31,10 @@ func NewHandler(service Service, presenter Presenter) *Handler {
 }
 
 func (*Handler) getIDFromParam(c echo.Context) (string, error) {
-	paramID := c.Param("id")
-
-	return paramID, nil
+	// id магазина/мерчанта из query (см. @Param в Swagger)
+	id := c.QueryParam("id")
+	if id == "" {
+		return "", echo.ErrBadRequest
+	}
+	return id, nil
 }

@@ -32,6 +32,7 @@ type Services struct {
 	Notifier            *notifications.Service //Dispatcher
 	AlertWorker         *alert.Worker
 	Product             *product.Service
+	ProductList         *product.ListService
 	TelegramBot         *telegrambot.Service
 	Subscription        *subscription.Service
 	SubscriptionMonitor *subscriptionmonitor.Monitor
@@ -57,6 +58,8 @@ func (prov *Provider) initIndependentServices() {
 }
 
 func (prov *Provider) initDependentServices() {
+
+	prov.Services.ProductList = product.NewListService(prov.Repositories.Product)
 
 	// 1) senders registry
 	tgSender, err := telegram.NewSender(prov.cfg.TelegramToken)
@@ -259,6 +262,9 @@ func (prov *Provider) initDependentServices() {
 		googleClientID = os.Getenv("GOOGLE_CLIENT_ID")
 	}
 	// Сервис авторизации: достаточно JWT_SECRET (email/пароль). Google — опционально.
+	if jwtSecret == "" {
+		prov.log.Warn("JWT_SECRET not set: auth routes (/api/v1/auth/*) will not be registered; set env JWT_SECRET or config jwt_secret")
+	}
 	if jwtSecret != "" {
 		authGoogleSvc, errAuth := auth_google.NewService(
 			prov.log,

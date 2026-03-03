@@ -179,12 +179,12 @@ func ErrorHandler(log *slog.Logger) func(err error, c echo.Context) {
 		attributes = append(attributes, slog.String("method", c.Request().Method))
 		attributes = append(attributes, sl.Err(err))
 
-		// user := auth.GetUserFromContext(c.Request().Context())
-		// if user != nil {
-		// 	attributes = append(attributes, slog.String("username", user.Name))
-		// }
-
-		log.Error("failed to process api request", attributes...)
+		// 404/405 уже логируются RequestLogger; не дублируем как ERROR
+		if echoErr, ok := err.(*echo.HTTPError); ok && echoErr.Code >= 400 && echoErr.Code < 500 {
+			log.Info("api request client error", attributes...)
+		} else {
+			log.Error("failed to process api request", attributes...)
+		}
 
 		if err := handleError(err, c); err != nil {
 			attributes = append(attributes, sl.Err(err))

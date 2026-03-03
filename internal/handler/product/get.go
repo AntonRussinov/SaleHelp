@@ -23,7 +23,7 @@ func (hand *Handler) GetProductByMerchantID(c echo.Context) error {
 
 	id, err := hand.getIDFromParam(c)
 	if err != nil {
-		return echo.ErrNotFound
+		return err
 	}
 
 	data, err := hand.service.GetAllProducts(c.Request().Context(), id)

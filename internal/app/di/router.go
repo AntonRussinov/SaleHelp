@@ -197,6 +197,9 @@ func registerAuthGoogleRoutes(e *echo.Group, prov *Provider) {
 }
 
 func registerTagRoutes(e *echo.Group, tagHandler *product.Handler) {
+	if tagHandler == nil {
+		return
+	}
 	e.GET("/products", tagHandler.GetProductByMerchantID,
 		middleware.Pagination(),
 		middleware.OrderBy(),
