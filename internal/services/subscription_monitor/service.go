@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"salehelp/domain"
+	"salehelp/internal/services/notification_settings"
 	"time"
 )
 
@@ -34,16 +35,17 @@ type Monitor struct {
 	eventsRepo SubsriptionNotificationEventsRepo
 	endpoints  EndpointsRepo
 	tg         TelegramAPI
+	settings   *notification_settings.Service
 	now        func() time.Time
 	loc        *time.Location
 }
 
-func New(subsRepo SubscriptionsRepo, eventsRepo SubsriptionNotificationEventsRepo, endpoints EndpointsRepo, tg TelegramAPI, loc *time.Location) *Monitor {
+func New(subsRepo SubscriptionsRepo, eventsRepo SubsriptionNotificationEventsRepo, endpoints EndpointsRepo, tg TelegramAPI, settings *notification_settings.Service, loc *time.Location) *Monitor {
 	if loc == nil {
 		loc = time.Local
 	}
 	return &Monitor{
-		subsRepo: subsRepo, eventsRepo: eventsRepo, endpoints: endpoints, tg: tg,
+		subsRepo: subsRepo, eventsRepo: eventsRepo, endpoints: endpoints, tg: tg, settings: settings,
 		now: time.Now,
 		loc: loc,
 	}
@@ -93,6 +95,13 @@ func (m *Monitor) process(ctx context.Context, from, to time.Time, event string)
 		}
 		if !inserted {
 			continue
+		}
+
+		if m.settings != nil {
+			enabled, err := m.settings.EffectiveEnabled(ctx, s.ShopID, domain.NotificationEventSubscriptionStatus)
+			if err == nil && !enabled {
+				continue
+			}
 		}
 
 		chatIDs, err := m.endpoints.ListEnabledTelegramChatIDsByShopID(ctx, s.ShopID)

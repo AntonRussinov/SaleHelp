@@ -22,6 +22,29 @@ func (e *AlertEngine) runShopSaleEvents(ctx context.Context, shopID int, product
 	if len(events) == 0 && len(refusals) == 0 {
 		return nil
 	}
+
+	if !e.notifEnabled(ctx, shopID, domain.NotificationEventSalesAndRefusals) {
+		now := time.Now()
+		if len(events) > 0 {
+			ids := make([]int, 0, len(events))
+			for _, ev := range events {
+				ids = append(ids, ev.ID)
+			}
+			if err := e.saleEventsRepo.MarkNotified(ctx, ids, now); err != nil {
+				return err
+			}
+		}
+		if len(refusals) > 0 {
+			ids := make([]int, 0, len(refusals))
+			for _, r := range refusals {
+				ids = append(ids, r.ID)
+			}
+			if err := e.orderRefusalsRepo.MarkNotified(ctx, ids, now); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	if len(products) == 0 {
 		products, err = e.productsRepo.ListByShop(ctx, shopID, 0, 0)
 		if err != nil {

@@ -5,8 +5,9 @@ import (
 	"reflect"
 	"salehelp/internal/handler"
 	"salehelp/internal/handler/alert"
-	"salehelp/internal/handler/product"
 	auth_google_handler "salehelp/internal/handler/auth_google"
+	notification_settings "salehelp/internal/handler/notification_settings"
+	"salehelp/internal/handler/product"
 	shopaisettings "salehelp/internal/handler/shop_ai_settings"
 	"salehelp/internal/handler/subscription"
 	"salehelp/internal/handler/telegram"
@@ -191,6 +192,7 @@ func registerAuthGoogleRoutes(e *echo.Group, prov *Provider) {
 	protected.POST("/shop/:id/sync", prov.Handlers.Shop.SyncShopByID)
 	registerAlertRoutes(protected, prov.Handlers.Alert)
 	registerShopAISettingsRoutes(protected, prov.Handlers.ShopAISettings)
+	registerNotificationSettingsRoutes(protected, prov.Handlers.NotificationSettings)
 	registerSubscriptionStatusRoute(protected, prov.Handlers.Subscription)
 	adminProtected := e.Group("", middleware.AdminAuth(prov.Services.AuthGoogle, auth_google_handler.SetJWTContext))
 	registerSubscriptionGrantRoute(adminProtected, prov.Handlers.Subscription)
@@ -229,4 +231,14 @@ func registerShopAISettingsRoutes(e *echo.Group, aiSettingsHandler *shopaisettin
 	shops := e.Group("/shops/:shopId")
 	shops.GET("/ai-settings", aiSettingsHandler.GetAISettings)
 	shops.PUT("/ai-settings", aiSettingsHandler.UpsertAISettings)
+}
+
+func registerNotificationSettingsRoutes(e *echo.Group, h *notification_settings.Handler) {
+	if h == nil {
+		return
+	}
+	shops := e.Group("/shops/:shopId")
+	grp := shops.Group("/notification-settings")
+	grp.GET("", h.ListSettings)
+	grp.PUT("", h.UpdateSettings)
 }

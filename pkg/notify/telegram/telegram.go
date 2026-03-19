@@ -28,6 +28,7 @@ func DefaultRussianCommands() []BotCommand {
 		{Command: "start", Description: "Старт"},
 		{Command: "addshop", Description: "Добавить магазин"},
 		{Command: "myshops", Description: "Мои магазины"},
+		{Command: "alerts", Description: "Настроить уведомления"},
 		{Command: "invite", Description: "Пригласить в магазин"},
 		{Command: "abc_now", Description: "ABC-анализ"},
 		{Command: "cancel", Description: "Отмена"},
@@ -58,7 +59,7 @@ func (s *Sender) SendWithInlineKeyboard(
 		"chat_id":                  chatID,
 		"text":                     text,
 		"parse_mode":               "HTML",
-		"disable_web_page_preview":  true,
+		"disable_web_page_preview": true,
 		"reply_markup":             inlineKeyboard,
 	}
 	return s.client.SendRaw(ctx, payload)
@@ -95,7 +96,18 @@ func (s *Sender) Send(ctx context.Context, r notify.Recipient, m notify.Message)
 			text = string(rs[:telegramMaxLen-1]) + "…"
 		}
 
-		if err := s.client.SendMessage(
+		isLastPart := i == len(parts)-1
+		if isLastPart && m.InlineKeyboard != nil {
+			if err := s.client.SendRaw(ctx, map[string]any{
+				"chat_id":                  *r.TelegramChatID,
+				"text":                     text,
+				"parse_mode":               "HTML",
+				"disable_web_page_preview": true,
+				"reply_markup":             m.InlineKeyboard,
+			}); err != nil {
+				return err
+			}
+		} else if err := s.client.SendMessage(
 			ctx,
 			*r.TelegramChatID,
 			text,

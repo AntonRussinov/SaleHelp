@@ -18,6 +18,15 @@ func (e *AlertEngine) runShopFBSOrders(ctx context.Context, shopID int, products
 	if len(orders) == 0 {
 		return nil
 	}
+
+	if !e.notifEnabled(ctx, shopID, domain.NotificationEventFBSOrders) {
+		now := time.Now()
+		ids := make([]int, 0, len(orders))
+		for _, o := range orders {
+			ids = append(ids, o.ID)
+		}
+		return e.fbsOrdersRepo.MarkNotified(ctx, ids, now)
+	}
 	// Названия товаров: используем переданные products или один раз подгружаем ListByShop
 	if len(products) == 0 {
 		products, err = e.productsRepo.ListByShop(ctx, shopID, 0, 0)

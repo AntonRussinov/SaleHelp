@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"salehelp/domain"
+	"salehelp/internal/services/notification_settings"
 	"salehelp/internal/services/subscription"
 )
 
@@ -15,6 +16,7 @@ type stockLowCfg struct {
 
 type AlertEngine struct {
 	subSvc                   SubscriptionService
+	notifSettings            *notification_settings.Service
 	alertsRepo               AlertsRepo
 	alertsTriggeredRepo      AlertsTriggeredRepo
 	productsRepo             ProductsRepo
@@ -33,6 +35,20 @@ type AlertEngine struct {
 	tg                       TelegramSender
 	abcSnapshotRepo          ABCSnapshotRepo
 	log                      *slog.Logger
+}
+
+func (e *AlertEngine) notifEnabled(ctx context.Context, shopID int, key string) bool {
+	if e == nil || e.notifSettings == nil {
+		return true
+	}
+	enabled, err := e.notifSettings.EffectiveEnabled(ctx, shopID, key)
+	if err != nil {
+		if e.log != nil {
+			e.log.Warn("notification settings check failed, treat as enabled", "shop_id", shopID, "key", key, "err", err)
+		}
+		return true
+	}
+	return enabled
 }
 
 type WBFeedbackRepo interface {
@@ -117,6 +133,7 @@ type TelegramSender interface {
 
 func NewAlertEngine(
 	subSvc SubscriptionService,
+	notifSettings *notification_settings.Service,
 	alertsRepo AlertsRepo,
 	alertsTriggeredRepo AlertsTriggeredRepo,
 	productsRepo ProductsRepo,
@@ -138,6 +155,7 @@ func NewAlertEngine(
 ) *AlertEngine {
 	return &AlertEngine{
 		subSvc:                   subSvc,
+		notifSettings:            notifSettings,
 		alertsRepo:               alertsRepo,
 		alertsTriggeredRepo:      alertsTriggeredRepo,
 		productsRepo:             productsRepo,

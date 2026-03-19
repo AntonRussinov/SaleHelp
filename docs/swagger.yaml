@@ -136,6 +136,30 @@ definitions:
       total:
         type: integer
     type: object
+  api.ListNotificationSettingsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/api.NotificationSetting'
+        type: array
+    type: object
+  api.NotificationSetting:
+    properties:
+      category:
+        type: string
+      defaultEnabled:
+        type: boolean
+      description:
+        type: string
+      enabled:
+        type: boolean
+      key:
+        type: string
+      title:
+        type: string
+    required:
+    - key
+    type: object
   api.ShopResponse:
     properties:
       createdAt:
@@ -178,6 +202,24 @@ definitions:
       status:
         type: string
     type: object
+  api.UpdateNotificationSettingsItem:
+    properties:
+      enabled:
+        type: boolean
+      key:
+        type: string
+    required:
+    - key
+    type: object
+  api.UpdateNotificationSettingsRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/api.UpdateNotificationSettingsItem'
+        type: array
+    required:
+    - items
+    type: object
   api.UpsertAISettingsRequest:
     properties:
       brandName:
@@ -210,6 +252,19 @@ definitions:
       field:
         type: string
       message:
+        type: string
+    type: object
+  auth_google.ConfirmTelegramLinkRequest:
+    properties:
+      code:
+        type: string
+    type: object
+  auth_google.LinkTelegramResponse:
+    properties:
+      expiresAt:
+        description: RFC3339
+        type: string
+      linkCode:
         type: string
     type: object
   auth_google.LoginByGoogleRequest:
@@ -352,6 +407,37 @@ info:
   title: SaleHelp API
   version: "1.0"
 paths:
+  /v1/auth/confirm-telegram-link:
+    post:
+      consumes:
+      - application/json
+      description: Ввести код, полученный в боте после /link_email. Требует JWT (владелец
+        email).
+      parameters:
+      - description: Код из бота
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth_google.ConfirmTelegramLinkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Подтвердить привязку Telegram (код из бота)
+      tags:
+      - auth
   /v1/auth/google:
     post:
       consumes:
@@ -381,6 +467,25 @@ paths:
           schema:
             $ref: '#/definitions/api.HTTPError'
       summary: Вход через Google
+      tags:
+      - auth
+  /v1/auth/link-telegram:
+    post:
+      description: Генерирует код, который нужно ввести в боте командой /link &lt;код&gt;
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth_google.LinkTelegramResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Код для привязки Telegram
       tags:
       - auth
   /v1/auth/login:
@@ -497,7 +602,7 @@ paths:
       consumes:
       - application/json
       description: 'Создаёт запись подписки (period_months: 1|3|6), опционально аддоны
-        на доп. Telegram-чаты'
+        на доп. Telegram-чаты. Вызывать может только админ.'
       parameters:
       - description: ID магазина
         in: path
@@ -521,10 +626,20 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
       summary: Выдать/продлить подписку
       tags:
       - subscription
@@ -548,10 +663,20 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
       summary: Статус подписки
       tags:
       - subscription
@@ -571,10 +696,20 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
       summary: Синхронизация магазина
       tags:
       - shops
@@ -663,6 +798,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
         "404":
           description: Not Found
           schema:
@@ -671,6 +814,8 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
       summary: Получить настройки AI
       tags:
       - shop-ai-settings
@@ -702,16 +847,27 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
       summary: Создать/обновить настройки AI
       tags:
       - shop-ai-settings
   /v1/shops/{shopId}/alerts:
     get:
-      description: Получает список алертов с фильтрацией и пагинацией
+      description: Получает список алертов с фильтрацией и пагинацией. Доступ только
+        у владельца магазина (JWT).
       parameters:
       - description: ID магазина
         in: path
@@ -756,17 +912,28 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
       summary: Получить список алертов
       tags:
       - alerts
     post:
       consumes:
       - application/json
-      description: Создает новый алерт для магазина
+      description: Создает новый алерт для магазина. Доступ только у владельца магазина
+        (JWT).
       parameters:
       - description: ID магазина
         in: path
@@ -790,16 +957,26 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
       summary: Создать алерт
       tags:
       - alerts
   /v1/shops/{shopId}/alerts/{alertId}:
     delete:
-      description: Удаляет алерт по ID
+      description: Удаляет алерт по ID. Доступ только у владельца магазина (JWT).
       parameters:
       - description: ID магазина
         in: path
@@ -818,6 +995,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
         "404":
           description: Not Found
           schema:
@@ -826,11 +1011,13 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
       summary: Удалить алерт
       tags:
       - alerts
     get:
-      description: Получает алерт по ID
+      description: Получает алерт по ID. Доступ только у владельца магазина (JWT).
       parameters:
       - description: ID магазина
         in: path
@@ -853,6 +1040,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
         "404":
           description: Not Found
           schema:
@@ -861,13 +1056,16 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
       summary: Получить алерт
       tags:
       - alerts
     put:
       consumes:
       - application/json
-      description: Обновляет существующий алерт
+      description: Обновляет существующий алерт. Доступ только у владельца магазина
+        (JWT).
       parameters:
       - description: ID магазина
         in: path
@@ -896,6 +1094,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
         "404":
           description: Not Found
           schema:
@@ -904,9 +1110,94 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
       summary: Обновить алерт
       tags:
       - alerts
+  /v1/shops/{shopId}/notification-settings:
+    get:
+      description: Возвращает список всех доступных типов уведомлений и их текущее
+        состояние (enabled/disabled) для магазина.
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ListNotificationSettingsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Список настроек уведомлений магазина
+      tags:
+      - notification-settings
+    put:
+      consumes:
+      - application/json
+      description: Обновляет enabled/disabled для указанных типов уведомлений (владелец
+        магазина).
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: Список настроек
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateNotificationSettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ListNotificationSettingsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Обновить настройки уведомлений магазина
+      tags:
+      - notification-settings
   /v1/shops/{shopId}/products:
     get:
       description: 'Список товаров по shopId. Проверка доступа по JWT. Query: limit,

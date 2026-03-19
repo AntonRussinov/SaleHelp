@@ -68,3 +68,37 @@ func (c *Client) GetPricesByNmIDsMap(ctx context.Context, apiKey string, nmIDs [
 
 	return out, nil
 }
+
+// UploadPrices устанавливает цены и скидки для товаров (editable_size_price = false).
+// POST /api/v2/upload/task. Максимум 1000 товаров в одном запросе.
+func (c *Client) UploadPrices(ctx context.Context, apiKey string, req dto.UploadTaskRequest) (*dto.UploadTaskResponse, error) {
+	if len(req.Data) == 0 {
+		return &dto.UploadTaskResponse{}, nil
+	}
+	var result dto.UploadTaskResponse
+	url := c.priceURL + "/api/v2/upload/task"
+	if err := c.doJSON(ctx, http.MethodPost, url, apiKey, RatePrices, req, &result); err != nil {
+		return nil, err
+	}
+	if result.Error && result.ErrorText != "" {
+		return &result, fmt.Errorf("wb upload prices: %s", result.ErrorText)
+	}
+	return &result, nil
+}
+
+// UploadPricesBySize устанавливает цены по размерам (editable_size_price = true).
+// POST /api/v2/upload/task/size. Максимум 1000 размеров в одном запросе.
+func (c *Client) UploadPricesBySize(ctx context.Context, apiKey string, req dto.UploadTaskSizeRequest) (*dto.UploadTaskResponse, error) {
+	if len(req.Data) == 0 {
+		return &dto.UploadTaskResponse{}, nil
+	}
+	var result dto.UploadTaskResponse
+	url := c.priceURL + "/api/v2/upload/task/size"
+	if err := c.doJSON(ctx, http.MethodPost, url, apiKey, RatePrices, req, &result); err != nil {
+		return nil, err
+	}
+	if result.Error && result.ErrorText != "" {
+		return &result, fmt.Errorf("wb upload prices by size: %s", result.ErrorText)
+	}
+	return &result, nil
+}

@@ -19,6 +19,15 @@ func (e *AlertEngine) runShopWBFeedbacks(ctx context.Context, shopID int) error 
 	if len(feedbacks) == 0 {
 		return nil
 	}
+
+	if !e.notifEnabled(ctx, shopID, domain.NotificationEventWBFeedbacks) {
+		now := time.Now()
+		ids := make([]int, 0, len(feedbacks))
+		for _, f := range feedbacks {
+			ids = append(ids, f.ID)
+		}
+		return e.wbFeedbacksRepo.MarkNotified(ctx, ids, now)
+	}
 	endpoints, err := e.endpointsRepo.ListByShopID(ctx, shopID, true)
 	if err != nil {
 		return err

@@ -18,6 +18,15 @@ func (e *AlertEngine) runShopWBQuestions(ctx context.Context, shopID int) error 
 	if len(questions) == 0 {
 		return nil
 	}
+
+	if !e.notifEnabled(ctx, shopID, domain.NotificationEventWBQuestions) {
+		now := time.Now()
+		ids := make([]int, 0, len(questions))
+		for _, q := range questions {
+			ids = append(ids, q.ID)
+		}
+		return e.wbQuestionsRepo.MarkNotified(ctx, ids, now)
+	}
 	endpoints, err := e.endpointsRepo.ListByShopID(ctx, shopID, true)
 	if err != nil {
 		return err

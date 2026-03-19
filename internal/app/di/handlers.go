@@ -4,6 +4,7 @@ import (
 	"errors"
 	"salehelp/internal/handler/alert"
 	auth_google_handler "salehelp/internal/handler/auth_google"
+	notification_settings "salehelp/internal/handler/notification_settings"
 	"salehelp/internal/handler/product"
 	"salehelp/internal/handler/shop"
 	shopaisettings "salehelp/internal/handler/shop_ai_settings"
@@ -12,13 +13,14 @@ import (
 )
 
 type Handlers struct {
-	Product        *product.Handler
-	TelegramBot    *telegram.Handler
-	Shop           *shop.Handler
-	Subscription   *subscription.Handler
-	Alert          *alert.Handler
-	ShopAISettings *shopaisettings.Handler
-	AuthGoogle     *auth_google_handler.Handler
+	Product              *product.Handler
+	TelegramBot          *telegram.Handler
+	Shop                 *shop.Handler
+	Subscription         *subscription.Handler
+	Alert                *alert.Handler
+	ShopAISettings       *shopaisettings.Handler
+	AuthGoogle           *auth_google_handler.Handler
+	NotificationSettings *notification_settings.Handler
 }
 
 var ErrInitHandlerss = errors.New("failed to initialize Handlerss")
@@ -40,6 +42,9 @@ func (prov *Provider) InitHandlers() error {
 	prov.Handlers.Subscription = subscription.NewHandler(prov.Services.Subscription, prov.Repositories.Shop)
 	prov.Handlers.Alert = alert.NewHandler(prov.Services.AlertService, prov.Repositories.Shop)
 	prov.Handlers.ShopAISettings = shopaisettings.NewHandler(prov.Repositories.ShopAISettings, prov.Repositories.Shop)
+	if prov.Services.NotificationSettings != nil {
+		prov.Handlers.NotificationSettings = notification_settings.NewHandler(prov.Services.NotificationSettings, prov.Repositories.Shop)
+	}
 	if prov.Services.AuthGoogle != nil {
 		prov.Handlers.AuthGoogle = auth_google_handler.NewHandler(prov.Services.AuthGoogle)
 	}

@@ -10,6 +10,8 @@ import (
 	auth_google "salehelp/internal/services/auth_google"
 	"salehelp/internal/services/monitoring"
 	notifications "salehelp/internal/services/notification"
+	"salehelp/internal/services/notification_settings"
+	"salehelp/internal/services/price_restore"
 	"salehelp/internal/services/product"
 	"salehelp/internal/services/stock_replenish"
 	"salehelp/internal/services/subscription"
@@ -23,22 +25,24 @@ import (
 )
 
 type Services struct {
-	ABCAnalysis         *abc_analysis.Service
+	ABCAnalysis *abc_analysis.Service
 	//User *user.Service
 	//Limit         *limit.Service
-	AlertService        *alert.AlertService
-	AlertEngine         *alert.AlertEngine
-	Monitoring          *monitoring.Service
-	Notifier            *notifications.Service //Dispatcher
-	AlertWorker         *alert.Worker
-	Product             *product.Service
-	ProductList         *product.ListService
-	TelegramBot         *telegrambot.Service
-	Subscription        *subscription.Service
-	SubscriptionMonitor *subscriptionmonitor.Monitor
-	StockReplenish      *stock_replenish.Service
-	AIReply             *ai_reply.Service
-	AuthGoogle          *auth_google.Service
+	AlertService         *alert.AlertService
+	AlertEngine          *alert.AlertEngine
+	Monitoring           *monitoring.Service
+	Notifier             *notifications.Service //Dispatcher
+	AlertWorker          *alert.Worker
+	Product              *product.Service
+	ProductList          *product.ListService
+	TelegramBot          *telegrambot.Service
+	Subscription         *subscription.Service
+	SubscriptionMonitor  *subscriptionmonitor.Monitor
+	StockReplenish       *stock_replenish.Service
+	PriceRestore         *price_restore.Service
+	AIReply              *ai_reply.Service
+	AuthGoogle           *auth_google.Service
+	NotificationSettings *notification_settings.Service
 }
 
 func (prov *Provider) InitServices() {
@@ -54,6 +58,8 @@ func (prov *Provider) initIndependentServices() {
 		prov.Repositories.SubscriptionAddon,
 		prov.Repositories.NotificationEndpoint,
 	)
+
+	prov.Services.NotificationSettings = notification_settings.New(prov.Repositories.ShopNotificationSetting)
 
 }
 
@@ -119,11 +125,13 @@ func (prov *Provider) initDependentServices() {
 	)
 
 	dispatcher := notifications.NewDispatcher(
-		prov.Repositories.AlertTriggeredDelivery, // deliveries repo
-		prov.Repositories.AlertTriggered,         // triggered repo
-		prov.Repositories.Product,                // products repo
-		prov.Repositories.ProductSize,            // product sizes repo
-		prov.Repositories.NotificationEndpoint,   // endpoints repo
+		prov.Repositories.AlertTriggeredDelivery,
+		prov.Repositories.AlertTriggered,
+		prov.Repositories.Product,
+		prov.Repositories.ProductSize,
+		prov.Repositories.NotificationEndpoint,
+		prov.Repositories.PriceRestoreBatch,
+		prov.Services.NotificationSettings,
 		registry,
 		getWorkerID(),
 	)
@@ -137,6 +145,7 @@ func (prov *Provider) initDependentServices() {
 
 	prov.Services.AlertEngine = alert.NewAlertEngine(
 		prov.Services.Subscription,
+		prov.Services.NotificationSettings,
 		prov.Repositories.Alert,
 		prov.Repositories.AlertTriggered,
 		prov.Repositories.Product,
@@ -171,6 +180,18 @@ func (prov *Provider) initDependentServices() {
 		prov.log,
 	)
 
+	prov.Services.PriceRestore = price_restore.NewService(
+		prov.log,
+		prov.Repositories.PriceRestoreBatch,
+		prov.Repositories.AlertTriggered,
+		prov.Repositories.ProductSnapshot,
+		prov.Repositories.ProductSizePriceSnapshot,
+		prov.Repositories.Product,
+		prov.Repositories.ProductSize,
+		prov.Repositories.Shop,
+		prov.WBClient,
+	)
+
 	prov.Services.TelegramBot = telegrambot.NewService(
 		prov.log,
 		tgAdapter,
@@ -186,6 +207,9 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.Subscription,
 		prov.Services.ABCAnalysis,
 		prov.Repositories.Product,
+		prov.Services.PriceRestore,
+		prov.Repositories.PriceRestoreBatch,
+		prov.Services.NotificationSettings,
 		prov.cfg.TelegramAdminID,
 	)
 
@@ -207,6 +231,7 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.SubscriptionNotificationEvent,
 		prov.Repositories.NotificationEndpoint,
 		tgAdapter,
+		prov.Services.NotificationSettings,
 		loc,
 	)
 
@@ -218,6 +243,7 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.WBOrder,
 		prov.Repositories.NotificationEndpoint,
 		tgAdapter,
+		prov.Services.NotificationSettings,
 		prov.log,
 	)
 

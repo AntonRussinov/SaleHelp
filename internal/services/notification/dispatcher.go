@@ -4,9 +4,17 @@ import (
 	"context"
 	"fmt"
 	"salehelp/domain"
+	"salehelp/internal/services/notification_settings"
 	"salehelp/pkg/notify"
+	"strconv"
 	"time"
 )
+
+const callbackRestorePricesPrefix = "restore_prices:"
+
+type PriceRestoreBatchRepo interface {
+	Create(ctx context.Context, batch *domain.PriceRestoreBatch, triggeredIDs []int) (int, error)
+}
 
 type Dispatcher struct {
 	deliveriesRepo   DeliveriesRepo
@@ -14,6 +22,8 @@ type Dispatcher struct {
 	productsRepo     ProductsRepo
 	productSizesRepo ProductSizesRepo
 	endpointsRepo    EndpointsRepo
+	restoreBatchRepo PriceRestoreBatchRepo
+	settingsSvc      *notification_settings.Service
 
 	registry *SenderRegistry
 
@@ -38,6 +48,8 @@ func NewDispatcher(
 	productsRepo ProductsRepo,
 	productSizesRepo ProductSizesRepo,
 	endpointsRepo EndpointsRepo,
+	restoreBatchRepo PriceRestoreBatchRepo,
+	settingsSvc *notification_settings.Service,
 	registry *SenderRegistry,
 	workerID string,
 ) *Dispatcher {
@@ -52,6 +64,8 @@ func NewDispatcher(
 		productsRepo:     productsRepo,
 		productSizesRepo: productSizesRepo,
 		endpointsRepo:    endpointsRepo,
+		restoreBatchRepo: restoreBatchRepo,
+		settingsSvc:      settingsSvc,
 		registry:         registry,
 		workerID:         workerID,
 		limit:            200,
@@ -180,10 +194,41 @@ func (d *Dispatcher) RunOnce(ctx context.Context) error {
 
 		// triggered list
 		trList := make([]*domain.AlertTriggered, 0, len(dels))
+		enabledDels := make([]*domain.AlertTriggeredDelivery, 0, len(dels))
+		disabledIDs := make([]int, 0, 8)
+
+		var enabledMap map[string]bool
+		if d.settingsSvc != nil {
+			shopID := trListShopID(triggeredByID, dels)
+			if shopID > 0 {
+				m, errM := d.settingsSvc.EffectiveMap(ctx, shopID)
+				if errM == nil {
+					enabledMap = m
+				}
+			}
+		}
+
 		for _, del := range dels {
 			if tr := triggeredByID[del.TriggeredID]; tr != nil {
+				enabled := true
+				if enabledMap != nil {
+					if v, ok := enabledMap[tr.AlertType]; ok {
+						enabled = v
+					}
+				}
+				if !enabled {
+					disabledIDs = append(disabledIDs, del.ID)
+					continue
+				}
 				trList = append(trList, tr)
+				enabledDels = append(enabledDels, del)
 			}
+		}
+
+		// If everything is disabled by settings, just mark as sent (skipped).
+		if len(trList) == 0 && len(disabledIDs) > 0 {
+			_ = d.deliveriesRepo.MarkSentMany(ctx, disabledIDs, now)
+			continue
 		}
 		if len(trList) == 0 {
 			_ = d.deliveriesRepo.MarkFailedMany(ctx, deliveryIDs(dels), "triggered events not found")
@@ -193,18 +238,40 @@ func (d *Dispatcher) RunOnce(ctx context.Context) error {
 		// recipient
 		rcpt, err := recipientFromEndpoint(ep, trList[0].ShopID)
 		if err != nil {
-			_ = d.deliveriesRepo.MarkFailedMany(ctx, deliveryIDs(dels), err.Error())
+			_ = d.deliveriesRepo.MarkFailedMany(ctx, deliveryIDs(enabledDels), err.Error())
 			continue
 		}
 
 		// build digest messages (chunked)
 		msgs := FormatShopDigestMessagesRU(trList, productsByID, sizesByID, sizesCountByProduct)
 
+		// Для Telegram при наличии price_drop: один батч на все такие триггеры группы,
+		// кнопка «Вернуть цены назад» — только в последнем сообщении (при разбиении отчёта на несколько чанков).
+		if ch == notify.ChannelTelegram && len(msgs) > 0 {
+			var priceDropTriggeredIDs []int
+			for _, tr := range trList {
+				if tr != nil && tr.AlertType == "price_drop" {
+					priceDropTriggeredIDs = append(priceDropTriggeredIDs, tr.ID)
+				}
+			}
+			if len(priceDropTriggeredIDs) > 0 && d.restoreBatchRepo != nil {
+				batch := &domain.PriceRestoreBatch{CreatedAt: now}
+				batchID, errCreate := d.restoreBatchRepo.Create(ctx, batch, priceDropTriggeredIDs)
+				if errCreate == nil {
+					lastIdx := len(msgs) - 1
+					msgs[lastIdx].InlineKeyboard = inlineKeyboardRestorePrices(batchID)
+				}
+			}
+		}
+
 		// send all parts; only mark sent if ALL succeed
 		sentOK := true
 		for _, msg := range msgs {
 			if err := sender.Send(ctx, rcpt, msg); err != nil {
-				_ = d.deliveriesRepo.MarkFailedMany(ctx, deliveryIDs(dels), err.Error())
+				_ = d.deliveriesRepo.MarkFailedMany(ctx, deliveryIDs(enabledDels), err.Error())
+				if len(disabledIDs) > 0 {
+					_ = d.deliveriesRepo.MarkSentMany(ctx, disabledIDs, now)
+				}
 				sentOK = false
 				break
 			}
@@ -213,13 +280,28 @@ func (d *Dispatcher) RunOnce(ctx context.Context) error {
 			continue
 		}
 
-		// mark sent
-		if err := d.deliveriesRepo.MarkSentMany(ctx, deliveryIDs(dels), now); err != nil {
+		// mark sent (enabled + disabled)
+		if len(disabledIDs) > 0 {
+			_ = d.deliveriesRepo.MarkSentMany(ctx, disabledIDs, now)
+		}
+		if err := d.deliveriesRepo.MarkSentMany(ctx, deliveryIDs(enabledDels), now); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func trListShopID(triggeredByID map[int]*domain.AlertTriggered, dels []*domain.AlertTriggeredDelivery) int {
+	for _, del := range dels {
+		if del == nil {
+			continue
+		}
+		if tr := triggeredByID[del.TriggeredID]; tr != nil {
+			return tr.ShopID
+		}
+	}
+	return 0
 }
 
 func deliveryIDs(dels []*domain.AlertTriggeredDelivery) []int {
@@ -228,6 +310,14 @@ func deliveryIDs(dels []*domain.AlertTriggeredDelivery) []int {
 		ids = append(ids, d.ID)
 	}
 	return ids
+}
+
+func inlineKeyboardRestorePrices(batchID int) map[string]any {
+	return map[string]any{
+		"inline_keyboard": [][]map[string]string{
+			{{"text": "Вернуть цены назад", "callback_data": callbackRestorePricesPrefix + strconv.Itoa(batchID)}},
+		},
+	}
 }
 
 func NewSenderRegistry(senders []notify.Sender) *SenderRegistry {

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"salehelp/domain"
+	"salehelp/internal/services/notification_settings"
 	"salehelp/pkg/logger/sl"
 )
 
@@ -56,6 +57,7 @@ type Service struct {
 	wbOrders   WBOrdersRepo
 	endpoints  EndpointRepo
 	tg         TelegramSender
+	settings   *notification_settings.Service
 }
 
 func New(
@@ -66,6 +68,7 @@ func New(
 	wbOrders WBOrdersRepo,
 	endpoints EndpointRepo,
 	tg TelegramSender,
+	settings *notification_settings.Service,
 	log *slog.Logger,
 ) *Service {
 	return &Service{
@@ -77,6 +80,7 @@ func New(
 		wbOrders:   wbOrders,
 		endpoints:  endpoints,
 		tg:         tg,
+		settings:   settings,
 	}
 }
 
@@ -209,6 +213,13 @@ func (s *Service) processShop(ctx context.Context, shopID int) error {
 	text := s.formatMessage(urgent, warning)
 	if text == "" {
 		return nil
+	}
+
+	if s.settings != nil {
+		enabled, err := s.settings.EffectiveEnabled(ctx, shopID, domain.NotificationEventStockReplenish)
+		if err == nil && !enabled {
+			return nil
+		}
 	}
 
 	chatIDs, err := s.endpoints.ListEnabledTelegramChatIDsByShopID(ctx, shopID)

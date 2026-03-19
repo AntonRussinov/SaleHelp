@@ -5,7 +5,9 @@ import (
 	"log/slog"
 	"time"
 
-	"salehelp/domain" // или куда ты положил Update DTO
+	"salehelp/domain"
+	"salehelp/internal/services/notification_settings"
+	"salehelp/internal/services/price_restore"
 	"salehelp/internal/services/subscription"
 	"salehelp/internal/storage/pggorm/model"
 	"salehelp/pkg/logger/sl"
@@ -97,6 +99,16 @@ type (
 		ListByShop(ctx context.Context, shopID int, limit, offset int) ([]*domain.Product, error)
 	}
 
+	// PriceRestoreService — восстановление цен по пакету (кнопка «Вернуть цены назад»).
+	PriceRestoreService interface {
+		Restore(ctx context.Context, batchID int) price_restore.RestoreResult
+	}
+
+	// PriceRestoreBatchRepo — проверка restored_at при нажатии «Вернуть цены назад».
+	PriceRestoreBatchRepo interface {
+		GetByID(ctx context.Context, id int) (*domain.PriceRestoreBatch, error)
+	}
+
 	Service struct {
 		log              *slog.Logger
 		tg               TelegramAPI
@@ -111,6 +123,9 @@ type (
 		subscriptionRepo SubscriptionRepo
 		abcSvc           ABCReportService
 		productsRepo     ProductsRepoForABC
+		priceRestore     PriceRestoreService
+		restoreBatchRepo PriceRestoreBatchRepo
+		notifSettings    *notification_settings.Service
 		botUsername      string
 		adminChatID      int64
 	}
@@ -131,6 +146,9 @@ func NewService(
 	subscriptionRepo SubscriptionRepo,
 	abcSvc ABCReportService,
 	productsRepo ProductsRepoForABC,
+	priceRestore PriceRestoreService,
+	restoreBatchRepo PriceRestoreBatchRepo,
+	notifSettings *notification_settings.Service,
 	adminChatID int64,
 ) *Service {
 	return &Service{
@@ -148,6 +166,9 @@ func NewService(
 		subscriptionRepo: subscriptionRepo,
 		abcSvc:           abcSvc,
 		productsRepo:     productsRepo,
+		priceRestore:     priceRestore,
+		restoreBatchRepo: restoreBatchRepo,
+		notifSettings:    notifSettings,
 		adminChatID:      adminChatID,
 	}
 }

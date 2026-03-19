@@ -22,6 +22,54 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/v1/auth/confirm-telegram-link": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Ввести код, полученный в боте после /link_email. Требует JWT (владелец email).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Подтвердить привязку Telegram (код из бота)",
+                "parameters": [
+                    {
+                        "description": "Код из бота",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth_google.ConfirmTelegramLinkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/auth/google": {
             "post": {
                 "description": "Принимает id_token от Google Sign-In, проверяет его, находит или создаёт пользователя, возвращает JWT",
@@ -57,6 +105,37 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/link-telegram": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Генерирует код, который нужно ввести в боте командой /link \u0026lt;код\u0026gt;",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Код для привязки Telegram",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth_google.LinkTelegramResponse"
                         }
                     },
                     "401": {
@@ -236,7 +315,12 @@ const docTemplate = `{
         },
         "/v1/shop/{id}/subscription/grant": {
             "post": {
-                "description": "Создаёт запись подписки (period_months: 1|3|6), опционально аддоны на доп. Telegram-чаты",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создаёт запись подписки (period_months: 1|3|6), опционально аддоны на доп. Telegram-чаты. Вызывать может только админ.",
                 "consumes": [
                     "application/json"
                 ],
@@ -278,6 +362,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.HTTPError"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -289,6 +385,11 @@ const docTemplate = `{
         },
         "/v1/shop/{id}/subscription/status": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Активная подписка (если есть), срок, лимиты и использование Telegram-чатов",
                 "produces": [
                     "application/json"
@@ -319,6 +420,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.HTTPError"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -330,6 +443,11 @@ const docTemplate = `{
         },
         "/v1/shop/{id}/sync": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Запуск синка по ID магазина (товары, заказы, остатки и т.д.)",
                 "tags": [
                     "shops"
@@ -350,6 +468,18 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/api.HTTPError"
                         }
@@ -464,6 +594,11 @@ const docTemplate = `{
         },
         "/v1/shops/{shopId}/ai-settings": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Возвращает настройки AI-ответов на отзывы для магазина (бренд, тон, доп. правила)",
                 "produces": [
                     "application/json"
@@ -494,6 +629,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.HTTPError"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -509,6 +656,11 @@ const docTemplate = `{
                 }
             },
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Задаёт настройки для формирования промпта ИИ: бренд, тон ответа, доп. правила, вкл/выкл генерации",
                 "consumes": [
                     "application/json"
@@ -551,6 +703,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.HTTPError"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -562,7 +726,12 @@ const docTemplate = `{
         },
         "/v1/shops/{shopId}/alerts": {
             "get": {
-                "description": "Получает список алертов с фильтрацией и пагинацией",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получает список алертов с фильтрацией и пагинацией. Доступ только у владельца магазина (JWT).",
                 "produces": [
                     "application/json"
                 ],
@@ -631,6 +800,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.HTTPError"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -640,7 +821,12 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Создает новый алерт для магазина",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создает новый алерт для магазина. Доступ только у владельца магазина (JWT).",
                 "consumes": [
                     "application/json"
                 ],
@@ -682,6 +868,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.HTTPError"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -693,7 +891,12 @@ const docTemplate = `{
         },
         "/v1/shops/{shopId}/alerts/{alertId}": {
             "get": {
-                "description": "Получает алерт по ID",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получает алерт по ID. Доступ только у владельца магазина (JWT).",
                 "produces": [
                     "application/json"
                 ],
@@ -730,6 +933,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.HTTPError"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -745,7 +960,12 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Обновляет существующий алерт",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновляет существующий алерт. Доступ только у владельца магазина (JWT).",
                 "consumes": [
                     "application/json"
                 ],
@@ -794,6 +1014,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.HTTPError"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -809,7 +1041,12 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Удаляет алерт по ID",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Удаляет алерт по ID. Доступ только у владельца магазина (JWT).",
                 "tags": [
                     "alerts"
                 ],
@@ -840,8 +1077,146 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.HTTPError"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shops/{shopId}/notification-settings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает список всех доступных типов уведомлений и их текущее состояние (enabled/disabled) для магазина.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notification-settings"
+                ],
+                "summary": "Список настроек уведомлений магазина",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ListNotificationSettingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновляет enabled/disabled для указанных типов уведомлений (владелец магазина).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notification-settings"
+                ],
+                "summary": "Обновить настройки уведомлений магазина",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Список настроек",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateNotificationSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ListNotificationSettingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/api.HTTPError"
                         }
@@ -1169,6 +1544,43 @@ const docTemplate = `{
                 }
             }
         },
+        "api.ListNotificationSettingsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.NotificationSetting"
+                    }
+                }
+            }
+        },
+        "api.NotificationSetting": {
+            "type": "object",
+            "required": [
+                "key"
+            ],
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "defaultEnabled": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "api.ShopResponse": {
             "type": "object",
             "properties": {
@@ -1230,6 +1642,34 @@ const docTemplate = `{
                 }
             }
         },
+        "api.UpdateNotificationSettingsItem": {
+            "type": "object",
+            "required": [
+                "key"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "key": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.UpdateNotificationSettingsRequest": {
+            "type": "object",
+            "required": [
+                "items"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.UpdateNotificationSettingsItem"
+                    }
+                }
+            }
+        },
         "api.UpsertAISettingsRequest": {
             "type": "object",
             "required": [
@@ -1273,6 +1713,26 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth_google.ConfirmTelegramLinkRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth_google.LinkTelegramResponse": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "description": "RFC3339",
+                    "type": "string"
+                },
+                "linkCode": {
                     "type": "string"
                 }
             }

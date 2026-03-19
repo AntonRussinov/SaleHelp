@@ -42,6 +42,10 @@ func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) 
 		_ = s.handleMyShops(ctx, chatID)
 		return
 
+	case len(cmd) > 0 && cmd[0] == "/alerts":
+		_ = s.handleAlertSettingsEntry(ctx, chatID)
+		return
+
 	case len(cmd) > 0 && cmd[0] == "/invite":
 		s.startInvite(ctx, chatID)
 		return
