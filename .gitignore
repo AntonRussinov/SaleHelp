@@ -3,6 +3,7 @@
 
 # Local config
 /configs/config.yml
+/configs/config.prod.yml
 /configs/config-local.yml
 /configs/local.env
 /configs/local-certificates/
