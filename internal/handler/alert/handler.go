@@ -43,7 +43,7 @@ func NewHandler(service Service, shopGetter ShopGetter) *Handler {
 func (h *Handler) ensureShopAccess(c echo.Context) (int, error) {
 	userID := auth_google_handler.UserIDFromContext(c.Request().Context())
 	if userID == 0 {
-		return 0, c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return 0, echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 	}
 	shopID, err := h.getShopIDFromParam(c)
 	if err != nil {
@@ -54,7 +54,7 @@ func (h *Handler) ensureShopAccess(c echo.Context) (int, error) {
 		return 0, echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	if shop == nil || shop.UserID != userID {
-		return 0, c.JSON(http.StatusForbidden, map[string]string{"error": "access denied"})
+		return 0, echo.NewHTTPError(http.StatusForbidden, "access denied")
 	}
 	return shopID, nil
 }

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"salehelp/internal/db"
 	"salehelp/internal/scheduler/jobs"
 	"salehelp/pkg/auth"
@@ -77,6 +78,20 @@ func Read(file string) (*Config, error) {
 	var cfg Config
 	if err := vip.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Env vars override config file values (for Cloud Run / Secret Manager).
+	if v := os.Getenv("DATABASE_URL"); v != "" {
+		cfg.Service.DB.ConnString = v
+	}
+	if v := os.Getenv("TELEGRAM_BOT_TOKEN"); v != "" {
+		cfg.Service.TelegramToken = v
+	}
+	if v := os.Getenv("OPENAI_API_KEY"); v != "" {
+		cfg.Service.AI.APIKey = v
+	}
+	if v := os.Getenv("JWT_SECRET"); v != "" {
+		cfg.Service.JWTSecret = v
 	}
 
 	return &cfg, nil

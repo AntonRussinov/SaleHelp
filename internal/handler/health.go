@@ -18,6 +18,18 @@ import (
 // @Produce     json
 // @Success     200 {object} api.GetHealthCheckResponse
 // @Router      /version [get]
+// Health — liveness probe для Cloud Run.
+//
+// @Summary     Liveness probe
+// @Description Возвращает 200 OK если сервис жив
+// @Tags        system
+// @Produce     json
+// @Success     200 {object} map[string]string
+// @Router      /health [get]
+func Health(c echo.Context) error {
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
 func HealthCheck(c echo.Context) error {
 	return c.JSON(http.StatusOK, api.GetHealthCheckResponse{
 		Version:   os.Getenv("VERSION"),

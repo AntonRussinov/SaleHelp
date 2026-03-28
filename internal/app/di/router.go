@@ -12,6 +12,7 @@ import (
 	"salehelp/internal/handler/subscription"
 	"salehelp/internal/handler/telegram"
 	"salehelp/internal/middleware"
+	"strings"
 
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo/v4"
@@ -32,6 +33,8 @@ func (prov *Provider) InitRouter() {
 	prov.registerRootMiddlewares(router)
 	prov.registerSwaggerRoutes(router)
 
+	router.GET("/health", handler.Health)
+
 	api := router.Group("/api")
 	api.GET("/version", handler.HealthCheck)
 	api.Static("/assets", "assets")
@@ -43,20 +46,34 @@ func (prov *Provider) InitRouter() {
 }
 
 func (prov *Provider) registerRootMiddlewares(router *echo.Echo) {
+	corsCfg := echomw.CORSConfig{
+		AllowOrigins: prov.cfg.AllowedOrigins,
+		AllowMethods: echomw.DefaultCORSConfig.AllowMethods,
+		AllowHeaders: []string{
+			echo.HeaderAuthorization, echo.HeaderAccept,
+			echo.HeaderOrigin, echo.HeaderContentType,
+			"Accesstoken",
+		},
+		AllowCredentials: true,
+	}
+
+	// Для локальной разработки разрешаем localhost/127.0.0.1 и ngrok-хосты,
+	// чтобы preflight не падал из-за смены порта/домена.
+	if prov.cfg.Environment == "local" {
+		corsCfg.AllowOriginFunc = func(origin string) (bool, error) {
+			if strings.HasPrefix(origin, "http://localhost:") ||
+				strings.HasPrefix(origin, "http://127.0.0.1:") ||
+				strings.HasSuffix(origin, ".ngrok-free.dev") ||
+				strings.HasSuffix(origin, ".ngrok.app") {
+				return true, nil
+			}
+			return false, nil
+		}
+	}
+
 	router.Use(
 		echomw.Recover(),
-		echomw.CORSWithConfig(
-			echomw.CORSConfig{
-				AllowOrigins: prov.cfg.AllowedOrigins,
-				AllowMethods: echomw.DefaultCORSConfig.AllowMethods,
-				AllowHeaders: []string{
-					echo.HeaderAuthorization, echo.HeaderAccept,
-					echo.HeaderOrigin, echo.HeaderContentType,
-					"Accesstoken",
-				},
-				AllowCredentials: true,
-			},
-		),
+		echomw.CORSWithConfig(corsCfg),
 		echomw.RequestID(),
 	)
 }
@@ -182,7 +199,17 @@ func registerAuthGoogleRoutes(e *echo.Group, prov *Provider) {
 	e.POST("/auth/google", prov.Handlers.AuthGoogle.LoginGoogle)
 	e.POST("/auth/register", prov.Handlers.AuthGoogle.Register)
 	e.POST("/auth/login", prov.Handlers.AuthGoogle.LoginEmail)
-	protected := e.Group("", middleware.JWTAuth(prov.Services.AuthGoogle, auth_google_handler.SetJWTContext))
+
+	// TEMP (local only): отключаем обязательную JWT-авторизацию для ускорения веб-интеграции.
+	// Быстрый откат: вернуть строку ниже и удалить ветку с localDevUserMiddleware().
+	// protected := e.Group("", middleware.JWTAuth(prov.Services.AuthGoogle, auth_google_handler.SetJWTContext))
+	protected := e.Group("")
+	if prov.cfg.Environment == "local" {
+		protected.Use(localDevUserMiddleware())
+	} else {
+		protected.Use(middleware.JWTAuth(prov.Services.AuthGoogle, auth_google_handler.SetJWTContext))
+	}
+
 	protected.GET("/me", prov.Handlers.AuthGoogle.Me)
 	protected.POST("/auth/link-telegram", prov.Handlers.AuthGoogle.LinkTelegram)
 	protected.POST("/auth/confirm-telegram-link", prov.Handlers.AuthGoogle.ConfirmTelegramLink)
@@ -196,6 +223,17 @@ func registerAuthGoogleRoutes(e *echo.Group, prov *Provider) {
 	registerSubscriptionStatusRoute(protected, prov.Handlers.Subscription)
 	adminProtected := e.Group("", middleware.AdminAuth(prov.Services.AuthGoogle, auth_google_handler.SetJWTContext))
 	registerSubscriptionGrantRoute(adminProtected, prov.Handlers.Subscription)
+}
+
+// localDevUserMiddleware проставляет тестового пользователя в контекст.
+// Нужен только для локальной разработки, чтобы обходить JWT на protected-роутах.
+func localDevUserMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.SetRequest(auth_google_handler.SetJWTContext(c.Request(), 4, "local-dev@salehelp"))
+			return next(c)
+		}
+	}
 }
 
 func registerTagRoutes(e *echo.Group, tagHandler *product.Handler) {

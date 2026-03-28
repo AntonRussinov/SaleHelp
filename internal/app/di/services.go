@@ -51,6 +51,10 @@ func (prov *Provider) InitServices() {
 }
 
 func (prov *Provider) initIndependentServices() {
+	prov.Services.AlertService = alert.NewAlertService(
+		prov.Repositories.Alert,
+		prov.log,
+	)
 
 	prov.Services.Subscription = subscription.New(
 		prov.Repositories.TxRunner,
