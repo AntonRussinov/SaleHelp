@@ -33,7 +33,6 @@ type Services struct {
 	Monitoring           *monitoring.Service
 	Notifier             *notifications.Service //Dispatcher
 	AlertWorker          *alert.Worker
-	Product              *product.Service
 	ProductList          *product.ListService
 	TelegramBot          *telegrambot.Service
 	Subscription         *subscription.Service
@@ -141,11 +140,6 @@ func (prov *Provider) initDependentServices() {
 	)
 
 	prov.Services.Notifier = notifications.NewService(dispatcher, 5*time.Second)
-	// prov.Services.Product = product.NewService(
-	// 	prov.log, prov.Repositories.Stock, prov.Repositories.Product,
-	// 	prov.Repositories.CityPrice, prov.Repositories.Offer,
-	// 	prov.Repositories.Merchant, prov.Repositories.Image,
-	// 	prov.KaspiPortalAPI)
 
 	prov.Services.AlertEngine = alert.NewAlertEngine(
 		prov.Services.Subscription,

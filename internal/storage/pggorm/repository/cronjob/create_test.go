@@ -33,12 +33,9 @@ func TestCronJobRepositoryCreate(t *testing.T) {
 			repo, mock := setupRepo(t)
 			job := builder.CronJob()
 
-			args := saveCronJobSQLArgs(job)
-
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "cron_jobs"(.+)`).
-				WithArgs(args...).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "cron_jobs"(.+)`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {

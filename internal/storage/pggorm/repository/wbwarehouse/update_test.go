@@ -85,8 +85,8 @@ func TestWBWarehouseRepositoryUpsert(t *testing.T) {
 			mock.ExpectBegin()
 			// GORM с OnConflict всё равно делает INSERT ... ON CONFLICT,
 			// нам достаточно матча по началу
-			mock.ExpectExec(`INSERT INTO "wb_warehouses"`).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "wb_warehouses"`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {

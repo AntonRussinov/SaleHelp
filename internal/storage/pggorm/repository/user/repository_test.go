@@ -47,7 +47,9 @@ func (b *DataBuilder) UserRowValues(u domain.User) []driver.Value {
 		u.ID,
 		u.Email,
 		u.PasswordHash,
+		u.GoogleID,
 		u.TelegramChatID,
+		u.Role,
 		u.CreatedAt,
 		u.UpdatedAt,
 	}

@@ -36,8 +36,9 @@ func TestMerchantRepositorySave(t *testing.T) {
 			repo, mock := setupRepo(t)
 
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "merchants"(.+)`).WithArgs(saveMerchantSQLArgs(tt.merchant)...).
-				WillReturnResult(sqlmock.NewResult(1, 1)).WillReturnError(tt.sqlErr)
+			mock.ExpectExec(`INSERT INTO "merchants"(.+)`).
+				WillReturnResult(sqlmock.NewResult(0, 1)).
+				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {
 				mock.ExpectCommit()

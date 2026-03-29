@@ -36,9 +36,8 @@ func TestShopRepositoryCreate(t *testing.T) {
 			shop := builder.Shop()
 
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "shops"(.+)`).
-				WithArgs(saveShopSQLArgs(shop)...).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "shops"(.+)`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {

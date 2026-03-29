@@ -41,7 +41,7 @@ func TestAlertTriggeredRepositoryGetByID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "alerts_triggered" WHERE id = \$1(.+)`).
-				WithArgs(a.ID).
+				WithArgs(a.ID, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 

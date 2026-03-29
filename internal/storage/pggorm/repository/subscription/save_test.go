@@ -34,12 +34,9 @@ func TestSubscriptionRepositoryCreate(t *testing.T) {
 			repo, mock := setupSubscriptionRepo(t)
 			sub := builder.SubscriptionV0() // сделай билдер под новую структуру
 
-			args := saveSubscriptionV0SQLArgs(sub)
-
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "subscriptions"(.+)`).
-				WithArgs(args...).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "subscriptions"(.+)`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {

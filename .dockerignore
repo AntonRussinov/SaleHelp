@@ -6,4 +6,3 @@ certs/
 .mockery.yaml
 .env
 configs/config.yml
-configs/config.prod.yml

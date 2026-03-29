@@ -9,7 +9,7 @@ const redacted = "[redacted]"
 
 var (
 	// Телефоны: +7, 8, скобки, пробелы, дефисы, без букв в номере (упрощённо).
-	phoneRe = regexp.MustCompile(`(?i)(\+7|8)[\s\-\(\)]*(\d[\s\-\(\)]*){10,}`)
+	phoneRe = regexp.MustCompile(`(?i)(\+7|8)(?:[\s\-\(\)]*\d){10,}`)
 	// Email: локаль@домен.
 	emailRe = regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
 	// Ссылки: http/https, www, типичные домены.

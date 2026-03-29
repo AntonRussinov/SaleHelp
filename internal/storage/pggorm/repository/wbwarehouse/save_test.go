@@ -34,8 +34,8 @@ func TestWBWarehouseRepositoryCreate(t *testing.T) {
 			w := builder.Warehouse()
 
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "wb_warehouses"`).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "wb_warehouses"`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {

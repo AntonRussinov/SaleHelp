@@ -26,7 +26,7 @@ func TestSubscriptionRepositoryGetActiveByShopID(t *testing.T) {
 	}
 
 	mock.ExpectQuery(`SELECT (.+) FROM "subscriptions"(.+)`).
-		WithArgs(shopID, "active", now).
+		WithArgs(shopID, "active", now, 1).
 		WillReturnRows(sqlmock.NewRows(cols).
 			AddRow(
 				1, shopID, "basic", "active",

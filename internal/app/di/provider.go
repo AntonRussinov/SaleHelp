@@ -30,8 +30,6 @@ type Provider struct {
 	schedulerLoc    *time.Location
 	telegramAdapter interface{ SendMessage(context.Context, int64, string) error }
 	// AccessManager  *access.Manager
-	// KaspiAPI       kaspiAPI.API
-	// KaspiPortalAPI portalAPI.PortalAPI
 	WBClient *wbclient.Client
 }
 
@@ -92,7 +90,6 @@ func (prov *Provider) Init(ctx context.Context) error {
 	prov.InitServices()
 	prov.InitPresenters()
 
-	// prov.InitKaspiPortalAPI(prov.Repositories.Merchant)
 	// err = prov.InitCronRunner(ctx)
 	// if err != nil {
 	// 	return err

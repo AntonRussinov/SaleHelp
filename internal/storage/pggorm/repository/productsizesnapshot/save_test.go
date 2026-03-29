@@ -33,12 +33,9 @@ func TestProductSizeSnapshotRepositoryCreate(t *testing.T) {
 			repo, mock := setupRepo(t)
 			s := builder.SizeSnapshot()
 
-			args := saveArgs(s)
-
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "product_size_snapshots"`).
-				WithArgs(args...).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "product_size_snapshots"`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {

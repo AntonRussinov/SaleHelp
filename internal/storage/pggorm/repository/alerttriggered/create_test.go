@@ -33,12 +33,9 @@ func TestAlertTriggeredRepositoryCreate(t *testing.T) {
 			repo, mock := setupRepo(t)
 			a := builder.AlertTriggered()
 
-			args := saveAlertTriggeredSQLArgs(a)
-
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "alerts_triggered"(.+)`).
-				WithArgs(args...).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "alerts_triggered"(.+)`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {

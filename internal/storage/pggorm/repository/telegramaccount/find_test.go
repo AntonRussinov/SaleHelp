@@ -42,7 +42,7 @@ func TestTelegramAccountRepositoryGetByUserID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "telegram_accounts" WHERE user_id = \$1(.+)`).
-				WithArgs(tt.userID).
+				WithArgs(tt.userID, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 
@@ -100,7 +100,7 @@ func TestTelegramAccountRepositoryGetByTelegramID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "telegram_accounts" WHERE telegram_id = \$1(.+)`).
-				WithArgs(tt.telegramID).
+				WithArgs(tt.telegramID, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 

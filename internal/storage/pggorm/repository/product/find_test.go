@@ -41,7 +41,7 @@ func TestProductRepositoryGetByID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "products" WHERE id = \$1(.+)`).
-				WithArgs(product.ID).
+				WithArgs(product.ID, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 
@@ -102,7 +102,7 @@ func TestProductRepositoryGetByShopAndExternalID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "products" WHERE shop_id = \$1 AND external_id = \$2(.+)`).
-				WithArgs(tt.shopID, tt.externalID).
+				WithArgs(tt.shopID, tt.externalID, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 

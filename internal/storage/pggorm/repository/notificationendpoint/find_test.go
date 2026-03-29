@@ -42,7 +42,7 @@ func TestNotificationEndpointRepositoryGetByID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "shop_notification_endpoints" WHERE id = \$1`).
-				WithArgs(e.ID).
+				WithArgs(e.ID, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 

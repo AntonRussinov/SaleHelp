@@ -41,8 +41,8 @@ func TestProductSizeSKURepositoryReplaceByProductSizeID(t *testing.T) {
 				WillReturnError(tt.deleteErr)
 
 			if tt.deleteErr == nil {
-				mock.ExpectExec(`INSERT INTO "product_size_skus"`).
-					WillReturnResult(sqlmock.NewResult(0, int64(len(skus)))).
+				mock.ExpectQuery(`INSERT INTO "product_size_skus"`).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 					WillReturnError(tt.insertErr)
 			}
 
@@ -90,8 +90,8 @@ func TestProductSizeSKURepositoryUpsertMany(t *testing.T) {
 
 			if tt.expectSQL {
 				mock.ExpectBegin()
-				mock.ExpectExec(`INSERT INTO "product_size_skus"`).
-					WillReturnResult(sqlmock.NewResult(0, int64(len(tt.skus)))).
+				mock.ExpectQuery(`INSERT INTO "product_size_skus"`).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 					WillReturnError(tt.sqlErr)
 
 				if tt.sqlErr == nil {
