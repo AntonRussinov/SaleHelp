@@ -22,6 +22,31 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/health": {
+            "get": {
+                "description": "Версия приложения, Go, коммит, время сборки\nВозвращает 200 OK если сервис жив",
+                "produces": [
+                    "application/json",
+                    "application/json"
+                ],
+                "tags": [
+                    "system",
+                    "system"
+                ],
+                "summary": "Liveness probe",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/auth/confirm-telegram-link": {
             "post": {
                 "security": [
@@ -182,6 +207,40 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Добавляет токен в blocklist до его естественного истечения. После перезапуска сервиса токены из blocklist сбрасываются.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Выход из системы",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "401": {
@@ -500,7 +559,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Магазины пользователя (JWT). Query: limit, offset",
+                "description": "Магазины пользователя (JWT). Query: limit, offset. Включает краткую информацию о подписке каждого магазина.",
                 "produces": [
                     "application/json"
                 ],
@@ -1327,19 +1386,24 @@ const docTemplate = `{
         },
         "/version": {
             "get": {
-                "description": "Версия приложения, Go, коммит, время сборки",
+                "description": "Версия приложения, Go, коммит, время сборки\nВозвращает 200 OK если сервис жив",
                 "produces": [
+                    "application/json",
                     "application/json"
                 ],
                 "tags": [
+                    "system",
                     "system"
                 ],
-                "summary": "Health check",
+                "summary": "Liveness probe",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.GetHealthCheckResponse"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -1605,8 +1669,25 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "subscription": {
+                    "$ref": "#/definitions/api.SubscriptionSummary"
+                },
                 "userId": {
                     "type": "integer"
+                }
+            }
+        },
+        "api.SubscriptionSummary": {
+            "type": "object",
+            "properties": {
+                "hasActive": {
+                    "type": "boolean"
+                },
+                "plan": {
+                    "type": "string"
+                },
+                "validTo": {
+                    "type": "string"
                 }
             }
         },

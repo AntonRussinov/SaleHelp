@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"salehelp/domain"
@@ -50,6 +51,12 @@ type (
 		googleCID      string
 		jwtSecret      []byte
 		jwtExpire      time.Duration
+		bl             *tokenBlocklist
+	}
+
+	tokenBlocklist struct {
+		mu      sync.Mutex
+		entries map[string]time.Time // token → expires_at
 	}
 )
 
@@ -74,15 +81,46 @@ func NewService(log *slog.Logger, userRepo UserRepo, linkTokensRepo LinkTokensRe
 	if jwtExpire <= 0 {
 		jwtExpire = 24 * time.Hour
 	}
+	bl := &tokenBlocklist{entries: make(map[string]time.Time)}
+	go bl.cleanupLoop()
 	return &Service{
 		log:            log.With(sl.Module("AuthGoogle")),
 		userRepo:       userRepo,
 		linkTokensRepo: linkTokensRepo,
 		shopsRepo:      shopsRepo,
-		googleCID:     googleClientID,
-		jwtSecret:     []byte(jwtSecret),
-		jwtExpire:     jwtExpire,
+		googleCID:      googleClientID,
+		jwtSecret:      []byte(jwtSecret),
+		jwtExpire:      jwtExpire,
+		bl:             bl,
 	}, nil
+}
+
+func (bl *tokenBlocklist) revoke(token string, expiresAt time.Time) {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+	bl.entries[token] = expiresAt
+}
+
+func (bl *tokenBlocklist) isRevoked(token string) bool {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+	exp, ok := bl.entries[token]
+	return ok && time.Now().Before(exp)
+}
+
+func (bl *tokenBlocklist) cleanupLoop() {
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now()
+		bl.mu.Lock()
+		for tok, exp := range bl.entries {
+			if now.After(exp) {
+				delete(bl.entries, tok)
+			}
+		}
+		bl.mu.Unlock()
+	}
 }
 
 // VerifyGoogleIDToken проверяет id_token от Google и возвращает sub (google_id) и email.
@@ -180,6 +218,9 @@ func (s *Service) issueJWT(userID int, email, role string) (string, error) {
 
 // ValidateJWT проверяет наш JWT и возвращает user_id и email из claims.
 func (s *Service) ValidateJWT(tokenString string) (userID int, email string, err error) {
+	if s.bl.isRevoked(tokenString) {
+		return 0, "", fmt.Errorf("token revoked")
+	}
 	var claims JWTClaims
 	tok, err := jwt.ParseWithClaims(tokenString, &claims, func(*jwt.Token) (interface{}, error) {
 		return s.jwtSecret, nil
@@ -191,6 +232,19 @@ func (s *Service) ValidateJWT(tokenString string) (userID int, email string, err
 		return 0, "", fmt.Errorf("invalid jwt")
 	}
 	return claims.UserID, claims.Email, nil
+}
+
+// RevokeToken добавляет токен в blocklist до его естественного истечения.
+func (s *Service) RevokeToken(tokenString string) error {
+	var claims JWTClaims
+	tok, err := jwt.ParseWithClaims(tokenString, &claims, func(*jwt.Token) (interface{}, error) {
+		return s.jwtSecret, nil
+	})
+	if err != nil || !tok.Valid {
+		return fmt.Errorf("invalid token")
+	}
+	s.bl.revoke(tokenString, claims.ExpiresAt.Time)
+	return nil
 }
 
 // ValidateJWTAndRequireAdmin проверяет JWT и возвращает userID, email только если в claims роль admin. Иначе — ошибка.

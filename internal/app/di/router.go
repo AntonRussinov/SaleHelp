@@ -211,6 +211,7 @@ func registerAuthGoogleRoutes(e *echo.Group, prov *Provider) {
 	}
 
 	protected.GET("/me", prov.Handlers.AuthGoogle.Me)
+	protected.POST("/auth/logout", prov.Handlers.AuthGoogle.Logout)
 	protected.POST("/auth/link-telegram", prov.Handlers.AuthGoogle.LinkTelegram)
 	protected.POST("/auth/confirm-telegram-link", prov.Handlers.AuthGoogle.ConfirmTelegramLink)
 	protected.GET("/shops", prov.Handlers.Shop.ListShops)

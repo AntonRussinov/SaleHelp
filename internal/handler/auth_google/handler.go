@@ -16,6 +16,7 @@ type (
 		ValidateJWTAndRequireAdmin(tokenString string) (userID int, email string, err error)
 		CreateLinkToken(ctx context.Context, userID int) (linkCode string, expiresAt time.Time, err error)
 		ConfirmTelegramLink(ctx context.Context, userID int, code string) error
+		RevokeToken(tokenString string) error
 	}
 
 	Handler struct {

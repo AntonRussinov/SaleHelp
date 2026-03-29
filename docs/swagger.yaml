@@ -176,8 +176,19 @@ definitions:
         type: string
       name:
         type: string
+      subscription:
+        $ref: '#/definitions/api.SubscriptionSummary'
       userId:
         type: integer
+    type: object
+  api.SubscriptionSummary:
+    properties:
+      hasActive:
+        type: boolean
+      plan:
+        type: string
+      validTo:
+        type: string
     type: object
   api.UpdateAlertRequest:
     properties:
@@ -407,6 +418,25 @@ info:
   title: SaleHelp API
   version: "1.0"
 paths:
+  /health:
+    get:
+      description: |-
+        Версия приложения, Go, коммит, время сборки
+        Возвращает 200 OK если сервис жив
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Liveness probe
+      tags:
+      - system
+      - system
   /v1/auth/confirm-telegram-link:
     post:
       consumes:
@@ -516,6 +546,28 @@ paths:
           schema:
             $ref: '#/definitions/api.HTTPError'
       summary: Вход по email
+      tags:
+      - auth
+  /v1/auth/logout:
+    post:
+      description: Добавляет токен в blocklist до его естественного истечения. После
+        перезапуска сервиса токены из blocklist сбрасываются.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Выход из системы
       tags:
       - auth
   /v1/auth/register:
@@ -715,7 +767,8 @@ paths:
       - shops
   /v1/shops:
     get:
-      description: 'Магазины пользователя (JWT). Query: limit, offset'
+      description: 'Магазины пользователя (JWT). Query: limit, offset. Включает краткую
+        информацию о подписке каждого магазина.'
       parameters:
       - default: 20
         description: Лимит
@@ -1264,16 +1317,22 @@ paths:
       - telegram
   /version:
     get:
-      description: Версия приложения, Go, коммит, время сборки
+      description: |-
+        Версия приложения, Go, коммит, время сборки
+        Возвращает 200 OK если сервис жив
       produces:
+      - application/json
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.GetHealthCheckResponse'
-      summary: Health check
+            additionalProperties:
+              type: string
+            type: object
+      summary: Liveness probe
       tags:
+      - system
       - system
 produces:
 - application/json

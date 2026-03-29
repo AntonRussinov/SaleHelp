@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"time"
 
 	"salehelp/domain"
 	auth_google_handler "salehelp/internal/handler/auth_google"
@@ -31,24 +32,30 @@ type (
 		CountByShop(ctx context.Context, shopID int) (int, error)
 	}
 
+	SubscriptionRepo interface {
+		GetActiveByShopID(ctx context.Context, shopID int, now time.Time) (*domain.Subscription, error)
+	}
+
 	WBTokenChecker interface {
 		CheckWBToken(ctx context.Context, token string) error
 	}
 
 	Handler struct {
-		service    Service
-		shopsRepo  ShopsRepo
-		productRepo ProductRepo
-		wbCheck    WBTokenChecker
+		service         Service
+		shopsRepo       ShopsRepo
+		productRepo     ProductRepo
+		subscriptionRepo SubscriptionRepo
+		wbCheck         WBTokenChecker
 	}
 )
 
-func NewHandler(service Service, shopsRepo ShopsRepo, productRepo ProductRepo, wbCheck WBTokenChecker) *Handler {
+func NewHandler(service Service, shopsRepo ShopsRepo, productRepo ProductRepo, wbCheck WBTokenChecker, subscriptionRepo SubscriptionRepo) *Handler {
 	return &Handler{
-		service:    service,
-		shopsRepo:  shopsRepo,
-		productRepo: productRepo,
-		wbCheck:    wbCheck,
+		service:         service,
+		shopsRepo:       shopsRepo,
+		productRepo:     productRepo,
+		subscriptionRepo: subscriptionRepo,
+		wbCheck:         wbCheck,
 	}
 }
 
