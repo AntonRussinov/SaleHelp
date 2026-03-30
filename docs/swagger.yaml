@@ -51,34 +51,21 @@ definitions:
     type: object
   api.CreateAlertRequest:
     properties:
-      message:
-        maxLength: 500
-        type: string
       payload:
-        additionalProperties: true
         type: object
       productId:
+        example: 42
         minimum: 1
         type: integer
       productSizeId:
+        example: 7
         minimum: 1
         type: integer
-      scope:
-        type: string
-      severity:
-        maximum: 5
-        minimum: 1
-        type: integer
-      status:
-        type: string
       type:
+        example: price_drop
         type: string
     required:
-    - message
     - payload
-    - scope
-    - severity
-    - status
     - type
     type: object
   api.CreateShopRequest:
@@ -985,8 +972,23 @@ paths:
     post:
       consumes:
       - application/json
-      description: Создает новый алерт для магазина. Доступ только у владельца магазина
-        (JWT).
+      description: |-
+        Создает новый алерт для магазина. Доступ только у владельца магазина (JWT).
+        severity, scope и message вычисляются автоматически.
+        Если productId не передан — алерт работает по всем товарам магазина.
+
+        **Типы алертов и структура payload:**
+
+        `stock_zero` — товар закончился. payload не нужен:
+        `{"type":"stock_zero","productId":42}`
+
+        `stock_low` — мало остатков. threshold — минимум в штуках:
+        `{"type":"stock_low","productId":42,"payload":{"threshold":10}}`
+
+        `price_drop` — снижение цены. percent и/или amount — пороги срабатывания. mode: any|all:
+        `{"type":"price_drop","productId":42,"payload":{"percent":10,"mode":"any"}}`
+        `{"type":"price_drop","payload":{"amount":500,"mode":"any"}}`
+        `{"type":"price_drop","payload":{"percent":10,"amount":500,"mode":"all"}}`
       parameters:
       - description: ID магазина
         in: path

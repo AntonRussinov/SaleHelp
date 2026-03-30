@@ -12,6 +12,21 @@ import (
 // CreateAlert создает новый алерт
 // @Summary Создать алерт
 // @Description Создает новый алерт для магазина. Доступ только у владельца магазина (JWT).
+// @Description severity, scope и message вычисляются автоматически.
+// @Description Если productId не передан — алерт работает по всем товарам магазина.
+// @Description
+// @Description **Типы алертов и структура payload:**
+// @Description
+// @Description `stock_zero` — товар закончился. payload не нужен:
+// @Description `{"type":"stock_zero","productId":42}`
+// @Description
+// @Description `stock_low` — мало остатков. threshold — минимум в штуках:
+// @Description `{"type":"stock_low","productId":42,"payload":{"threshold":10}}`
+// @Description
+// @Description `price_drop` — снижение цены. percent и/или amount — пороги срабатывания. mode: any|all:
+// @Description `{"type":"price_drop","productId":42,"payload":{"percent":10,"mode":"any"}}`
+// @Description `{"type":"price_drop","payload":{"amount":500,"mode":"any"}}`
+// @Description `{"type":"price_drop","payload":{"percent":10,"amount":500,"mode":"all"}}`
 // @Tags alerts
 // @Accept json
 // @Produce json
@@ -54,10 +69,9 @@ func (h *Handler) CreateAlert(c echo.Context) error {
 		ProductID:     req.ProductID,
 		ProductSizeID: req.ProductSizeID,
 		Type:          string(req.Type),
-		Severity:      req.Severity,
-		Status:        string(req.Status),
-		Message:       req.Message,
-		Scope:         string(req.Scope),
+		Severity:      req.AutoSeverity(),
+		Message:       req.AutoMessage(),
+		Scope:         req.AutoScope(),
 		Payload:       payloadBytes,
 	}
 

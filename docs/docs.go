@@ -885,7 +885,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Создает новый алерт для магазина. Доступ только у владельца магазина (JWT).",
+                "description": "Создает новый алерт для магазина. Доступ только у владельца магазина (JWT).\nseverity, scope и message вычисляются автоматически.\nЕсли productId не передан — алерт работает по всем товарам магазина.\n\n**Типы алертов и структура payload:**\n\n` + "`" + `stock_zero` + "`" + ` — товар закончился. payload не нужен:\n` + "`" + `{\"type\":\"stock_zero\",\"productId\":42}` + "`" + `\n\n` + "`" + `stock_low` + "`" + ` — мало остатков. threshold — минимум в штуках:\n` + "`" + `{\"type\":\"stock_low\",\"productId\":42,\"payload\":{\"threshold\":10}}` + "`" + `\n\n` + "`" + `price_drop` + "`" + ` — снижение цены. percent и/или amount — пороги срабатывания. mode: any|all:\n` + "`" + `{\"type\":\"price_drop\",\"productId\":42,\"payload\":{\"percent\":10,\"mode\":\"any\"}}` + "`" + `\n` + "`" + `{\"type\":\"price_drop\",\"payload\":{\"amount\":500,\"mode\":\"any\"}}` + "`" + `\n` + "`" + `{\"type\":\"price_drop\",\"payload\":{\"percent\":10,\"amount\":500,\"mode\":\"all\"}}` + "`" + `",
                 "consumes": [
                     "application/json"
                 ],
@@ -1485,43 +1485,26 @@ const docTemplate = `{
         "api.CreateAlertRequest": {
             "type": "object",
             "required": [
-                "message",
                 "payload",
-                "scope",
-                "severity",
-                "status",
                 "type"
             ],
             "properties": {
-                "message": {
-                    "type": "string",
-                    "maxLength": 500
-                },
                 "payload": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "type": "object"
                 },
                 "productId": {
                     "type": "integer",
-                    "minimum": 1
+                    "minimum": 1,
+                    "example": 42
                 },
                 "productSizeId": {
                     "type": "integer",
-                    "minimum": 1
-                },
-                "scope": {
-                    "type": "string"
-                },
-                "severity": {
-                    "type": "integer",
-                    "maximum": 5,
-                    "minimum": 1
-                },
-                "status": {
-                    "type": "string"
+                    "minimum": 1,
+                    "example": 7
                 },
                 "type": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "price_drop"
                 }
             }
         },
