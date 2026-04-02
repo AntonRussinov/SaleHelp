@@ -61,6 +61,7 @@ func (s *Service) handleLink(ctx context.Context, chatID int64, code string) {
 			_ = s.tg.SendMessage(ctx, chatID, "Ошибка привязки. Попробуй ещё раз.")
 			return
 		}
+		s.ensureOwnerEndpointsForUser(ctx, targetUserID, chatID)
 		_ = s.tg.SendMessage(ctx, chatID, "Готово ✅ Аккаунт объединён: магазины и настройки теперь в одном аккаунте. Можешь пользоваться ботом и сайтом с одними данными.")
 		return
 	}
@@ -71,6 +72,7 @@ func (s *Service) handleLink(ctx context.Context, chatID int64, code string) {
 		_ = s.tg.SendMessage(ctx, chatID, "Ошибка привязки. Попробуй ещё раз.")
 		return
 	}
+	s.ensureOwnerEndpointsForUser(ctx, targetUserID, chatID)
 	_ = s.tg.SendMessage(ctx, chatID, "Готово ✅ Telegram привязан к твоему аккаунту. Настройки бота и сайта теперь общие.")
 }
 
