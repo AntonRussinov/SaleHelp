@@ -60,17 +60,8 @@ func (h *Handler) UpdateAlert(c echo.Context) error {
 	if req.ProductSizeID != nil {
 		updatedAlert.ProductSizeID = req.ProductSizeID
 	}
-	if req.Severity != nil {
-		updatedAlert.Severity = *req.Severity
-	}
 	if req.Status != nil {
 		updatedAlert.Status = string(*req.Status)
-	}
-	if req.Message != nil {
-		updatedAlert.Message = *req.Message
-	}
-	if req.Scope != nil {
-		updatedAlert.Scope = string(*req.Scope)
 	}
 	if req.Payload != nil {
 		payloadBytes, err := json.Marshal(req.Payload)
@@ -78,6 +69,19 @@ func (h *Handler) UpdateAlert(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to marshal payload")
 		}
 		updatedAlert.Payload = payloadBytes
+	}
+
+	// Пересчитываем автоматические поля если изменились productId, productSizeId или payload
+	if req.ProductID != nil || req.ProductSizeID != nil || req.Payload != nil {
+		syntheticReq := &api.CreateAlertRequest{
+			ProductID:     updatedAlert.ProductID,
+			ProductSizeID: updatedAlert.ProductSizeID,
+			Type:          api.AlertType(updatedAlert.Type),
+			Payload:       req.Payload,
+		}
+		updatedAlert.Scope = syntheticReq.AutoScope()
+		updatedAlert.Severity = syntheticReq.AutoSeverity()
+		updatedAlert.Message = syntheticReq.AutoMessage()
 	}
 
 	result, err := h.service.UpdateAlert(c.Request().Context(), alertID, shopID, &updatedAlert)

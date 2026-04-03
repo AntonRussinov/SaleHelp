@@ -179,25 +179,18 @@ definitions:
     type: object
   api.UpdateAlertRequest:
     properties:
-      message:
-        maxLength: 500
-        type: string
       payload:
-        additionalProperties: true
         type: object
       productId:
+        example: 42
         minimum: 1
         type: integer
       productSizeId:
-        minimum: 1
-        type: integer
-      scope:
-        type: string
-      severity:
-        maximum: 5
+        example: 7
         minimum: 1
         type: integer
       status:
+        example: inactive
         type: string
     type: object
   api.UpdateNotificationSettingsItem:

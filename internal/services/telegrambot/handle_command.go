@@ -66,6 +66,10 @@ func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) 
 		s.handleChats(ctx, chatID, cmd[1])
 		return
 
+	case len(cmd) >= 1 && cmd[0] == "/orders":
+		s.handleOrders(ctx, chatID)
+		return
+
 	case len(cmd) >= 1 && cmd[0] == "/abc_now":
 		s.handleABCNow(ctx, chatID, cmd)
 		return

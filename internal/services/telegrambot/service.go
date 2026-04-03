@@ -3,9 +3,11 @@ package telegrambot
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"salehelp/domain"
+	wbdto "salehelp/internal/adapter/wb/dto"
 	"salehelp/internal/services/notification_settings"
 	"salehelp/internal/services/price_restore"
 	"salehelp/internal/services/subscription"
@@ -109,6 +111,10 @@ type (
 		GetByID(ctx context.Context, id int) (*domain.PriceRestoreBatch, error)
 	}
 
+	WBClient interface {
+		GetNewOrders(ctx context.Context, apiKey string) (*wbdto.GetNewOrdersResponse, error)
+	}
+
 	Service struct {
 		log              *slog.Logger
 		tg               TelegramAPI
@@ -123,11 +129,13 @@ type (
 		subscriptionRepo SubscriptionRepo
 		abcSvc           ABCReportService
 		productsRepo     ProductsRepoForABC
+		wbClient         WBClient
 		priceRestore     PriceRestoreService
 		restoreBatchRepo PriceRestoreBatchRepo
 		notifSettings    *notification_settings.Service
 		botUsername      string
 		adminChatID      int64
+		ordersRateLimit  sync.Map // chatID int64 -> time.Time последнего запроса
 	}
 )
 
@@ -146,6 +154,7 @@ func NewService(
 	subscriptionRepo SubscriptionRepo,
 	abcSvc ABCReportService,
 	productsRepo ProductsRepoForABC,
+	wbClient WBClient,
 	priceRestore PriceRestoreService,
 	restoreBatchRepo PriceRestoreBatchRepo,
 	notifSettings *notification_settings.Service,
@@ -166,6 +175,7 @@ func NewService(
 		subscriptionRepo: subscriptionRepo,
 		abcSvc:           abcSvc,
 		productsRepo:     productsRepo,
+		wbClient:         wbClient,
 		priceRestore:     priceRestore,
 		restoreBatchRepo: restoreBatchRepo,
 		notifSettings:    notifSettings,

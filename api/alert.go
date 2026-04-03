@@ -43,15 +43,13 @@ type CreateAlertRequest struct {
 	Payload       map[string]interface{} `json:"payload"       validate:"required" swaggertype:"object"`
 }
 
-// UpdateAlertRequest запрос на обновление алерта
+// UpdateAlertRequest запрос на обновление алерта.
+// severity, scope и message пересчитываются автоматически при изменении payload/productId/productSizeId.
 type UpdateAlertRequest struct {
-	ProductID     *int                   `json:"productId" validate:"omitempty,min=1"`
-	ProductSizeID *int                   `json:"productSizeId" validate:"omitempty,min=1"`
-	Severity      *int                   `json:"severity" validate:"omitempty,min=1,max=5"`
-	Status        *AlertStatus           `json:"status" validate:"omitempty,is_valid_enum"`
-	Message       *string                `json:"message" validate:"omitempty,max=500"`
-	Scope         *AlertScope            `json:"scope" validate:"omitempty,is_valid_enum"`
-	Payload       map[string]interface{} `json:"payload" validate:"omitempty"`
+	ProductID     *int                   `json:"productId"     validate:"omitempty,min=1"    example:"42"`
+	ProductSizeID *int                   `json:"productSizeId" validate:"omitempty,min=1"    example:"7"`
+	Status        *AlertStatus           `json:"status"        validate:"omitempty,is_valid_enum" example:"inactive"`
+	Payload       map[string]interface{} `json:"payload"       validate:"omitempty"           swaggertype:"object"`
 }
 
 // AlertResponse ответ с данными алерта

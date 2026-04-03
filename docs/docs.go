@@ -1677,32 +1677,22 @@ const docTemplate = `{
         "api.UpdateAlertRequest": {
             "type": "object",
             "properties": {
-                "message": {
-                    "type": "string",
-                    "maxLength": 500
-                },
                 "payload": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "type": "object"
                 },
                 "productId": {
                     "type": "integer",
-                    "minimum": 1
+                    "minimum": 1,
+                    "example": 42
                 },
                 "productSizeId": {
                     "type": "integer",
-                    "minimum": 1
-                },
-                "scope": {
-                    "type": "string"
-                },
-                "severity": {
-                    "type": "integer",
-                    "maximum": 5,
-                    "minimum": 1
+                    "minimum": 1,
+                    "example": 7
                 },
                 "status": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "inactive"
                 }
             }
         },

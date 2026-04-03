@@ -205,6 +205,7 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.Subscription,
 		prov.Services.ABCAnalysis,
 		prov.Repositories.Product,
+		prov.WBClient,
 		prov.Services.PriceRestore,
 		prov.Repositories.PriceRestoreBatch,
 		prov.Services.NotificationSettings,
