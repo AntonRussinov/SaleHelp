@@ -25,6 +25,7 @@ type (
 		GetByID(ctx context.Context, id int) (*domain.Shop, error)
 		ListByUser(ctx context.Context, userID, limit, offset int) ([]*domain.Shop, error)
 		Create(ctx context.Context, s *domain.Shop) error
+		Update(ctx context.Context, s *domain.Shop) error
 	}
 
 	ProductRepo interface {

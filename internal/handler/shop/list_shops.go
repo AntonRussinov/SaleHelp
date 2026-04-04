@@ -65,6 +65,7 @@ func shopToResponse(s *domain.Shop) api.ShopResponse {
 		Marketplace:        s.Marketplace,
 		Name:               s.Name,
 		IsActive:           s.IsActive,
+		WBReportTimezone:   s.WBReportTimezone,
 		LastSyncAt:         s.LastSyncAt,
 		LastSyncStatusCode: s.LastSyncStatusCode,
 		CreatedAt:          s.CreatedAt,

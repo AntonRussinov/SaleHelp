@@ -218,6 +218,7 @@ func registerAuthGoogleRoutes(e *echo.Group, prov *Provider) {
 	protected.POST("/shops", prov.Handlers.Shop.CreateShop)
 	protected.GET("/shops/:shopId/products", prov.Handlers.Shop.ListShopProducts)
 	protected.POST("/shop/:id/sync", prov.Handlers.Shop.SyncShopByID)
+	protected.PATCH("/shop/:id", prov.Handlers.Shop.UpdateShop)
 	registerAlertRoutes(protected, prov.Handlers.Alert)
 	registerShopAISettingsRoutes(protected, prov.Handlers.ShopAISettings)
 	registerNotificationSettingsRoutes(protected, prov.Handlers.NotificationSettings)

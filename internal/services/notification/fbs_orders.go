@@ -1,11 +1,14 @@
 package notifications
 
-import "salehelp/domain"
+import (
+	"salehelp/domain"
+	"time"
+)
 
 // FormatFBSOrdersMessageRU формирует текст сообщения о новых FBS-заказах для отправки в Telegram.
 // productTitleByNmID — название товара по nm_id (из карточки WB); если нет — используется артикул или "nm ID".
-func FormatFBSOrdersMessageRU(orders []*domain.FBSOrder, productTitleByNmID map[int64]string) string {
-	return FormatAssemblyOrdersMessageRU("FBS", fbsOrdersToRows(orders), productTitleByNmID)
+func FormatFBSOrdersMessageRU(orders []*domain.FBSOrder, productTitleByNmID map[int64]string, loc *time.Location) string {
+	return FormatAssemblyOrdersMessageRU("FBS", fbsOrdersToRows(orders), productTitleByNmID, loc)
 }
 
 func fbsOrdersToRows(orders []*domain.FBSOrder) []AssemblyOrderRow {

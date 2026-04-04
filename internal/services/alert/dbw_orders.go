@@ -9,7 +9,7 @@ import (
 )
 
 // runShopDBWOrders отправляет уведомления о новых DBW-заказах в Telegram и помечает заказы как уведомлённые.
-func (e *AlertEngine) runShopDBWOrders(ctx context.Context, shopID int, products []*domain.Product) error {
+func (e *AlertEngine) runShopDBWOrders(ctx context.Context, shopID int, products []*domain.Product, loc *time.Location) error {
 	orders, err := e.dbwOrdersRepo.ListUnnotifiedByShop(ctx, shopID, 50)
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (e *AlertEngine) runShopDBWOrders(ctx context.Context, shopID int, products
 	if err != nil {
 		return err
 	}
-	text := notifications.FormatAssemblyOrdersMessageRU("DBW", ordersToAssemblyRows(orders), titleByNmID)
+	text := notifications.FormatAssemblyOrdersMessageRU("DBW", ordersToAssemblyRows(orders), titleByNmID, loc)
 	now := time.Now()
 	sent := false
 	for _, ep := range endpoints {

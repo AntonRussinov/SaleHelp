@@ -79,6 +79,8 @@ definitions:
       name:
         maxLength: 255
         type: string
+      wbReportTimezone:
+        type: string
     required:
     - apiToken
     - marketplace
@@ -167,6 +169,8 @@ definitions:
         $ref: '#/definitions/api.SubscriptionSummary'
       userId:
         type: integer
+      wbReportTimezone:
+        type: string
     type: object
   api.SubscriptionSummary:
     properties:
@@ -210,6 +214,11 @@ definitions:
         type: array
     required:
     - items
+    type: object
+  api.UpdateShopRequest:
+    properties:
+      wbReportTimezone:
+        type: string
     type: object
   api.UpsertAISettingsRequest:
     properties:
@@ -808,6 +817,48 @@ paths:
       security:
       - BearerAuth: []
       summary: Создать магазин
+      tags:
+      - shops
+  /v1/shops/{shopId}:
+    patch:
+      consumes:
+      - application/json
+      description: 'Обновление настроек магазина: часовой пояс отчётов WB. Требует
+        JWT.'
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: Поля для обновления
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateShopRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ShopResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Обновить магазин
       tags:
       - shops
   /v1/shops/{shopId}/ai-settings:

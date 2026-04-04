@@ -9,7 +9,7 @@ import (
 )
 
 // runShopDBSOrders отправляет уведомления о новых DBS-заказах в Telegram и помечает заказы как уведомлённые.
-func (e *AlertEngine) runShopDBSOrders(ctx context.Context, shopID int, products []*domain.Product) error {
+func (e *AlertEngine) runShopDBSOrders(ctx context.Context, shopID int, products []*domain.Product, loc *time.Location) error {
 	orders, err := e.dbsOrdersRepo.ListUnnotifiedByShop(ctx, shopID, 50)
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (e *AlertEngine) runShopDBSOrders(ctx context.Context, shopID int, products
 	if err != nil {
 		return err
 	}
-	text := notifications.FormatAssemblyOrdersMessageRU("DBS", dbsOrdersToAssemblyRows(orders), titleByNmID)
+	text := notifications.FormatAssemblyOrdersMessageRU("DBS", dbsOrdersToAssemblyRows(orders), titleByNmID, loc)
 	now := time.Now()
 	sent := false
 	for _, ep := range endpoints {

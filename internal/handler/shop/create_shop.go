@@ -3,6 +3,7 @@ package shop
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"salehelp/api"
 	"salehelp/domain"
@@ -55,12 +56,20 @@ func (h *Handler) CreateShop(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "name too short"})
 	}
 
+	tz := strings.TrimSpace(req.WBReportTimezone)
+	if tz != "" {
+		if _, err := time.LoadLocation(tz); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid timezone: " + tz})
+		}
+	}
+
 	shop := &domain.Shop{
-		UserID:      userID,
-		Marketplace: marketplace,
-		Name:        name,
-		APIToken:    token,
-		IsActive:    true,
+		UserID:           userID,
+		Marketplace:      marketplace,
+		Name:             name,
+		APIToken:         token,
+		IsActive:         true,
+		WBReportTimezone: tz,
 	}
 	if err := h.shopsRepo.Create(c.Request().Context(), shop); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})

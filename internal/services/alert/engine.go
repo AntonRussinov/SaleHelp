@@ -108,23 +108,25 @@ func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
 		}
 	}
 
+	loc := e.shopLocation(ctx, shopID)
+
 	// новые FBS-заказы: отправить в Telegram и пометить как уведомлённые (products — для подстановки названий; при nil подгрузим внутри)
-	if err := e.runShopFBSOrders(ctx, shopID, products); err != nil {
+	if err := e.runShopFBSOrders(ctx, shopID, products, loc); err != nil {
 		return err
 	}
 
 	// новые DBW-заказы: отправить в Telegram и пометить как уведомлённые
-	if err := e.runShopDBWOrders(ctx, shopID, products); err != nil {
+	if err := e.runShopDBWOrders(ctx, shopID, products, loc); err != nil {
 		return err
 	}
 
 	// новые DBS-заказы: отправить в Telegram и пометить как уведомлённые
-	if err := e.runShopDBSOrders(ctx, shopID, products); err != nil {
+	if err := e.runShopDBSOrders(ctx, shopID, products, loc); err != nil {
 		return err
 	}
 
 	// новые выкупы/возвраты: отправить в Telegram и пометить как уведомлённые
-	if err := e.runShopSaleEvents(ctx, shopID, products); err != nil {
+	if err := e.runShopSaleEvents(ctx, shopID, products, loc); err != nil {
 		return err
 	}
 

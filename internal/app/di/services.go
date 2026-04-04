@@ -161,6 +161,7 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.NotificationEndpoint,
 		tgAdapter,
 		prov.Repositories.ABCSnapshot,
+		prov.Repositories.Shop,
 		prov.log,
 	)
 

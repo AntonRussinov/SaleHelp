@@ -651,6 +651,70 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/shops/{shopId}": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновление настроек магазина: часовой пояс отчётов WB. Требует JWT.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shops"
+                ],
+                "summary": "Обновить магазин",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля для обновления",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateShopRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ShopResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/shops/{shopId}/ai-settings": {
             "get": {
                 "security": [
@@ -1528,6 +1592,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "maxLength": 255
+                },
+                "wbReportTimezone": {
+                    "type": "string"
                 }
             }
         },
@@ -1657,6 +1724,9 @@ const docTemplate = `{
                 },
                 "userId": {
                     "type": "integer"
+                },
+                "wbReportTimezone": {
+                    "type": "string"
                 }
             }
         },
@@ -1721,6 +1791,14 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/api.UpdateNotificationSettingsItem"
                     }
+                }
+            }
+        },
+        "api.UpdateShopRequest": {
+            "type": "object",
+            "properties": {
+                "wbReportTimezone": {
+                    "type": "string"
                 }
             }
         },

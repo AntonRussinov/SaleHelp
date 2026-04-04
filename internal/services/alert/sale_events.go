@@ -10,7 +10,7 @@ import (
 
 // runShopSaleEvents отправляет уведомления о новых выкупах, возвратах и отказах (не забрали) в Telegram.
 // Объединяет sale_events (выкупы/возвраты) и order_refusals (отказы) в одно сообщение, помечает как уведомлённые.
-func (e *AlertEngine) runShopSaleEvents(ctx context.Context, shopID int, products []*domain.Product) error {
+func (e *AlertEngine) runShopSaleEvents(ctx context.Context, shopID int, products []*domain.Product, loc *time.Location) error {
 	events, err := e.saleEventsRepo.ListUnnotifiedByShop(ctx, shopID, 50)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func (e *AlertEngine) runShopSaleEvents(ctx context.Context, shopID int, product
 	if err != nil {
 		return err
 	}
-	text := notifications.FormatSalesAndRefusalsMessageRU(events, refusals, titleByNmID)
+	text := notifications.FormatSalesAndRefusalsMessageRU(events, refusals, titleByNmID, loc)
 	now := time.Now()
 	sent := false
 	for _, ep := range endpoints {

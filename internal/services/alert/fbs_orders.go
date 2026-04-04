@@ -10,7 +10,7 @@ import (
 
 // runShopFBSOrders отправляет уведомления о новых FBS-заказах в Telegram и помечает заказы как уведомлённые.
 // products — уже загруженные товары магазина (из RunShop); если nil/пусто и есть заказы — подгружаем ListByShop для подстановки названий.
-func (e *AlertEngine) runShopFBSOrders(ctx context.Context, shopID int, products []*domain.Product) error {
+func (e *AlertEngine) runShopFBSOrders(ctx context.Context, shopID int, products []*domain.Product, loc *time.Location) error {
 	orders, err := e.fbsOrdersRepo.ListUnnotifiedByShop(ctx, shopID, 50)
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (e *AlertEngine) runShopFBSOrders(ctx context.Context, shopID int, products
 	if err != nil {
 		return err
 	}
-	text := notifications.FormatFBSOrdersMessageRU(orders, titleByNmID)
+	text := notifications.FormatFBSOrdersMessageRU(orders, titleByNmID, loc)
 	now := time.Now()
 	sent := false
 	for _, ep := range endpoints {

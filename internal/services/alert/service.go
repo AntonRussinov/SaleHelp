@@ -34,7 +34,24 @@ type AlertEngine struct {
 	endpointsRepo            EndpointsRepo
 	tg                       TelegramSender
 	abcSnapshotRepo          ABCSnapshotRepo
+	shopTimezoneRepo         ShopTimezoneRepo
 	log                      *slog.Logger
+}
+
+// shopLocation возвращает timezone магазина или UTC как fallback.
+func (e *AlertEngine) shopLocation(ctx context.Context, shopID int) *time.Location {
+	if e.shopTimezoneRepo == nil {
+		return time.UTC
+	}
+	shop, err := e.shopTimezoneRepo.GetByID(ctx, shopID)
+	if err != nil || shop == nil || shop.WBReportTimezone == "" {
+		return time.UTC
+	}
+	loc, err := time.LoadLocation(shop.WBReportTimezone)
+	if err != nil {
+		return time.UTC
+	}
+	return loc
 }
 
 func (e *AlertEngine) notifEnabled(ctx context.Context, shopID int, key string) bool {
@@ -151,6 +168,7 @@ func NewAlertEngine(
 	endpointsRepo EndpointsRepo,
 	tg TelegramSender,
 	abcSnapshotRepo ABCSnapshotRepo,
+	shopTimezoneRepo ShopTimezoneRepo,
 	log *slog.Logger,
 ) *AlertEngine {
 	return &AlertEngine{
@@ -173,6 +191,7 @@ func NewAlertEngine(
 		endpointsRepo:            endpointsRepo,
 		tg:                       tg,
 		abcSnapshotRepo:          abcSnapshotRepo,
+		shopTimezoneRepo:         shopTimezoneRepo,
 		log:                      log,
 	}
 }
@@ -180,4 +199,8 @@ func NewAlertEngine(
 // ABCSnapshotRepo опционально: для приоритизации A-товаров в алертах по остаткам.
 type ABCSnapshotRepo interface {
 	GetLatestByShopAndPeriod(ctx context.Context, shopID, periodDays int) (*domain.ABCSnapshot, error)
+}
+
+type ShopTimezoneRepo interface {
+	GetByID(ctx context.Context, id int) (*domain.Shop, error)
 }
