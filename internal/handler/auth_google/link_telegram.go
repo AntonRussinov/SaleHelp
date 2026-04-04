@@ -8,8 +8,8 @@ import (
 
 // LinkTelegramResponse ответ POST /auth/link-telegram.
 type LinkTelegramResponse struct {
-	LinkCode  string `json:"linkCode"`
-	ExpiresAt string `json:"expiresAt"` // RFC3339
+	LinkCode  string `json:"linkCode"  example:"A3F7XQ"`
+	ExpiresAt string `json:"expiresAt" example:"2024-01-15T10:15:00Z"` // RFC3339
 }
 
 // LinkTelegram создаёт одноразовый код для привязки Telegram к аккаунту. Требует JWT.

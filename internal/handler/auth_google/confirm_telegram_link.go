@@ -9,7 +9,7 @@ import (
 
 // ConfirmTelegramLinkRequest тело POST /auth/confirm-telegram-link.
 type ConfirmTelegramLinkRequest struct {
-	Code string `json:"code"`
+	Code string `json:"code" example:"A3F7XQ"`
 }
 
 // ConfirmTelegramLink — пользователь в боте ввёл email, получил код; заходит на сайт под этим email и вводит код.

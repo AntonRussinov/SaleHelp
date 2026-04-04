@@ -372,6 +372,70 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/shop/{id}": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновление настроек магазина: часовой пояс отчётов WB. Требует JWT.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shops"
+                ],
+                "summary": "Обновить магазин",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Поля для обновления",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateShopRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ShopResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/shop/{id}/subscription/grant": {
             "post": {
                 "security": [
@@ -644,70 +708,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/api.HTTPError"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/shops/{shopId}": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Обновление настроек магазина: часовой пояс отчётов WB. Требует JWT.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "shops"
-                ],
-                "summary": "Обновить магазин",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID магазина",
-                        "name": "shopId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Поля для обновления",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.UpdateShopRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/api.ShopResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.HTTPError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/api.HTTPError"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/api.HTTPError"
                         }
@@ -1479,25 +1479,32 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "brandName": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "МойБренд"
                 },
                 "createdAt": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-01-15T10:00:00Z"
                 },
                 "customRules": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Всегда упоминай гарантию."
                 },
                 "isActive": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": true
                 },
                 "shopId": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "toneOfVoice": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "friendly"
                 },
                 "updatedAt": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-01-15T10:00:00Z"
                 }
             }
         },
@@ -1505,44 +1512,55 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "aiRecommendationId": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 3
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 10
                 },
                 "message": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Снижение цены \u003e 10%"
                 },
                 "payload": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "type": "object"
                 },
                 "productId": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 42
                 },
                 "productSizeId": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 7
                 },
                 "resolvedAt": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-01-16T08:00:00Z"
                 },
                 "scope": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "product"
                 },
                 "severity": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 4
                 },
                 "shopId": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "status": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "active"
                 },
                 "triggeredAt": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-01-15T10:00:00Z"
                 },
                 "type": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "price_drop"
                 }
             }
         },
@@ -1581,20 +1599,24 @@ const docTemplate = `{
             ],
             "properties": {
                 "apiToken": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ"
                 },
                 "marketplace": {
                     "type": "string",
                     "enum": [
                         "wildberries"
-                    ]
+                    ],
+                    "example": "wildberries"
                 },
                 "name": {
                     "type": "string",
-                    "maxLength": 255
+                    "maxLength": 255,
+                    "example": "Мой магазин WB"
                 },
                 "wbReportTimezone": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Europe/Moscow"
                 }
             }
         },
@@ -1602,16 +1624,20 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "built": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-01-15T10:00:00Z"
                 },
                 "gitCommit": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "84b789e"
                 },
                 "goVersion": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "go1.22.0"
                 },
                 "version": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "1.0.0"
                 }
             }
         },
@@ -1619,16 +1645,20 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 400
                 },
                 "details": {
-                    "type": "string"
+                    "type": "string",
+                    "example": ""
                 },
                 "message": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "invalid body"
                 },
                 "timestamp": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-01-15T10:00:00Z"
                 },
                 "validationErrors": {
                     "type": "array",
@@ -1648,13 +1678,16 @@ const docTemplate = `{
                     }
                 },
                 "limit": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 20
                 },
                 "offset": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 0
                 },
                 "total": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 42
                 }
             }
         },
@@ -1676,22 +1709,28 @@ const docTemplate = `{
             ],
             "properties": {
                 "category": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "orders"
                 },
                 "defaultEnabled": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": true
                 },
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Уведомление о новом сборочном задании FBS"
                 },
                 "enabled": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": true
                 },
                 "key": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "fbs_new_order"
                 },
                 "title": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Новый заказ FBS"
                 }
             }
         },
@@ -1699,34 +1738,42 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "createdAt": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-01-15T10:00:00Z"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "isActive": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": true
                 },
                 "lastSyncAt": {
                     "type": "string"
                 },
                 "lastSyncStatusCode": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 200
                 },
                 "marketplace": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "wildberries"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Мой магазин WB"
                 },
                 "subscription": {
                     "$ref": "#/definitions/api.SubscriptionSummary"
                 },
                 "userId": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 5
                 },
                 "wbReportTimezone": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Europe/Moscow"
                 }
             }
         },
@@ -1734,13 +1781,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "hasActive": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": true
                 },
                 "plan": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "base"
                 },
                 "validTo": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2025-01-15T00:00:00Z"
                 }
             }
         },
@@ -1773,10 +1823,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "enabled": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": false
                 },
                 "key": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "fbs_new_order"
                 }
             }
         },
@@ -1798,7 +1850,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "wbReportTimezone": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Asia/Almaty"
                 }
             }
         },
@@ -1811,16 +1864,19 @@ const docTemplate = `{
                 "brandName": {
                     "description": "BrandName — название бренда для промпта (опционально)",
                     "type": "string",
-                    "maxLength": 500
+                    "maxLength": 500,
+                    "example": "МойБренд"
                 },
                 "customRules": {
                     "description": "CustomRules — доп. правила для промпта (опционально)",
                     "type": "string",
-                    "maxLength": 2000
+                    "maxLength": 2000,
+                    "example": "Всегда упоминай гарантию. Не обещай скидки."
                 },
                 "isActive": {
                     "description": "IsActive — включена ли генерация AI-ответов для магазина",
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": true
                 },
                 "toneOfVoice": {
                     "description": "ToneOfVoice: standard | friendly | official | empathic | minimalist",
@@ -1831,7 +1887,8 @@ const docTemplate = `{
                         "official",
                         "empathic",
                         "minimalist"
-                    ]
+                    ],
+                    "example": "friendly"
                 }
             }
         },
@@ -1839,13 +1896,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "details": {
-                    "type": "string"
+                    "type": "string",
+                    "example": ""
                 },
                 "field": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "email"
                 },
                 "message": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "required"
                 }
             }
         },
@@ -1853,7 +1913,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "A3F7XQ"
                 }
             }
         },
@@ -1862,10 +1923,12 @@ const docTemplate = `{
             "properties": {
                 "expiresAt": {
                     "description": "RFC3339",
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-01-15T10:15:00Z"
                 },
                 "linkCode": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "A3F7XQ"
                 }
             }
         },
@@ -1876,7 +1939,8 @@ const docTemplate = `{
             ],
             "properties": {
                 "idToken": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ"
                 }
             }
         },
@@ -1884,7 +1948,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "accessToken": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ"
                 },
                 "user": {
                     "$ref": "#/definitions/auth_google.UserResponse"
@@ -1899,10 +1964,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "user@example.com"
                 },
                 "password": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "mypassword123"
                 }
             }
         },
@@ -1914,11 +1981,13 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "user@example.com"
                 },
                 "password": {
                     "type": "string",
-                    "minLength": 8
+                    "minLength": 8,
+                    "example": "mypassword123"
                 }
             }
         },
@@ -1926,10 +1995,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "user@example.com"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 5
                 }
             }
         },
@@ -1976,38 +2047,46 @@ const docTemplate = `{
             "properties": {
                 "base_amount_minor": {
                     "description": "База за период (в minor units: копейки/тиыны)",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 49900
                 },
                 "comment": {
                     "description": "опционально",
-                    "type": "string"
+                    "type": "string",
+                    "example": "Оплата по счёту №123"
                 },
                 "currency_code": {
                     "description": "\"RUB\"|\"KZT\"|...",
-                    "type": "string"
+                    "type": "string",
+                    "example": "RUB"
                 },
                 "extra_telegram_chats": {
                     "description": "Сколько доп. телеграм чатов купить (помимо 1 базового)",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 0
                 },
                 "paid_at": {
                     "description": "опционально",
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-01-15T10:00:00Z"
                 },
                 "period_months": {
                     "description": "1|3|6",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "shopID": {
                     "type": "integer"
                 },
                 "source": {
                     "description": "manual|...",
-                    "type": "string"
+                    "type": "string",
+                    "example": "manual"
                 },
                 "telegram_addon_amount_minor": {
                     "description": "Цена аддона за весь период (minor units).\nНапример: 2 доп чата на 1 месяц * 500₽ = 100000 (копеек)",
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 0
                 }
             }
         },
@@ -2015,16 +2094,20 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "allowed_telegram_chats": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "subscription_id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 7
                 },
                 "valid_from": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-01-15T00:00:00Z"
                 },
                 "valid_to": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-02-15T00:00:00Z"
                 }
             }
         },
@@ -2032,34 +2115,44 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "allowed_telegram_chats": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "base_amount_minor": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 49900
                 },
                 "currency_code": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "RUB"
                 },
                 "enabled_telegram_chats": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "has_active_subscription": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": true
                 },
                 "period_months": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "plan": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "base"
                 },
                 "status": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "active"
                 },
                 "valid_from": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-01-15T00:00:00Z"
                 },
                 "valid_to": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2024-02-15T00:00:00Z"
                 }
             }
         }

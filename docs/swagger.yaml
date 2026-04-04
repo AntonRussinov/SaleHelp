@@ -5,48 +5,66 @@ definitions:
   api.AISettingsResponse:
     properties:
       brandName:
+        example: МойБренд
         type: string
       createdAt:
+        example: "2024-01-15T10:00:00Z"
         type: string
       customRules:
+        example: Всегда упоминай гарантию.
         type: string
       isActive:
+        example: true
         type: boolean
       shopId:
+        example: 1
         type: integer
       toneOfVoice:
+        example: friendly
         type: string
       updatedAt:
+        example: "2024-01-15T10:00:00Z"
         type: string
     type: object
   api.AlertResponse:
     properties:
       aiRecommendationId:
+        example: 3
         type: integer
       id:
+        example: 10
         type: integer
       message:
+        example: Снижение цены > 10%
         type: string
       payload:
-        additionalProperties: true
         type: object
       productId:
+        example: 42
         type: integer
       productSizeId:
+        example: 7
         type: integer
       resolvedAt:
+        example: "2024-01-16T08:00:00Z"
         type: string
       scope:
+        example: product
         type: string
       severity:
+        example: 4
         type: integer
       shopId:
+        example: 1
         type: integer
       status:
+        example: active
         type: string
       triggeredAt:
+        example: "2024-01-15T10:00:00Z"
         type: string
       type:
+        example: price_drop
         type: string
     type: object
   api.CreateAlertRequest:
@@ -71,15 +89,19 @@ definitions:
   api.CreateShopRequest:
     properties:
       apiToken:
+        example: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ
         type: string
       marketplace:
         enum:
         - wildberries
+        example: wildberries
         type: string
       name:
+        example: Мой магазин WB
         maxLength: 255
         type: string
       wbReportTimezone:
+        example: Europe/Moscow
         type: string
     required:
     - apiToken
@@ -89,23 +111,31 @@ definitions:
   api.GetHealthCheckResponse:
     properties:
       built:
+        example: "2024-01-15T10:00:00Z"
         type: string
       gitCommit:
+        example: 84b789e
         type: string
       goVersion:
+        example: go1.22.0
         type: string
       version:
+        example: 1.0.0
         type: string
     type: object
   api.HTTPError:
     properties:
       code:
+        example: 400
         type: integer
       details:
+        example: ""
         type: string
       message:
+        example: invalid body
         type: string
       timestamp:
+        example: "2024-01-15T10:00:00Z"
         type: string
       validationErrors:
         items:
@@ -119,10 +149,13 @@ definitions:
           $ref: '#/definitions/api.AlertResponse'
         type: array
       limit:
+        example: 20
         type: integer
       offset:
+        example: 0
         type: integer
       total:
+        example: 42
         type: integer
     type: object
   api.ListNotificationSettingsResponse:
@@ -135,16 +168,22 @@ definitions:
   api.NotificationSetting:
     properties:
       category:
+        example: orders
         type: string
       defaultEnabled:
+        example: true
         type: boolean
       description:
+        example: Уведомление о новом сборочном задании FBS
         type: string
       enabled:
+        example: true
         type: boolean
       key:
+        example: fbs_new_order
         type: string
       title:
+        example: Новый заказ FBS
         type: string
     required:
     - key
@@ -152,33 +191,44 @@ definitions:
   api.ShopResponse:
     properties:
       createdAt:
+        example: "2024-01-15T10:00:00Z"
         type: string
       id:
+        example: 1
         type: integer
       isActive:
+        example: true
         type: boolean
       lastSyncAt:
         type: string
       lastSyncStatusCode:
+        example: 200
         type: integer
       marketplace:
+        example: wildberries
         type: string
       name:
+        example: Мой магазин WB
         type: string
       subscription:
         $ref: '#/definitions/api.SubscriptionSummary'
       userId:
+        example: 5
         type: integer
       wbReportTimezone:
+        example: Europe/Moscow
         type: string
     type: object
   api.SubscriptionSummary:
     properties:
       hasActive:
+        example: true
         type: boolean
       plan:
+        example: base
         type: string
       validTo:
+        example: "2025-01-15T00:00:00Z"
         type: string
     type: object
   api.UpdateAlertRequest:
@@ -200,8 +250,10 @@ definitions:
   api.UpdateNotificationSettingsItem:
     properties:
       enabled:
+        example: false
         type: boolean
       key:
+        example: fbs_new_order
         type: string
     required:
     - key
@@ -218,20 +270,24 @@ definitions:
   api.UpdateShopRequest:
     properties:
       wbReportTimezone:
+        example: Asia/Almaty
         type: string
     type: object
   api.UpsertAISettingsRequest:
     properties:
       brandName:
         description: BrandName — название бренда для промпта (опционально)
+        example: МойБренд
         maxLength: 500
         type: string
       customRules:
         description: CustomRules — доп. правила для промпта (опционально)
+        example: Всегда упоминай гарантию. Не обещай скидки.
         maxLength: 2000
         type: string
       isActive:
         description: IsActive — включена ли генерация AI-ответов для магазина
+        example: true
         type: boolean
       toneOfVoice:
         description: 'ToneOfVoice: standard | friendly | official | empathic | minimalist'
@@ -241,6 +297,7 @@ definitions:
         - official
         - empathic
         - minimalist
+        example: friendly
         type: string
     required:
     - toneOfVoice
@@ -248,28 +305,35 @@ definitions:
   api.ValidationError:
     properties:
       details:
+        example: ""
         type: string
       field:
+        example: email
         type: string
       message:
+        example: required
         type: string
     type: object
   auth_google.ConfirmTelegramLinkRequest:
     properties:
       code:
+        example: A3F7XQ
         type: string
     type: object
   auth_google.LinkTelegramResponse:
     properties:
       expiresAt:
         description: RFC3339
+        example: "2024-01-15T10:15:00Z"
         type: string
       linkCode:
+        example: A3F7XQ
         type: string
     type: object
   auth_google.LoginByGoogleRequest:
     properties:
       idToken:
+        example: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ
         type: string
     required:
     - idToken
@@ -277,6 +341,7 @@ definitions:
   auth_google.LoginByGoogleResponse:
     properties:
       accessToken:
+        example: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ
         type: string
       user:
         $ref: '#/definitions/auth_google.UserResponse'
@@ -284,8 +349,10 @@ definitions:
   auth_google.LoginRequest:
     properties:
       email:
+        example: user@example.com
         type: string
       password:
+        example: mypassword123
         type: string
     required:
     - email
@@ -294,8 +361,10 @@ definitions:
   auth_google.RegisterRequest:
     properties:
       email:
+        example: user@example.com
         type: string
       password:
+        example: mypassword123
         minLength: 8
         type: string
     required:
@@ -305,8 +374,10 @@ definitions:
   auth_google.UserResponse:
     properties:
       email:
+        example: user@example.com
         type: string
       id:
+        example: 5
         type: integer
     type: object
   domain.Product:
@@ -338,65 +409,87 @@ definitions:
     properties:
       base_amount_minor:
         description: 'База за период (в minor units: копейки/тиыны)'
+        example: 49900
         type: integer
       comment:
         description: опционально
+        example: Оплата по счёту №123
         type: string
       currency_code:
         description: '"RUB"|"KZT"|...'
+        example: RUB
         type: string
       extra_telegram_chats:
         description: Сколько доп. телеграм чатов купить (помимо 1 базового)
+        example: 0
         type: integer
       paid_at:
         description: опционально
+        example: "2024-01-15T10:00:00Z"
         type: string
       period_months:
         description: 1|3|6
+        example: 1
         type: integer
       shopID:
         type: integer
       source:
         description: manual|...
+        example: manual
         type: string
       telegram_addon_amount_minor:
         description: |-
           Цена аддона за весь период (minor units).
           Например: 2 доп чата на 1 месяц * 500₽ = 100000 (копеек)
+        example: 0
         type: integer
     type: object
   subscription.GrantResult:
     properties:
       allowed_telegram_chats:
+        example: 1
         type: integer
       subscription_id:
+        example: 7
         type: integer
       valid_from:
+        example: "2024-01-15T00:00:00Z"
         type: string
       valid_to:
+        example: "2024-02-15T00:00:00Z"
         type: string
     type: object
   subscription.StatusResult:
     properties:
       allowed_telegram_chats:
+        example: 1
         type: integer
       base_amount_minor:
+        example: 49900
         type: integer
       currency_code:
+        example: RUB
         type: string
       enabled_telegram_chats:
+        example: 1
         type: integer
       has_active_subscription:
+        example: true
         type: boolean
       period_months:
+        example: 1
         type: integer
       plan:
+        example: base
         type: string
       status:
+        example: active
         type: string
       valid_from:
+        example: "2024-01-15T00:00:00Z"
         type: string
       valid_to:
+        example: "2024-02-15T00:00:00Z"
         type: string
     type: object
 host: localhost:8080
@@ -638,6 +731,48 @@ paths:
       summary: Список товаров
       tags:
       - products
+  /v1/shop/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: 'Обновление настроек магазина: часовой пояс отчётов WB. Требует
+        JWT.'
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: Поля для обновления
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateShopRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ShopResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Обновить магазин
+      tags:
+      - shops
   /v1/shop/{id}/subscription/grant:
     post:
       consumes:
@@ -817,48 +952,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Создать магазин
-      tags:
-      - shops
-  /v1/shops/{shopId}:
-    patch:
-      consumes:
-      - application/json
-      description: 'Обновление настроек магазина: часовой пояс отчётов WB. Требует
-        JWT.'
-      parameters:
-      - description: ID магазина
-        in: path
-        name: shopId
-        required: true
-        type: integer
-      - description: Поля для обновления
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/api.UpdateShopRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.ShopResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.HTTPError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/api.HTTPError'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/api.HTTPError'
-      security:
-      - BearerAuth: []
-      summary: Обновить магазин
       tags:
       - shops
   /v1/shops/{shopId}/ai-settings:

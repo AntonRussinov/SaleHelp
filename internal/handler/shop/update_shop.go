@@ -24,7 +24,7 @@ import (
 // @Failure     400 {object} api.HTTPError
 // @Failure     401 {object} api.HTTPError
 // @Failure     403 {object} api.HTTPError
-// @Router      /v1/shops/{shopId} [patch]
+// @Router      /v1/shop/{id} [patch]
 func (h *Handler) UpdateShop(c echo.Context) error {
 	shopID, err := h.ensureShopAccessByID(c)
 	if err != nil {

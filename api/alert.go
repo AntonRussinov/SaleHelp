@@ -54,19 +54,19 @@ type UpdateAlertRequest struct {
 
 // AlertResponse ответ с данными алерта
 type AlertResponse struct {
-	ID                 int                    `json:"id"`
-	ShopID             int                    `json:"shopId"`
-	ProductID          *int                   `json:"productId"`
-	ProductSizeID      *int                   `json:"productSizeId"`
-	Type               AlertType              `json:"type"`
-	Severity           int                    `json:"severity"`
-	Status             AlertStatus            `json:"status"`
-	Message            string                 `json:"message"`
-	Payload            map[string]interface{} `json:"payload"`
-	Scope              AlertScope             `json:"scope"`
-	TriggeredAt        time.Time              `json:"triggeredAt"`
-	ResolvedAt         *time.Time             `json:"resolvedAt"`
-	AIRecommendationID *int                   `json:"aiRecommendationId"`
+	ID                 int                    `json:"id"                  example:"10"`
+	ShopID             int                    `json:"shopId"              example:"1"`
+	ProductID          *int                   `json:"productId"           example:"42"`
+	ProductSizeID      *int                   `json:"productSizeId"       example:"7"`
+	Type               AlertType              `json:"type"                example:"price_drop"`
+	Severity           int                    `json:"severity"            example:"4"`
+	Status             AlertStatus            `json:"status"              example:"active"`
+	Message            string                 `json:"message"             example:"Снижение цены > 10%"`
+	Payload            map[string]interface{} `json:"payload"             swaggertype:"object"`
+	Scope              AlertScope             `json:"scope"               example:"product"`
+	TriggeredAt        time.Time              `json:"triggeredAt"         example:"2024-01-15T10:00:00Z"`
+	ResolvedAt         *time.Time             `json:"resolvedAt"          example:"2024-01-16T08:00:00Z"`
+	AIRecommendationID *int                   `json:"aiRecommendationId"  example:"3"`
 }
 
 // ListAlertsRequest запрос на получение списка алертов
@@ -81,9 +81,9 @@ type ListAlertsRequest struct {
 // ListAlertsResponse ответ со списком алертов
 type ListAlertsResponse struct {
 	Alerts []AlertResponse `json:"alerts"`
-	Total  int             `json:"total"`
-	Limit  int             `json:"limit"`
-	Offset int             `json:"offset"`
+	Total  int             `json:"total"  example:"42"`
+	Limit  int             `json:"limit"  example:"20"`
+	Offset int             `json:"offset" example:"0"`
 }
 
 // PriceDropPayload конфигурация для price_drop алерта.

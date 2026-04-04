@@ -7,17 +7,17 @@ import (
 
 type (
 	HTTPError struct {
-		Code             int               `json:"code"`
-		Message          string            `json:"message"`
-		Details          string            `json:"details"`
-		Timestamp        time.Time         `json:"timestamp"`
+		Code             int               `json:"code"             example:"400"`
+		Message          string            `json:"message"          example:"invalid body"`
+		Details          string            `json:"details"          example:""`
+		Timestamp        time.Time         `json:"timestamp"        example:"2024-01-15T10:00:00Z"`
 		ValidationErrors []ValidationError `json:"validationErrors"`
 	}
 
 	ValidationError struct {
-		Field   string `json:"field"`
-		Message string `json:"message"`
-		Details string `json:"details"`
+		Field   string `json:"field"   example:"email"`
+		Message string `json:"message" example:"required"`
+		Details string `json:"details" example:""`
 	}
 
 	UploadFileRequest struct {

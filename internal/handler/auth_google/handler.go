@@ -26,30 +26,30 @@ type (
 
 // LoginByGoogleRequest тело запроса POST /auth/google.
 type LoginByGoogleRequest struct {
-	IDToken string `json:"idToken" validate:"required"`
+	IDToken string `json:"idToken" validate:"required" example:"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ"`
 }
 
 // LoginByGoogleResponse ответ после успешного логина.
 type LoginByGoogleResponse struct {
-	AccessToken string       `json:"accessToken"`
-	User       UserResponse  `json:"user"`
+	AccessToken string      `json:"accessToken" example:"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ"`
+	User        UserResponse `json:"user"`
 }
 
 type UserResponse struct {
-	ID    int    `json:"id"`
-	Email string `json:"email,omitempty"`
+	ID    int    `json:"id"              example:"5"`
+	Email string `json:"email,omitempty" example:"user@example.com"`
 }
 
 // RegisterRequest тело POST /auth/register.
 type RegisterRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
+	Email    string `json:"email"    validate:"required,email"    example:"user@example.com"`
+	Password string `json:"password" validate:"required,min=8"    example:"mypassword123"`
 }
 
 // LoginRequest тело POST /auth/login.
 type LoginRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
+	Email    string `json:"email"    validate:"required,email" example:"user@example.com"`
+	Password string `json:"password" validate:"required"       example:"mypassword123"`
 }
 
 func NewHandler(service Service) *Handler {
