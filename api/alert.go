@@ -40,7 +40,7 @@ type CreateAlertRequest struct {
 	ProductID     *int                   `json:"productId"     validate:"omitempty,min=1" example:"42"`
 	ProductSizeID *int                   `json:"productSizeId" validate:"omitempty,min=1" example:"7"`
 	Type          AlertType              `json:"type"          validate:"required,is_valid_enum" example:"price_drop"`
-	Payload       map[string]interface{} `json:"payload"       validate:"required" swaggertype:"object"`
+	Payload       map[string]interface{} `json:"payload"       validate:"omitempty" swaggertype:"object"`
 }
 
 // UpdateAlertRequest запрос на обновление алерта.
@@ -106,6 +106,12 @@ type StockZeroPayload struct{}
 
 // ValidatePayload валидирует payload в зависимости от типа алерта
 func (r *CreateAlertRequest) ValidatePayload() error {
+	if r.Type == AlertTypeStockZero {
+		return nil
+	}
+	if r.Payload == nil {
+		return fmt.Errorf("payload обязателен для типа %s", r.Type)
+	}
 	payloadBytes, err := json.Marshal(r.Payload)
 	if err != nil {
 		return err

@@ -35,21 +35,27 @@ type AlertEngine struct {
 	tg                       TelegramSender
 	abcSnapshotRepo          ABCSnapshotRepo
 	shopTimezoneRepo         ShopTimezoneRepo
+	defaultLoc               *time.Location
 	log                      *slog.Logger
 }
 
-// shopLocation возвращает timezone магазина или UTC как fallback.
+// shopLocation возвращает timezone магазина из таблицы shops.
+// Если у магазина не задан WBReportTimezone — использует defaultLoc (пояс из конфига, тот же что при парсинге дат WB).
 func (e *AlertEngine) shopLocation(ctx context.Context, shopID int) *time.Location {
+	fallback := e.defaultLoc
+	if fallback == nil {
+		fallback = time.UTC
+	}
 	if e.shopTimezoneRepo == nil {
-		return time.UTC
+		return fallback
 	}
 	shop, err := e.shopTimezoneRepo.GetByID(ctx, shopID)
 	if err != nil || shop == nil || shop.WBReportTimezone == "" {
-		return time.UTC
+		return fallback
 	}
 	loc, err := time.LoadLocation(shop.WBReportTimezone)
 	if err != nil {
-		return time.UTC
+		return fallback
 	}
 	return loc
 }
@@ -169,6 +175,7 @@ func NewAlertEngine(
 	tg TelegramSender,
 	abcSnapshotRepo ABCSnapshotRepo,
 	shopTimezoneRepo ShopTimezoneRepo,
+	defaultLoc *time.Location,
 	log *slog.Logger,
 ) *AlertEngine {
 	return &AlertEngine{
@@ -192,6 +199,7 @@ func NewAlertEngine(
 		tg:                       tg,
 		abcSnapshotRepo:          abcSnapshotRepo,
 		shopTimezoneRepo:         shopTimezoneRepo,
+		defaultLoc:               defaultLoc,
 		log:                      log,
 	}
 }

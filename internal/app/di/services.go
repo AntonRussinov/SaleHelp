@@ -162,6 +162,7 @@ func (prov *Provider) initDependentServices() {
 		tgAdapter,
 		prov.Repositories.ABCSnapshot,
 		prov.Repositories.Shop,
+		wbReportLoc,
 		prov.log,
 	)
 

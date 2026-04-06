@@ -58,6 +58,10 @@ func (h *Handler) CreateAlert(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid payload: "+err.Error())
 	}
 
+	if req.Payload == nil {
+		req.Payload = map[string]interface{}{}
+	}
+
 	// Конвертируем API модель в domain модель
 	payloadBytes, err := json.Marshal(req.Payload)
 	if err != nil {
