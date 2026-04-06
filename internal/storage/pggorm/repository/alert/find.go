@@ -132,30 +132,26 @@ func (r *Repository) GetByIDAndShop(ctx context.Context, id int, shopID int) (*d
 }
 
 func (r *Repository) ListWithFilters(ctx context.Context, shopID int, productID *int, alertType *string, status *string, limit, offset int) ([]*domain.Alert, int, error) {
-	q := r.DB.WithContext(ctx).Model(&model.Alert{}).Where("shop_id = ?", shopID)
-
-	if productID != nil {
-		q = q.Where("product_id = ?", *productID)
+	base := func() *gorm.DB {
+		q := r.DB.WithContext(ctx).Model(&model.Alert{}).Where("shop_id = ?", shopID)
+		if productID != nil {
+			q = q.Where("product_id = ?", *productID)
+		}
+		if alertType != nil {
+			q = q.Where("type = ?", *alertType)
+		}
+		if status != nil {
+			q = q.Where("status = ?", *status)
+		}
+		return q
 	}
 
-	if alertType != nil {
-		q = q.Where("type = ?", *alertType)
-	}
-
-	if status != nil {
-		q = q.Where("status = ?", *status)
-	}
-
-	// Подсчитываем общее количество
 	var total int64
-	if err := q.Count(&total).Error; err != nil {
+	if err := base().Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("alert count with filters: %w", err)
 	}
 
-	// Получаем записи с пагинацией
-	var rows []model.Alert
-	q = q.Order("triggered_at DESC")
-	
+	q := base().Order("triggered_at DESC")
 	if limit > 0 {
 		q = q.Limit(limit)
 	}
@@ -163,6 +159,7 @@ func (r *Repository) ListWithFilters(ctx context.Context, shopID int, productID 
 		q = q.Offset(offset)
 	}
 
+	var rows []model.Alert
 	if err := q.Find(&rows).Error; err != nil {
 		return nil, 0, fmt.Errorf("alert list with filters: %w", err)
 	}
