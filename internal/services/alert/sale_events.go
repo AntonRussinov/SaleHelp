@@ -8,55 +8,36 @@ import (
 	"time"
 )
 
-// runShopSaleEvents отправляет уведомления о новых выкупах, возвратах и отказах (не забрали) в Telegram.
-// Объединяет sale_events (выкупы/возвраты) и order_refusals (отказы) в одно сообщение, помечает как уведомлённые.
+// runShopSaleEvents отправляет уведомления о новых выкупах и возвратах в Telegram.
+// Отказы (не забрали) обрабатываются отдельно суточным дайджестом (refusal_digest).
 func (e *AlertEngine) runShopSaleEvents(ctx context.Context, shopID int, products []*domain.Product, loc *time.Location) error {
 	events, err := e.saleEventsRepo.ListUnnotifiedByShop(ctx, shopID, 50)
 	if err != nil {
 		return err
 	}
-	refusals, err := e.orderRefusalsRepo.ListUnnotifiedByShop(ctx, shopID, 50)
-	if err != nil {
-		return err
-	}
-	if len(events) == 0 && len(refusals) == 0 {
+	if len(events) == 0 {
 		return nil
 	}
 
 	if !e.notifEnabled(ctx, shopID, domain.NotificationEventSalesAndRefusals) {
 		now := time.Now()
-		if len(events) > 0 {
-			ids := make([]int, 0, len(events))
-			for _, ev := range events {
-				ids = append(ids, ev.ID)
-			}
-			if err := e.saleEventsRepo.MarkNotified(ctx, ids, now); err != nil {
-				return err
-			}
+		ids := make([]int, 0, len(events))
+		for _, ev := range events {
+			ids = append(ids, ev.ID)
 		}
-		if len(refusals) > 0 {
-			ids := make([]int, 0, len(refusals))
-			for _, r := range refusals {
-				ids = append(ids, r.ID)
-			}
-			if err := e.orderRefusalsRepo.MarkNotified(ctx, ids, now); err != nil {
-				return err
-			}
-		}
-		return nil
+		return e.saleEventsRepo.MarkNotified(ctx, ids, now)
 	}
+
 	if len(products) == 0 {
 		products, err = e.productsRepo.ListByShop(ctx, shopID, 0, 0)
 		if err != nil {
 			return err
 		}
 	}
+
 	nmIDSet := make(map[int64]struct{})
 	for _, ev := range events {
 		nmIDSet[ev.NmID] = struct{}{}
-	}
-	for _, r := range refusals {
-		nmIDSet[r.NmID] = struct{}{}
 	}
 	titleByNmID := make(map[int64]string)
 	for _, p := range products {
@@ -71,11 +52,12 @@ func (e *AlertEngine) runShopSaleEvents(ctx context.Context, shopID int, product
 			titleByNmID[nmID] = p.Title
 		}
 	}
+
 	endpoints, err := e.endpointsRepo.ListByShopID(ctx, shopID, true)
 	if err != nil {
 		return err
 	}
-	text := notifications.FormatSalesAndRefusalsMessageRU(events, refusals, titleByNmID, loc)
+	text := notifications.FormatSaleEventsMessageRU(events, titleByNmID, loc)
 	now := time.Now()
 	sent := false
 	for _, ep := range endpoints {
@@ -94,23 +76,12 @@ func (e *AlertEngine) runShopSaleEvents(ctx context.Context, shopID int, product
 		sent = true
 	}
 	if sent {
-		if len(events) > 0 {
-			ids := make([]int, 0, len(events))
-			for _, ev := range events {
-				ids = append(ids, ev.ID)
-			}
-			if err := e.saleEventsRepo.MarkNotified(ctx, ids, now); err != nil {
-				return err
-			}
+		ids := make([]int, 0, len(events))
+		for _, ev := range events {
+			ids = append(ids, ev.ID)
 		}
-		if len(refusals) > 0 {
-			ids := make([]int, 0, len(refusals))
-			for _, r := range refusals {
-				ids = append(ids, r.ID)
-			}
-			if err := e.orderRefusalsRepo.MarkNotified(ctx, ids, now); err != nil {
-				return err
-			}
+		if err := e.saleEventsRepo.MarkNotified(ctx, ids, now); err != nil {
+			return err
 		}
 	}
 	return nil

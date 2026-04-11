@@ -38,15 +38,19 @@ func FormatSaleEventsMessageRU(events []*domain.SaleEvent, productTitleByNmID ma
 }
 
 // FormatOrderRefusalsMessageRU формирует текст блока об отказах (заказы не забраны).
-func FormatOrderRefusalsMessageRU(refusals []*domain.OrderRefusal, productTitleByNmID map[int64]string, loc *time.Location) string {
+// Одинаковые товары группируются: "• Название — 3 шт."
+func FormatOrderRefusalsMessageRU(refusals []*domain.OrderRefusal, productTitleByNmID map[int64]string, _ *time.Location) string {
 	if len(refusals) == 0 {
 		return ""
 	}
-	if loc == nil {
-		loc = time.UTC
+
+	// Группируем по названию товара, сохраняя порядок первого появления.
+	type entry struct {
+		name  string
+		count int
 	}
-	lines := make([]string, 0, len(refusals)+1)
-	lines = append(lines, "🚫 Отказы (не забрали)")
+	order := make([]string, 0, len(refusals))
+	byName := make(map[string]*entry, len(refusals))
 	for _, r := range refusals {
 		name := productTitleByNmID[r.NmID]
 		if name == "" {
@@ -55,8 +59,22 @@ func FormatOrderRefusalsMessageRU(refusals []*domain.OrderRefusal, productTitleB
 		if name == "" {
 			name = fmt.Sprintf("nm %d", r.NmID)
 		}
-		date := r.CancelDate.In(loc).Format("02.01.2006 15:04")
-		lines = append(lines, fmt.Sprintf("• %s — %s", name, date))
+		if _, seen := byName[name]; !seen {
+			order = append(order, name)
+			byName[name] = &entry{name: name}
+		}
+		byName[name].count++
+	}
+
+	lines := make([]string, 0, len(order)+1)
+	lines = append(lines, "🚫 Отказы (не забрали)")
+	for _, name := range order {
+		e := byName[name]
+		if e.count > 1 {
+			lines = append(lines, fmt.Sprintf("• %s — %d шт.", name, e.count))
+		} else {
+			lines = append(lines, fmt.Sprintf("• %s", name))
+		}
 	}
 	return strings.Join(lines, "\n")
 }

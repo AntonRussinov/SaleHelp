@@ -122,6 +122,14 @@ func (prov *Provider) initScheduler(ctx context.Context) error {
 		}
 	}
 
+	// Дайджест отказов (не забрали в ПВЗ): ежедневно в 07:00 МСК.
+	if prov.Services.RefusalDigest != nil {
+		refusalDigestJob := jobs.NewRefusalDigestJob(prov.log, prov.Services.RefusalDigest)
+		if err := prov.scheduler.Register(ctx, "0 7 * * *", "refusal_digest", refusalDigestJob.Run); err != nil {
+			return err
+		}
+	}
+
 	// регистрируем задачу
 	return prov.scheduler.Register(ctx, prov.cfg.Scheduler.Spec, "sync_active_shops", job.Run)
 }
