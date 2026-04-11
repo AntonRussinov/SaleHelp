@@ -71,3 +71,73 @@ mockery
 - длиной функций (`funlen`)
 - именами переменных (`varnamelen`)
 - порядком деклараций (`decorder`)
+
+## GORM — критичные паттерны
+
+**Delete** обязательно принимает модель с `TableName()` — иначе GORM не знает таблицу, ничего не удаляет, `RowsAffected = 0`:
+```go
+// ✅ правильно
+r.DB.Delete(&model.Alert{}, "id = ? AND shop_id = ?", id, shopID)
+
+// ❌ неправильно — удалит ноль строк без ошибки
+r.DB.Where("id = ? AND shop_id = ?", id, shopID).Delete(&struct{}{})
+```
+
+После Delete всегда проверяй `result.RowsAffected == 0` → возвращай `gorm.ErrRecordNotFound`.
+
+**GetByID** возвращает `nil, nil` (не ошибку) когда запись не найдена — вызывающий код обязан проверять nil:
+```go
+if err == gorm.ErrRecordNotFound { return nil, nil }  // паттерн в репозиториях
+// в сервисе затем:
+if result == nil { return nil, gorm.ErrRecordNotFound }
+```
+
+`First` — возвращает `ErrRecordNotFound` если нет строк. `Find` — всегда возвращает nil, даже если пусто.
+
+## Обработка ошибок
+
+В проекте **два пакета ошибок** (исторически):
+- `domain/` — старый: `ServiceError`, `NotFoundError`, `ForbiddenError` и т.д.
+- `domain/apperror/` — новый: `APPError`, `NotFoundError`, `ValidationError`
+
+Оба обрабатываются в `internal/handler/error.go` (`handleError`). В новом коде предпочитай `apperror`.
+
+Хэндлер возвращает `echo.NewHTTPError(code, msg)` только для простых случаев. Для доменных ошибок — возвращай `*apperror.APPError` или `*domain.ServiceError` — `handleError` сам проставит правильный HTTP-статус.
+
+## Логирование в хэндлерах
+
+Хэндлеры получают логгер через конструктор и тегируют его:
+```go
+Handler struct {
+    log *slog.Logger
+    // ...
+}
+
+func NewHandler(..., log *slog.Logger) *Handler {
+    return &Handler{log: log.With("handler", "feature")}
+}
+```
+
+`prov.log` передаётся из `di/handlers.go`. Request ID берётся из Echo:
+```go
+c.Response().Header().Get(echo.HeaderXRequestID)
+```
+
+В prod логи идут в JSON (`slog.NewJSONHandler`), в local — pretty. В GCP фильтруй по `jsonPayload.<field>`.
+
+## Схема БД
+
+- Все первичные ключи: `BIGSERIAL PRIMARY KEY` (int64 на уровне БД, `int` в Go-моделях)
+- Временны́е метки: `TIMESTAMPTZ NOT NULL DEFAULT now()`
+- JSONB-поля хранятся как `[]byte` в Go-моделях (`Payload []byte`)
+- Внешние ключи с `ON DELETE CASCADE` — удаление магазина каскадно удаляет всё связанное
+
+## Как добавить cron-задачу
+
+1. Создать функцию `func(ctx context.Context) error` в `internal/scheduler/`
+2. Зарегистрировать в `Provider` через `prov.scheduler.Register(ctx, spec, name, fn)`
+3. Файл планировщика — `internal/app/di/sheduller.go` (опечатка в имени файла — это норма)
+
+## Моки — добавление нового интерфейса
+
+При добавлении нового интерфейса под мок нужно обновить `.mockery.yaml`, добавив пакет, затем запустить `mockery`. Мок-пакет называется `<packagename>_mocks`.

@@ -3,6 +3,7 @@ package alert
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"salehelp/api"
 	"salehelp/domain"
@@ -29,14 +30,21 @@ type (
 	Handler struct {
 		service    Service
 		shopGetter ShopGetter
+		log        *slog.Logger
 	}
 )
 
-func NewHandler(service Service, shopGetter ShopGetter) *Handler {
+func NewHandler(service Service, shopGetter ShopGetter, log *slog.Logger) *Handler {
 	return &Handler{
 		service:    service,
 		shopGetter: shopGetter,
+		log:        log.With("handler", "alert"),
 	}
+}
+
+// requestID возвращает X-Request-ID из Echo (проставляется echomw.RequestID()).
+func requestID(c echo.Context) string {
+	return c.Response().Header().Get(echo.HeaderXRequestID)
 }
 
 // ensureShopAccess проверяет JWT (userID) и что пользователь — владелец магазина shopId. Возвращает ошибку 401/403.
@@ -51,9 +59,29 @@ func (h *Handler) ensureShopAccess(c echo.Context) (int, error) {
 	}
 	shop, err := h.shopGetter.GetByID(c.Request().Context(), shopID)
 	if err != nil {
+		h.log.Error("ensureShopAccess: get shop failed",
+			"request_id", requestID(c),
+			"user_id", userID,
+			"shop_id", shopID,
+			"error", err,
+		)
 		return 0, echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
-	if shop == nil || shop.UserID != userID {
+	if shop == nil {
+		h.log.Warn("ensureShopAccess: shop not found",
+			"request_id", requestID(c),
+			"user_id", userID,
+			"shop_id", shopID,
+		)
+		return 0, echo.NewHTTPError(http.StatusForbidden, "access denied")
+	}
+	if shop.UserID != userID {
+		h.log.Warn("ensureShopAccess: user does not own shop",
+			"request_id", requestID(c),
+			"user_id", userID,
+			"shop_id", shopID,
+			"shop_owner_id", shop.UserID,
+		)
 		return 0, echo.NewHTTPError(http.StatusForbidden, "access denied")
 	}
 	return shopID, nil

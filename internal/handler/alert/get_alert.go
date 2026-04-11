@@ -1,9 +1,11 @@
 package alert
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
 )
 
 // GetAlert получает алерт по ID
@@ -34,7 +36,21 @@ func (h *Handler) GetAlert(c echo.Context) error {
 
 	alert, err := h.service.GetAlert(c.Request().Context(), alertID, shopID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, "alert not found")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			h.log.Warn("GetAlert: not found",
+				"request_id", requestID(c),
+				"shop_id", shopID,
+				"alert_id", alertID,
+			)
+			return echo.NewHTTPError(http.StatusNotFound, "alert not found")
+		}
+		h.log.Error("GetAlert: service error",
+			"request_id", requestID(c),
+			"shop_id", shopID,
+			"alert_id", alertID,
+			"error", err,
+		)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	response := h.domainAlertToResponse(alert)

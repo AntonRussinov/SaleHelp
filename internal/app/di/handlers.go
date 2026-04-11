@@ -40,7 +40,7 @@ func (prov *Provider) InitHandlers() error {
 	prov.Handlers.TelegramBot = telegram.NewHandler(prov.Services.TelegramBot, prov.cfg.TelegramSecret)
 	prov.Handlers.Product = product.NewHandler(prov.Services.ProductList, nil)
 	prov.Handlers.Subscription = subscription.NewHandler(prov.Services.Subscription, prov.Repositories.Shop)
-	prov.Handlers.Alert = alert.NewHandler(prov.Services.AlertService, prov.Repositories.Shop)
+	prov.Handlers.Alert = alert.NewHandler(prov.Services.AlertService, prov.Repositories.Shop, prov.log)
 	prov.Handlers.ShopAISettings = shopaisettings.NewHandler(prov.Repositories.ShopAISettings, prov.Repositories.Shop)
 	if prov.Services.NotificationSettings != nil {
 		prov.Handlers.NotificationSettings = notification_settings.NewHandler(prov.Services.NotificationSettings, prov.Repositories.Shop)
