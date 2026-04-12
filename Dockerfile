@@ -1,11 +1,11 @@
-FROM --platform=linux/amd64 golang:1.24.4-alpine3.21 as build-stage
+FROM golang:1.24.4-alpine3.21 AS build-stage
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . ./
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main cmd/salehelp/main.go
 
-FROM --platform=linux/amd64 alpine:3.21
+FROM alpine:3.21
 ARG git_commit=default
 ARG version=0.0.0
 ARG env=prod
