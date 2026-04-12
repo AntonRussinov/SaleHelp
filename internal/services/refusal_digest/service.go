@@ -50,6 +50,7 @@ type Service struct {
 	endpoints EndpointRepo
 	tg        TelegramSender
 	settings  *notification_settings.Service
+	loc       *time.Location
 }
 
 func New(
@@ -59,8 +60,12 @@ func New(
 	endpoints EndpointRepo,
 	tg TelegramSender,
 	settings *notification_settings.Service,
+	loc *time.Location,
 	log *slog.Logger,
 ) *Service {
+	if loc == nil {
+		loc = time.UTC
+	}
 	return &Service{
 		log:       log.With(sl.Module("RefusalDigest")),
 		shops:     shops,
@@ -69,6 +74,7 @@ func New(
 		endpoints: endpoints,
 		tg:        tg,
 		settings:  settings,
+		loc:       loc,
 	}
 }
 
@@ -140,7 +146,7 @@ func (s *Service) processShop(ctx context.Context, shopID int) error {
 		titleByNmID[nmID] = p.Title
 	}
 
-	text := notifications.FormatOrderRefusalsMessageRU(refs, titleByNmID, nil)
+	text := notifications.FormatOrderRefusalsMessageRU(refs, titleByNmID, s.loc)
 	if text == "" {
 		return nil
 	}

@@ -38,20 +38,31 @@ func FormatSaleEventsMessageRU(events []*domain.SaleEvent, productTitleByNmID ma
 }
 
 // FormatOrderRefusalsMessageRU формирует текст блока об отказах (заказы не забраны).
-// Одинаковые товары группируются: "• Название — 3 шт."
-func FormatOrderRefusalsMessageRU(refusals []*domain.OrderRefusal, productTitleByNmID map[int64]string, _ *time.Location) string {
+// Группирует по дате отмены (CancelDate), внутри каждого дня — по названию товара со счётчиком.
+// Так сообщение остаётся точным, даже если отказы накопились за несколько дней.
+func FormatOrderRefusalsMessageRU(refusals []*domain.OrderRefusal, productTitleByNmID map[int64]string, loc *time.Location) string {
 	if len(refusals) == 0 {
 		return ""
 	}
+	if loc == nil {
+		loc = time.UTC
+	}
 
-	// Группируем по названию товара, сохраняя порядок первого появления.
-	type entry struct {
-		name  string
+	type nameEntry struct {
 		count int
 	}
-	order := make([]string, 0, len(refusals))
-	byName := make(map[string]*entry, len(refusals))
+	type dayEntry struct {
+		date      string
+		nameOrder []string
+		byName    map[string]*nameEntry
+	}
+
+	// Группируем по дням, сохраняя порядок первого появления дня и товара.
+	dayOrder := make([]string, 0)
+	byDay := make(map[string]*dayEntry)
+
 	for _, r := range refusals {
+		dateKey := r.CancelDate.In(loc).Format("02.01.2006")
 		name := productTitleByNmID[r.NmID]
 		if name == "" {
 			name = r.SupplierArticle
@@ -59,24 +70,37 @@ func FormatOrderRefusalsMessageRU(refusals []*domain.OrderRefusal, productTitleB
 		if name == "" {
 			name = fmt.Sprintf("nm %d", r.NmID)
 		}
-		if _, seen := byName[name]; !seen {
-			order = append(order, name)
-			byName[name] = &entry{name: name}
+
+		day, ok := byDay[dateKey]
+		if !ok {
+			day = &dayEntry{date: dateKey, byName: make(map[string]*nameEntry)}
+			byDay[dateKey] = day
+			dayOrder = append(dayOrder, dateKey)
 		}
-		byName[name].count++
+		if _, seen := day.byName[name]; !seen {
+			day.nameOrder = append(day.nameOrder, name)
+			day.byName[name] = &nameEntry{}
+		}
+		day.byName[name].count++
 	}
 
-	lines := make([]string, 0, len(order)+1)
-	lines = append(lines, "🚫 Отказы (не забрали)")
-	for _, name := range order {
-		e := byName[name]
-		if e.count > 1 {
-			lines = append(lines, fmt.Sprintf("• %s — %d шт.", name, e.count))
-		} else {
-			lines = append(lines, fmt.Sprintf("• %s", name))
+	var parts []string
+	for _, dateKey := range dayOrder {
+		day := byDay[dateKey]
+		lines := make([]string, 0, len(day.nameOrder)+1)
+		lines = append(lines, day.date+":")
+		for _, name := range day.nameOrder {
+			e := day.byName[name]
+			if e.count > 1 {
+				lines = append(lines, fmt.Sprintf("• %s — %d шт.", name, e.count))
+			} else {
+				lines = append(lines, fmt.Sprintf("• %s", name))
+			}
 		}
+		parts = append(parts, strings.Join(lines, "\n"))
 	}
-	return strings.Join(lines, "\n")
+
+	return "🚫 Отказы (не забрали)\n\n" + strings.Join(parts, "\n\n")
 }
 
 // FormatSalesAndRefusalsMessageRU объединяет выкупы, возвраты и отказы в одно сообщение.

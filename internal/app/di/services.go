@@ -257,6 +257,7 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.NotificationEndpoint,
 		tgAdapter,
 		prov.Services.NotificationSettings,
+		wbReportLoc,
 		prov.log,
 	)
 

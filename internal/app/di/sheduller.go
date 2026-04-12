@@ -122,10 +122,14 @@ func (prov *Provider) initScheduler(ctx context.Context) error {
 		}
 	}
 
-	// Дайджест отказов (не забрали в ПВЗ): ежедневно в 07:00 МСК.
+	// Дайджест отказов (не забрали в ПВЗ): ежедневно по расписанию из конфига (по умолчанию 07:00 МСК).
 	if prov.Services.RefusalDigest != nil {
+		refusalDigestSpec := prov.cfg.Scheduler.RefusalDigestSpec
+		if refusalDigestSpec == "" {
+			refusalDigestSpec = "0 7 * * *"
+		}
 		refusalDigestJob := jobs.NewRefusalDigestJob(prov.log, prov.Services.RefusalDigest)
-		if err := prov.scheduler.Register(ctx, "0 7 * * *", "refusal_digest", refusalDigestJob.Run); err != nil {
+		if err := prov.scheduler.Register(ctx, refusalDigestSpec, "refusal_digest", refusalDigestJob.Run); err != nil {
 			return err
 		}
 	}
