@@ -33,7 +33,6 @@ type Services struct {
 	AlertEngine          *alert.AlertEngine
 	Monitoring           *monitoring.Service
 	Notifier             *notifications.Service //Dispatcher
-	AlertWorker          *alert.Worker
 	ProductList          *product.ListService
 	TelegramBot          *telegrambot.Service
 	Subscription         *subscription.Service
@@ -168,12 +167,6 @@ func (prov *Provider) initDependentServices() {
 		prov.log,
 	)
 
-	prov.Services.AlertWorker = alert.NewWorker(
-		prov.log,
-		prov.Repositories.Shop,
-		prov.Services.AlertEngine,
-		1*time.Minute,
-	)
 
 	prov.Services.ABCAnalysis = abc_analysis.New(
 		prov.Repositories.SaleEvent,

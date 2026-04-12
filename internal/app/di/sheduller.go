@@ -32,6 +32,7 @@ func (prov *Provider) initScheduler(ctx context.Context) error {
 		},
 		prov.Repositories.Shop,
 		prov.Services.Monitoring,
+		prov.Services.AlertEngine,
 		prov.Repositories.ShopSyncLeases,
 		prov.Services.Subscription,
 	)

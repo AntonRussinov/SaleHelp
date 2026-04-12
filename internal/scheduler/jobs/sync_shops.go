@@ -27,6 +27,10 @@ type MonitoringService interface {
 	SyncShop(ctx context.Context, shopID int) error
 }
 
+type AlertEngine interface {
+	RunShop(ctx context.Context, shopID int) error
+}
+
 type ShopLeaseLocker interface {
 	TryLease(ctx context.Context, shopID int, leasedBy string, ttl time.Duration) (bool, error)
 	Release(ctx context.Context, shopID int, leasedBy string) error
@@ -54,6 +58,7 @@ type SyncActiveShopsJob struct {
 	cfg                SyncActiveShopsConfig
 	shops              ShopRepo
 	mon                MonitoringService
+	alerts             AlertEngine
 	subsriptionService SubscriptionService
 	lock               ShopLeaseLocker
 	pool               *runner.Pool
@@ -73,6 +78,7 @@ func NewSyncActiveShopsJob(
 	cfg SyncActiveShopsConfig,
 	shops ShopRepo,
 	mon MonitoringService,
+	alerts AlertEngine,
 	lock ShopLeaseLocker,
 	subsriptionService SubscriptionService,
 ) *SyncActiveShopsJob {
@@ -85,15 +91,15 @@ func NewSyncActiveShopsJob(
 		cfg:                cfg,
 		shops:              shops,
 		mon:                mon,
+		alerts:             alerts,
 		lock:               lock,
 		pool:               runner.New(cfg.Concurrency),
 		subsriptionService: subsriptionService,
 	}
 }
 
-// Run выполняет синк магазинов. Не запускаем синк в горутине: AlertWorker раз в минуту
-// читает sale_events/order_refusals и отправляет алерты; если синк идёт в фоне, воркер
-// часто успевает отработать до записи данных в БД — алерты приходят с задержкой или не приходят.
+// Run выполняет синк магазинов и сразу после каждого успешного синка запускает AlertEngine.RunShop.
+// Это гарантирует, что алерты отправляются сразу после записи данных в БД, без задержки.
 func (j *SyncActiveShopsJob) Run(ctx context.Context) {
 	if !j.running.CompareAndSwap(false, true) {
 		j.log.Warn("sync_active_shops: previous run still active, skipping")
@@ -169,6 +175,12 @@ func (j *SyncActiveShopsJob) Run(ctx context.Context) {
 					atomic.AddInt64(&failCount, 1)
 					j.log.Error("sync_shop: failed", "shop_id", id, "err", err)
 					return
+				}
+
+				if j.alerts != nil {
+					if err := j.alerts.RunShop(shopCtx, id); err != nil {
+						j.log.Error("sync_shop: alerts failed", "shop_id", id, "err", err)
+					}
 				}
 
 				atomic.AddInt64(&okCount, 1)
