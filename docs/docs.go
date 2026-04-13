@@ -1567,7 +1567,6 @@ const docTemplate = `{
         "api.CreateAlertRequest": {
             "type": "object",
             "required": [
-                "payload",
                 "type"
             ],
             "properties": {
@@ -1879,7 +1878,6 @@ const docTemplate = `{
                     "example": true
                 },
                 "toneOfVoice": {
-                    "description": "ToneOfVoice: standard | friendly | official | empathic | minimalist",
                     "type": "string",
                     "enum": [
                         "standard",
@@ -2019,16 +2017,16 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "externalID": {
+                "externalId": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "imageURL": {
+                "imageUrl": {
                     "type": "string"
                 },
-                "shopID": {
+                "shopId": {
                     "type": "integer"
                 },
                 "title": {

@@ -83,7 +83,6 @@ definitions:
         example: price_drop
         type: string
     required:
-    - payload
     - type
     type: object
   api.CreateShopRequest:
@@ -290,7 +289,6 @@ definitions:
         example: true
         type: boolean
       toneOfVoice:
-        description: 'ToneOfVoice: standard | friendly | official | empathic | minimalist'
         enum:
         - standard
         - friendly
@@ -390,13 +388,13 @@ definitions:
         type: string
       description:
         type: string
-      externalID:
+      externalId:
         type: string
       id:
         type: integer
-      imageURL:
+      imageUrl:
         type: string
-      shopID:
+      shopId:
         type: integer
       title:
         type: string
