@@ -368,6 +368,12 @@ func (s *Service) syncShopOrderRefusals(ctx context.Context, shop *domain.Shop) 
 	isFirstSync := dateFrom.IsZero() || cnt == 0
 	if isFirstSync {
 		dateFrom = time.Now().AddDate(0, 0, -90)
+	} else {
+		// WB Statistics API задерживает данные на 1-4 часа: курсор сдвигаем назад,
+		// чтобы не пропустить отказы, которые WB опубликовал с опозданием.
+		// CreateBatch использует ON CONFLICT DO NOTHING — дублей не будет.
+		const wbDataLagBuffer = 4 * time.Hour
+		dateFrom = dateFrom.Add(-wbDataLagBuffer)
 	}
 
 	var notifiedAt *time.Time

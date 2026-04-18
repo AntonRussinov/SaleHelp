@@ -16,6 +16,7 @@ var ValidToneOfVoiceValues = []string{ToneStandard, ToneFriendly, ToneOfficial, 
 
 // UpsertAISettingsRequest — запрос на создание/обновление настроек AI магазина.
 type UpsertAISettingsRequest struct {
+	// ToneOfVoice — тон ответов AI. Допустимые значения: standard, friendly, official, empathic, minimalist
 	ToneOfVoice string `json:"toneOfVoice" validate:"required,oneof=standard friendly official empathic minimalist" enums:"standard,friendly,official,empathic,minimalist" example:"friendly"`
 	// BrandName — название бренда для промпта (опционально)
 	BrandName string `json:"brandName" validate:"omitempty,max=500" example:"МойБренд"`

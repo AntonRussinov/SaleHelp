@@ -28,6 +28,7 @@ func DefaultRussianCommands() []BotCommand {
 		{Command: "start", Description: "Старт"},
 		{Command: "addshop", Description: "Добавить магазин"},
 		{Command: "myshops", Description: "Мои магазины"},
+		{Command: "orders", Description: "Текущие заказы на сборке"},
 		{Command: "alerts", Description: "Настроить уведомления"},
 		{Command: "invite", Description: "Пригласить в магазин"},
 		{Command: "abc_now", Description: "ABC-анализ"},

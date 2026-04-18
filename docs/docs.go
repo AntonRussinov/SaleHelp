@@ -1878,6 +1878,7 @@ const docTemplate = `{
                     "example": true
                 },
                 "toneOfVoice": {
+                    "description": "ToneOfVoice — тон ответов AI. Допустимые значения: standard, friendly, official, empathic, minimalist",
                     "type": "string",
                     "enum": [
                         "standard",
