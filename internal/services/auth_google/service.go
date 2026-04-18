@@ -249,6 +249,9 @@ func (s *Service) RevokeToken(tokenString string) error {
 
 // ValidateJWTAndRequireAdmin проверяет JWT и возвращает userID, email только если в claims роль admin. Иначе — ошибка.
 func (s *Service) ValidateJWTAndRequireAdmin(tokenString string) (userID int, email string, err error) {
+	if s.bl.isRevoked(tokenString) {
+		return 0, "", fmt.Errorf("token revoked")
+	}
 	var claims JWTClaims
 	tok, err := jwt.ParseWithClaims(tokenString, &claims, func(*jwt.Token) (interface{}, error) {
 		return s.jwtSecret, nil
