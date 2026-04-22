@@ -55,9 +55,6 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 
 		if err == nil {
 			upd.LastSyncOkAt = &now
-			upd.LastSyncStatusCode = nil
-			upd.LastSyncError = nil
-			upd.LastSyncFailedAt = nil
 		} else {
 			upd.LastSyncFailedAt = &now
 
@@ -66,6 +63,12 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 			}
 			m := err.Error()
 			upd.LastSyncError = &m
+
+			s.log.Error("sync_shop: critical failure — data collection stopped",
+				"shop_id", shopID,
+				"error", err.Error(),
+				"critical", true,
+			)
 		}
 
 		_ = s.shopsRepo.UpdateSyncStatus(ctx, shopID, upd)

@@ -82,6 +82,10 @@ func (r *Repository) UpdateSyncStatus(ctx context.Context, shopID int, upd model
 	}
 	if upd.LastSyncOkAt != nil {
 		updates["last_sync_ok_at"] = *upd.LastSyncOkAt
+		// успешный синк — очищаем ошибки предыдущего упавшего синка
+		updates["last_sync_error"] = nil
+		updates["last_sync_status_code"] = 0
+		updates["last_sync_failed_at"] = nil
 	}
 
 	// если нечего обновлять — это ок

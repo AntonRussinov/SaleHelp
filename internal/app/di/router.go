@@ -73,6 +73,7 @@ func (prov *Provider) registerRootMiddlewares(router *echo.Echo) {
 
 	router.Use(
 		echomw.Recover(),
+		echomw.RateLimiter(echomw.NewRateLimiterMemoryStore(20)),
 		echomw.CORSWithConfig(corsCfg),
 		echomw.RequestID(),
 	)
@@ -196,9 +197,10 @@ func registerAuthGoogleRoutes(e *echo.Group, prov *Provider) {
 	if prov.Handlers.AuthGoogle == nil || prov.Services.AuthGoogle == nil {
 		return
 	}
-	e.POST("/auth/google", prov.Handlers.AuthGoogle.LoginGoogle)
-	e.POST("/auth/register", prov.Handlers.AuthGoogle.Register)
-	e.POST("/auth/login", prov.Handlers.AuthGoogle.LoginEmail)
+	authLimiter := echomw.RateLimiter(echomw.NewRateLimiterMemoryStore(5))
+	e.POST("/auth/google", prov.Handlers.AuthGoogle.LoginGoogle, authLimiter)
+	e.POST("/auth/register", prov.Handlers.AuthGoogle.Register, authLimiter)
+	e.POST("/auth/login", prov.Handlers.AuthGoogle.LoginEmail, authLimiter)
 
 	// TEMP (local only): отключаем обязательную JWT-авторизацию для ускорения веб-интеграции.
 	// Быстрый откат: вернуть строку ниже и удалить ветку с localDevUserMiddleware().

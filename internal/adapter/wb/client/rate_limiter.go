@@ -50,7 +50,7 @@ var defaultPolicies = map[RateCategory]RatePolicy{
 	RateStatistics: {
 		Limit:    1,
 		Interval: time.Minute,
-		Burst:    1,
+		Burst:    3,
 	},
 	RateFeedbacks: {
 		Limit:    3,
