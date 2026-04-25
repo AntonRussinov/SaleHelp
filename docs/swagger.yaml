@@ -99,6 +99,12 @@ definitions:
         example: Мой магазин WB
         maxLength: 255
         type: string
+      tokenType:
+        enum:
+        - basic
+        - service
+        example: basic
+        type: string
       wbReportTimezone:
         example: Europe/Moscow
         type: string
@@ -211,6 +217,9 @@ definitions:
         type: string
       subscription:
         $ref: '#/definitions/api.SubscriptionSummary'
+      tokenType:
+        example: basic
+        type: string
       userId:
         example: 5
         type: integer
@@ -268,6 +277,9 @@ definitions:
     type: object
   api.UpdateShopRequest:
     properties:
+      tokenType:
+        example: service
+        type: string
       wbReportTimezone:
         example: Asia/Almaty
         type: string

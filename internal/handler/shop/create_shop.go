@@ -63,11 +63,17 @@ func (h *Handler) CreateShop(c echo.Context) error {
 		}
 	}
 
+	tokenType := strings.TrimSpace(req.TokenType)
+	if tokenType != domain.TokenTypeService {
+		tokenType = domain.TokenTypeBasic
+	}
+
 	shop := &domain.Shop{
 		UserID:           userID,
 		Marketplace:      marketplace,
 		Name:             name,
 		APIToken:         token,
+		TokenType:        tokenType,
 		IsActive:         true,
 		WBReportTimezone: tz,
 	}

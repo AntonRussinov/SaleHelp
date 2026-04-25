@@ -2,6 +2,11 @@ package domain
 
 import "time"
 
+const (
+	TokenTypeBasic   = "basic"   // базовый токен WB — ограниченные лимиты (с апреля 2026)
+	TokenTypeService = "service" // сервисный секрет WB — высокие лимиты
+)
+
 type Shop struct {
 	ID                  int
 	UserID              int
@@ -9,6 +14,7 @@ type Shop struct {
 	ExternalID          string
 	Name                string
 	APIToken            string
+	TokenType           string // "basic" | "service"
 	IsActive            bool
 	// WBReportTimezone — часовой пояс для отчётов WB (sales, orders). IANA, например Europe/Moscow, Asia/Almaty. Пусто = из конфига.
 	WBReportTimezone    string

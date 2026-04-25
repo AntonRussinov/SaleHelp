@@ -8,11 +8,13 @@ type CreateShopRequest struct {
 	APIToken         string `json:"apiToken"         validate:"required"                      example:"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ"`
 	Marketplace      string `json:"marketplace"      validate:"required,oneof=wildberries"    example:"wildberries"`
 	WBReportTimezone string `json:"wbReportTimezone"                                          example:"Europe/Moscow"`
+	TokenType        string `json:"tokenType"        validate:"omitempty,oneof=basic service" example:"basic"`
 }
 
 // UpdateShopRequest тело PATCH /shop/:id.
 type UpdateShopRequest struct {
 	WBReportTimezone *string `json:"wbReportTimezone" example:"Asia/Almaty"`
+	TokenType        *string `json:"tokenType"        example:"service"`
 }
 
 // SubscriptionSummary краткая информация о подписке магазина.
@@ -29,6 +31,7 @@ type ShopResponse struct {
 	Marketplace        string               `json:"marketplace"                 example:"wildberries"`
 	Name               string               `json:"name"                        example:"Мой магазин WB"`
 	IsActive           bool                 `json:"isActive"                    example:"true"`
+	TokenType          string               `json:"tokenType"                   example:"basic"`
 	WBReportTimezone   string               `json:"wbReportTimezone,omitempty"  example:"Europe/Moscow"`
 	LastSyncAt         *time.Time           `json:"lastSyncAt,omitempty"`
 	LastSyncStatusCode int                  `json:"lastSyncStatusCode,omitempty" example:"200"`

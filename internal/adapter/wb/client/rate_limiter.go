@@ -26,20 +26,11 @@ type (
 		Interval time.Duration
 		Burst    int
 	}
-
-	LimiterManager struct {
-		mu       sync.Mutex
-		policies map[RateCategory]RatePolicy
-		lim      map[string]map[RateCategory]*rate.Limiter // apiKey -> category -> limiter
-	}
 )
 
-// Лимиты для базового токена WB (вступили в силу с 16 апреля 2026).
+// basicPolicies — лимиты для базового токена WB (с 16 апреля 2026).
 // Документация: https://dev.wildberries.ru/news/281
-// Burst=1 везде — WB не разрешает всплески для базового токена.
-// После получения сервисного секрета (заявка на business-solutions@rwb.ru)
-// лимиты можно вернуть к прежним значениям.
-var defaultPolicies = map[RateCategory]RatePolicy{
+var basicPolicies = map[RateCategory]RatePolicy{
 	// POST /content/v2/get/cards/list — 1/час (инкрементальный синк карточек, тяжёлый синк)
 	RateContent: {
 		Limit:    1,
@@ -90,11 +81,44 @@ var defaultPolicies = map[RateCategory]RatePolicy{
 	},
 }
 
-func NewLimiterManager(policies map[RateCategory]RatePolicy) *LimiterManager {
+// servicePolicies — лимиты для сервисного секрета WB.
+// Точные значения уточнить при получении секрета на business-solutions@rwb.ru.
+var servicePolicies = map[RateCategory]RatePolicy{
+	RateContent:        {Limit: 100, Interval: time.Hour, Burst: 1},
+	RateMarketplace:    {Limit: 300, Interval: time.Hour, Burst: 1},
+	RateFBSOrders:      {Limit: 300, Interval: time.Hour, Burst: 1},
+	RateDBOrders:       {Limit: 300, Interval: time.Hour, Burst: 1},
+	RatePrices:         {Limit: 300, Interval: time.Hour, Burst: 1},
+	RateStatistics:     {Limit: 60, Interval: time.Minute, Burst: 1},
+	RateFeedbacks:      {Limit: 300, Interval: time.Hour, Burst: 1},
+	RateFeedbacksWrite: {Limit: 300, Interval: time.Hour, Burst: 1},
+}
+
+type LimiterManager struct {
+	mu          sync.Mutex
+	keyPolicies map[string]map[RateCategory]RatePolicy  // per-key overrides
+	lim         map[string]map[RateCategory]*rate.Limiter
+}
+
+func NewLimiterManager() *LimiterManager {
 	return &LimiterManager{
-		policies: policies,
-		lim:      make(map[string]map[RateCategory]*rate.Limiter),
+		keyPolicies: make(map[string]map[RateCategory]RatePolicy),
+		lim:         make(map[string]map[RateCategory]*rate.Limiter),
 	}
+}
+
+// RegisterKey устанавливает набор политик для конкретного API-ключа.
+// Вызывать при старте синка магазина — сбрасывает существующие лимитеры для ключа.
+func (m *LimiterManager) RegisterKey(apiKey, tokenType string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	policies := basicPolicies
+	if tokenType == "service" {
+		policies = servicePolicies
+	}
+	m.keyPolicies[apiKey] = policies
+	delete(m.lim, apiKey) // сбросить существующие лимитеры — пересоздадутся с новыми политиками
 }
 
 func (m *LimiterManager) Get(apiKey string, cat RateCategory) *rate.Limiter {
@@ -108,9 +132,12 @@ func (m *LimiterManager) Get(apiKey string, cat RateCategory) *rate.Limiter {
 		return l
 	}
 
-	p := m.policies[cat]
-
-	interval := m.policies[cat].Interval / time.Duration(m.policies[cat].Limit)
+	policies, ok := m.keyPolicies[apiKey]
+	if !ok {
+		policies = basicPolicies
+	}
+	p := policies[cat]
+	interval := p.Interval / time.Duration(p.Limit)
 	l := rate.NewLimiter(rate.Every(interval), p.Burst)
 
 	m.lim[apiKey][cat] = l

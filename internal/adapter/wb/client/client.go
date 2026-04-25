@@ -16,6 +16,12 @@ type Client struct {
 	reportLocation  *time.Location // для dateFrom в отчётах (sales, orders) — в каком поясе отправлять
 }
 
+// SetTokenType регистрирует тип токена для apiKey, выбирая соответствующий набор rate-limit политик.
+// Вызывать перед первым использованием ключа (например, в начале синка магазина).
+func (c *Client) SetTokenType(apiKey, tokenType string) {
+	c.limiters.RegisterKey(apiKey, tokenType)
+}
+
 // New создаёт WB-клиент. reportLocation — часовой пояс для параметра dateFrom в отчётах (sales, orders);
 // если nil, используется Europe/Moscow.
 func New(httpClient *http.Client, reportLocation *time.Location) *Client {
@@ -32,7 +38,7 @@ func New(httpClient *http.Client, reportLocation *time.Location) *Client {
 		priceURL:       "https://discounts-prices-api.wildberries.ru",
 		statisticsURL:  "https://statistics-api.wildberries.ru",
 		feedbacksURL:   "https://feedbacks-api.wildberries.ru",
-		limiters:       NewLimiterManager(defaultPolicies),
+		limiters:       NewLimiterManager(),
 		reportLocation: reportLocation,
 	}
 }

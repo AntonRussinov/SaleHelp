@@ -159,6 +159,7 @@ type (
 
 	// Локальный интерфейс под WB-клиент
 	WBClient interface {
+		SetTokenType(apiKey, tokenType string)
 		GetCards(ctx context.Context, apiKey string, req dto.GetCardsRequest) (*dto.GetCardsResponse, error)
 		GetAllCards(ctx context.Context, apiKey string, baseReq dto.GetCardsRequest, startCursor *dto.ResponseCursor) ([]dto.Card, *dto.ResponseCursor, error)
 		GetPrices(ctx context.Context, token string, req dto.GetPricesRequest) (*dto.GetPricesResponse, error)

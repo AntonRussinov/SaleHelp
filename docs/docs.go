@@ -1613,6 +1613,14 @@ const docTemplate = `{
                     "maxLength": 255,
                     "example": "Мой магазин WB"
                 },
+                "tokenType": {
+                    "type": "string",
+                    "enum": [
+                        "basic",
+                        "service"
+                    ],
+                    "example": "basic"
+                },
                 "wbReportTimezone": {
                     "type": "string",
                     "example": "Europe/Moscow"
@@ -1766,6 +1774,10 @@ const docTemplate = `{
                 "subscription": {
                     "$ref": "#/definitions/api.SubscriptionSummary"
                 },
+                "tokenType": {
+                    "type": "string",
+                    "example": "basic"
+                },
                 "userId": {
                     "type": "integer",
                     "example": 5
@@ -1848,6 +1860,10 @@ const docTemplate = `{
         "api.UpdateShopRequest": {
             "type": "object",
             "properties": {
+                "tokenType": {
+                    "type": "string",
+                    "example": "service"
+                },
                 "wbReportTimezone": {
                     "type": "string",
                     "example": "Asia/Almaty"

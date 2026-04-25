@@ -53,6 +53,8 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 		return fmt.Errorf("sync shop: shop %d has empty WB API key", shopID)
 	}
 
+	s.wbClient.SetTokenType(shop.APIToken, shop.TokenType)
+
 	defer func() {
 		now := time.Now()
 		upd := model.SyncStatusUpdate{LastSyncAt: &now}

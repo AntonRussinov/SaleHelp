@@ -12,6 +12,7 @@ type Shop struct {
 	ExternalID          string     `gorm:"column:external_id;type:text"`
 	Name                string     `gorm:"column:name;type:text;not null"`
 	APIToken            string     `gorm:"column:api_token;type:text;not null"`
+	TokenType           string     `gorm:"column:token_type;type:text;not null;default:'basic'"`
 	IsActive            bool       `gorm:"column:is_active;not null;default:true"`
 	WBReportTimezone    string     `gorm:"column:wb_report_timezone;type:text"`
 	LastSyncAt          *time.Time `gorm:"column:last_sync_at"`
@@ -58,6 +59,7 @@ func ShopColumns() []string {
 		"external_id",
 		"name",
 		"api_token",
+		"token_type",
 		"is_active",
 		"wb_report_timezone",
 		"last_sync_at",
@@ -87,6 +89,7 @@ func (s *Shop) ToDomain() *domain.Shop {
 		ExternalID:           s.ExternalID,
 		Name:                 s.Name,
 		APIToken:             s.APIToken,
+		TokenType:            s.TokenType,
 		IsActive:             s.IsActive,
 		WBReportTimezone:     s.WBReportTimezone,
 		LastSyncAt:           s.LastSyncAt,

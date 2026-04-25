@@ -36,6 +36,7 @@ func toModel(s *domain.Shop) *model.Shop {
 		ExternalID:          s.ExternalID,
 		Name:                s.Name,
 		APIToken:            s.APIToken,
+		TokenType:           s.TokenType,
 		IsActive:            s.IsActive,
 		WBReportTimezone:    s.WBReportTimezone,
 		LastSyncAt:          s.LastSyncAt,
