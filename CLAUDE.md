@@ -141,3 +141,117 @@ c.Response().Header().Get(echo.HeaderXRequestID)
 ## Моки — добавление нового интерфейса
 
 При добавлении нового интерфейса под мок нужно обновить `.mockery.yaml`, добавив пакет, затем запустить `mockery`. Мок-пакет называется `<packagename>_mocks`.
+
+---
+
+## WB API — лимиты (базовый токен, апрель 2026)
+
+Используется token-bucket rate limiter (`golang.org/x/time/rate`) через `LimiterManager` в `internal/adapter/wb/client/rate_limiter.go`. Каждый API-ключ получает свои бакеты при регистрации через `RegisterKey(apiKey, tokenType)`.
+
+| Категория (`RateCategory`) | Эндпоинты | Лимит (basic) | Spacing |
+|---|---|---|---|
+| `RateContent` | GET/POST карточки | 1/hr | ~1 час |
+| `RateMarketplace` | GET заказы FBS/DBW/DBS | 10/hr | ~6 мин |
+| `RateFBSOrders` | GET новые сборочные задания | 30/hr | ~2 мин |
+| `RateDBOrders` | GET DB-заказы | 10/hr | ~6 мин |
+| `RatePrices` | GET/POST цены | 1/hr | ~1 час |
+| `RateStatistics` | GET остатки, продажи | 1/min | ~1 мин |
+| `RateFeedbacks` | GET отзывы/вопросы | 5/hr | ~12 мин |
+| `RateFeedbacksWrite` | POST ответы на отзывы/вопросы | 5/hr | ~12 мин |
+
+Для **сервисного токена** (`TokenTypeService = "service"`) — отдельная политика `servicePolicies` с повышенными лимитами (WB официально не публикует точные значения).
+
+Spacing реализован через `limiter.Wait(ctx)` — запрос блокируется до разрешения, не ретраит.
+
+## Синк магазинов — архитектура
+
+Планировщик: `internal/scheduler/jobs/sync_shops.go` → `SyncActiveShopsJob.Run`.
+
+Каждый магазин: `mon.SyncShop` → `alerts.RunShop` (сразу после синка, в рамках одного тика).
+
+### Fast sync (каждые 30 мин, `Spec: "0/30 * * * *"`)
+`runFastSync` в `internal/services/monitoring/sync_shop.go`:
+- FBS/DBW/DBS заказы (`RateFBSOrders` / `RateMarketplace`)
+- Отзывы и вопросы (`RateFeedbacks`)
+- Продажи и отказы (`RateStatistics`)
+
+### Heavy sync (не чаще 1 раза в час, `heavySyncInterval = time.Hour`)
+`runHeavySync` — только если `time.Since(LastHeavySyncAt) >= 1h`:
+- Склады продавца
+- Карточки товаров — инкрементально по курсору (`RateContent`, 1/hr)
+- Полный синк карточек раз в 7 дней (`fullCardsSyncInterval`)
+- Снапшоты цен и остатков (`RatePrices` + `RateStatistics`)
+
+`ShopTimeout: 8m` — таймаут на один магазин.
+
+## Типы токенов магазина
+
+`domain.Shop.TokenType` — `"basic"` (по умолчанию) или `"service"`.
+
+Устанавливается при создании/обновлении магазина (`api/shop.go`). Вызов `wbClient.SetTokenType(shop.APIToken, shop.TokenType)` в начале `SyncShop` применяет нужную rate-политику к ключу.
+
+Миграция: `db/migrations/0021_shops_token_type.sql`.
+
+## Восстановление цен — статусная машина
+
+Таблица `price_restore_batches`, поля: `shop_id`, `restore_status`, `restore_started_at`, `restored_at`.
+
+Переходы: `pending → restoring → restored | failed`.
+
+Ключевые правила:
+- `TrySetRestoring` — атомарный `UPDATE WHERE restore_status='pending'`. `RowsAffected == 0` = кто-то уже начал, возвращаем `AlreadyRestoring: true`.
+- **Все** пути ошибок после захвата блокировки (`TrySetRestoring` вернул `true`) обязаны вызывать `SetRestoreFailed` — иначе батч зависнет в `restoring` навсегда.
+- При успехе `SetRestoredAt` одновременно ставит `restore_status = 'restored'`.
+- Повторный клик «Вернуть цены» при `status = failed` — показывает диалог подтверждения снова (позволяет ретрай).
+- При успехе — broadcast во все включённые Telegram-эндпоинты магазина (`endpointsRepo.ListByShopID`).
+
+Реализация: `internal/services/price_restore/`, репозиторий: `internal/storage/pggorm/repository/pricerestorebatch/`.
+
+Миграция с индексами: `db/migrations/0022_price_restore_batch_status.sql`.
+
+## Alert Engine — паттерны
+
+`internal/services/alert/engine.go` → `RunShop(ctx, shopID)`:
+1. Загружает активные алерты магазина
+2. Загружает продукты, снапшоты (2 последних), размеры
+3. Вычисляет: `stock_low`, `stock_zero`, `price_drop` (по снапшотам)
+4. Отправляет уведомления об заказах FBS/DBW/DBS, продажах, отзывах, вопросах
+
+Дедупликация алертов: `CreateIfNotExists` с `ON CONFLICT (alert_id, product_id, snapshot_id, product_size_key) DO NOTHING`.
+
+### Ранняя детекция нулевого остатка (stock_zero from orders)
+
+`internal/services/alert/stock_zero_orders.go` → `buildStockWarningByNmID`:
+- Вызывается в `runShopFBSOrders` перед форматированием сообщения
+- Считает pending FBS-заказы (`supplier_status='new'`) из DB — **без WB API**
+- Если `pending_count >= snapshot.StockTotal > 0` → ставит флаг `StockWarning` на строку заказа
+- В уведомлении о заказе добавляется `⚠️ последний товар!`
+- Не создаёт отдельный `AlertTriggered` — нет дублей с последующим снапшотным алертом
+
+## Уведомления — формат сообщений
+
+### Дайджест алертов (`internal/services/notification/digest_ru.go`)
+
+Секция `price_drop` — агрегированная, не per-item:
+- Парсит `tr.Message` формата `"Цена упала: %.2f → %.2f (-%.2f, %.2f%%)"` через `fmt.Sscanf`
+- Сортирует по % снижения (от большего к меньшему)
+- Показывает до 15 товаров (`maxPriceDropShow = 15`)
+- Строка `... и ещё N товаров` если > 15
+- Итоговая строка: `Итого: X товаров, ср. снижение Y%, суммарно −Z ₽`
+
+Секции `stock_zero` и `stock_low` — per-item с группировкой по размерам.
+
+### Уведомления о заказах (`internal/services/notification/assembly_orders.go`)
+
+`AssemblyOrderRow.StockWarning = true` → добавляет `⚠️ последний товар!` к строке заказа.
+FBS: `FormatFBSOrdersMessageRU(orders, titleByNmID, stockWarningByNmID, loc)`.
+
+### Telegram callback — кнопка «Вернуть цены назад»
+
+Поток в `internal/services/telegrambot/handle_callback.go`:
+1. Клик → `handleRestorePrices`: проверяет `RestoreStatus`:
+   - `restoring` → «⏳ уже восстанавливается»
+   - `restored` → «ℹ️ восстановлено в XX:XX»
+   - `failed` → показывает диалог подтверждения (ретрай)
+   - `pending` → показывает диалог подтверждения
+2. «Да» → `handleConfirmRestore` → `priceRestore.Restore` → broadcast при успехе

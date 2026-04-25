@@ -2,10 +2,11 @@ package alert
 
 import (
 	"context"
-	"salehelp/domain"
-	notifications "salehelp/internal/services/notification"
 	"strconv"
 	"time"
+
+	"salehelp/domain"
+	notifications "salehelp/internal/services/notification"
 )
 
 // runShopFBSOrders отправляет уведомления о новых FBS-заказах в Telegram и помечает заказы как уведомлённые.
@@ -38,24 +39,34 @@ func (e *AlertEngine) runShopFBSOrders(ctx context.Context, shopID int, products
 	for _, o := range orders {
 		nmIDSet[o.NmID] = struct{}{}
 	}
+
 	titleByNmID := make(map[int64]string)
+	productIDByNmID := make(map[int64]int)
 	for _, p := range products {
-		if p == nil || p.Title == "" || p.ExternalID == "" {
+		if p == nil || p.ExternalID == "" {
 			continue
 		}
 		nmID, err := strconv.ParseInt(p.ExternalID, 10, 64)
 		if err != nil {
 			continue
 		}
-		if _, ok := nmIDSet[nmID]; ok {
+		if _, ok := nmIDSet[nmID]; !ok {
+			continue
+		}
+		if p.Title != "" {
 			titleByNmID[nmID] = p.Title
 		}
+		productIDByNmID[nmID] = p.ID
 	}
+
+	// Определяем, по каким nmID активные заказы исчерпывают остаток.
+	stockWarningByNmID := e.buildStockWarningByNmID(ctx, shopID, nmIDSet, productIDByNmID)
+
 	endpoints, err := e.endpointsRepo.ListByShopID(ctx, shopID, true)
 	if err != nil {
 		return err
 	}
-	text := notifications.FormatFBSOrdersMessageRU(orders, titleByNmID, loc)
+	text := notifications.FormatFBSOrdersMessageRU(orders, titleByNmID, stockWarningByNmID, loc)
 	now := time.Now()
 	sent := false
 	for _, ep := range endpoints {

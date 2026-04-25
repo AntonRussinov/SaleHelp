@@ -9,10 +9,11 @@ import (
 // AssemblyOrderRow — минимальные данные заказа для формирования сообщения.
 // Используется для FBS, DBW, DBS.
 type AssemblyOrderRow struct {
-	NmID      int64
-	Article   string
-	WBOrderID int64
-	CreatedAt time.Time
+	NmID         int64
+	Article      string
+	WBOrderID    int64
+	CreatedAt    time.Time
+	StockWarning bool // true если по этому nmID активных заказов >= остаток на складе
 }
 
 // FormatAssemblyOrdersMessageRU формирует текст сообщения о новых сборочных заданиях для Telegram.
@@ -36,7 +37,11 @@ func FormatAssemblyOrdersMessageRU(orderType string, orders []AssemblyOrderRow, 
 			name = fmt.Sprintf("nm %d", o.NmID)
 		}
 		created := o.CreatedAt.In(loc).Format("02.01.2006 15:04")
-		lines = append(lines, fmt.Sprintf("• %s — заказ #%d, %s", name, o.WBOrderID, created))
+		suffix := ""
+		if o.StockWarning {
+			suffix = " ⚠️ последний товар!"
+		}
+		lines = append(lines, fmt.Sprintf("• %s — заказ #%d, %s%s", name, o.WBOrderID, created, suffix))
 	}
 	return header + "\n\n" + strings.Join(lines, "\n")
 }
