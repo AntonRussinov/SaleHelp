@@ -72,7 +72,8 @@ func formatWBFeedbackMessageRU(f *domain.WBFeedback) string {
 	if productName == "" {
 		productName = fmt.Sprintf("nmId %d", f.NmID)
 	}
-	lines := []string{"⭐ Новый отзыв о товаре", "", "Товар: " + productName}
+	stars := strings.Repeat("⭐", f.ProductValuation) + strings.Repeat("☆", 5-f.ProductValuation)
+	lines := []string{"Новый отзыв о товаре", "", "Оценка: " + stars, "Товар: " + productName}
 	if f.Text != "" {
 		lines = append(lines, "Отзыв: \""+f.Text+"\"")
 	}

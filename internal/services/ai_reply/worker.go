@@ -9,7 +9,7 @@ import (
 
 const (
 	defaultBatchSize   = 10
-	defaultItemTimeout = 25 * time.Second
+	defaultItemTimeout = 60 * time.Second
 )
 
 // ProcessBatch обрабатывает пачку отзывов: для каждого создаёт context с таймаутом, вызывает ProcessOne, логирует ошибки без прерывания цикла.
@@ -29,6 +29,20 @@ func (s *Service) RunShop(ctx context.Context, shopID int, batchSize int) error 
 	if batchSize <= 0 {
 		batchSize = defaultBatchSize
 	}
+
+	month := time.Now().UTC()
+	month = time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.UTC)
+	if err := s.quotaRepo.EnsureForMonth(ctx, shopID, month, s.includedLimit); err != nil {
+		return err
+	}
+	quota, err := s.quotaRepo.GetForMonth(ctx, shopID, month)
+	if err != nil {
+		return err
+	}
+	if quota == nil || (quota.IncludedUsed >= quota.IncludedLimit && quota.PaidBalance <= 0) {
+		return nil
+	}
+
 	feedbacks, err := s.feedbackRepo.ListUnrepliedByShop(ctx, shopID, batchSize)
 	if err != nil {
 		return err

@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"context"
 	"net/http"
 
 	tgdto "salehelp/internal/handler/telegram/dto"
@@ -34,10 +35,9 @@ func (h *Handler) Webhook(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	// важно: Telegram ждёт быстрый 200 OK
-	// поэтому обработку делаем синхронно, но без тяжелых операций
-	// (а тяжёлое в addshop мы всё равно будем делать быстро)
-	h.bot.HandleUpdate(c.Request().Context(), &upd)
+	// Telegram ждёт 200 OK как можно быстрее — обрабатываем в фоне.
+	// Используем context.Background(): request-контекст завершится сразу после ответа.
+	go h.bot.HandleUpdate(context.Background(), &upd)
 
 	return c.NoContent(http.StatusOK)
 }

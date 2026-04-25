@@ -20,6 +20,10 @@ type Shop struct {
 	LastSyncError       string     `gorm:"column:last_sync_error;type:text"`
 	LastSyncFailedAt    *time.Time `gorm:"column:last_sync_failed_at"`
 	LastSyncOkAt        *time.Time `gorm:"column:last_sync_ok_at"`
+	LastHeavySyncAt     *time.Time `gorm:"column:last_heavy_sync_at"`
+	CardsCursorUpdatedAt string    `gorm:"column:cards_cursor_updated_at;type:text"`
+	CardsCursorNmID      int       `gorm:"column:cards_cursor_nmid"`
+	LastFullCardsSyncAt  *time.Time `gorm:"column:last_full_cards_sync_at"`
 	CreatedAt           time.Time  `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt           time.Time  `gorm:"column:updated_at;autoUpdateTime"`
 }
@@ -30,6 +34,14 @@ type SyncStatusUpdate struct {
 	LastSyncError      *string
 	LastSyncFailedAt   *time.Time
 	LastSyncOkAt       *time.Time
+}
+
+// HeavySyncUpdate содержит поля для обновления после тяжёлого синка (карточки, цены, остатки).
+type HeavySyncUpdate struct {
+	LastHeavySyncAt      *time.Time
+	CardsCursorUpdatedAt *string
+	CardsCursorNmID      *int
+	LastFullCardsSyncAt  *time.Time
 }
 
 type MoneyByCurrency struct {
@@ -54,6 +66,10 @@ func ShopColumns() []string {
 		"last_sync_error",
 		"last_sync_failed_at",
 		"last_sync_ok_at",
+		"last_heavy_sync_at",
+		"cards_cursor_updated_at",
+		"cards_cursor_nmid",
+		"last_full_cards_sync_at",
 		"created_at",
 		"updated_at",
 	}
@@ -65,22 +81,26 @@ func (s *Shop) ToDomain() *domain.Shop {
 	}
 
 	return &domain.Shop{
-		ID:                  s.ID,
-		UserID:              s.UserID,
-		Marketplace:         s.Marketplace,
-		ExternalID:          s.ExternalID,
-		Name:                s.Name,
-		APIToken:            s.APIToken,
-		IsActive:            s.IsActive,
-		WBReportTimezone:    s.WBReportTimezone,
-		LastSyncAt:          s.LastSyncAt,
-		FirstSyncNotifiedAt: s.FirstSyncNotifiedAt,
-		LastSyncStatusCode:  s.LastSyncStatusCode,
-		LastSyncError:       s.LastSyncError,
-		LastSyncFailedAt:    s.LastSyncFailedAt,
-		LastSyncOkAt:        s.LastSyncOkAt,
-		CreatedAt:           s.CreatedAt,
-		UpdatedAt:           s.UpdatedAt,
+		ID:                   s.ID,
+		UserID:               s.UserID,
+		Marketplace:          s.Marketplace,
+		ExternalID:           s.ExternalID,
+		Name:                 s.Name,
+		APIToken:             s.APIToken,
+		IsActive:             s.IsActive,
+		WBReportTimezone:     s.WBReportTimezone,
+		LastSyncAt:           s.LastSyncAt,
+		FirstSyncNotifiedAt:  s.FirstSyncNotifiedAt,
+		LastSyncStatusCode:   s.LastSyncStatusCode,
+		LastSyncError:        s.LastSyncError,
+		LastSyncFailedAt:     s.LastSyncFailedAt,
+		LastSyncOkAt:         s.LastSyncOkAt,
+		LastHeavySyncAt:      s.LastHeavySyncAt,
+		CardsCursorUpdatedAt: s.CardsCursorUpdatedAt,
+		CardsCursorNmID:      s.CardsCursorNmID,
+		LastFullCardsSyncAt:  s.LastFullCardsSyncAt,
+		CreatedAt:            s.CreatedAt,
+		UpdatedAt:            s.UpdatedAt,
 	}
 }
 

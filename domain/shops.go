@@ -18,6 +18,13 @@ type Shop struct {
 	LastSyncError       string
 	LastSyncFailedAt    *time.Time
 	LastSyncOkAt        *time.Time
+	// Поля для разделения синка на быстрый (30 мин) и тяжёлый (1 час).
+	LastHeavySyncAt     *time.Time
+	// Курсор для инкрементального синка карточек WB (updatedAt + nmID из последнего ответа).
+	CardsCursorUpdatedAt string
+	CardsCursorNmID      int
+	// Время последнего полного (не инкрементального) синка карточек — раз в 7 дней.
+	LastFullCardsSyncAt *time.Time
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }

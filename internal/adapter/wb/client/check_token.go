@@ -15,7 +15,7 @@ func (c *Client) CheckToken(ctx context.Context, token string) error {
 		},
 	}
 
-	_, err := c.GetAllCards(ctx, token, req)
+	_, _, err := c.GetAllCards(ctx, token, req, nil)
 	if err != nil {
 		return fmt.Errorf("wb token check failed: %w", err)
 	}

@@ -16,6 +16,16 @@ import (
 // базовый URL для формирования ссылки на товар WB
 const wbProductBaseURL = "https://www.wildberries.ru"
 
+const (
+	// heavySyncInterval — минимальный интервал между тяжёлыми синками (карточки, склады, снапшоты).
+	// Контент API WB — лимит 1 запрос/час на базовом токене.
+	heavySyncInterval = time.Hour
+
+	// fullCardsSyncInterval — интервал полного (не инкрементального) синка карточек.
+	// Нужен для выявления удалённых товаров, которые инкрементальный синк не увидит.
+	fullCardsSyncInterval = 7 * 24 * time.Hour
+)
+
 func (s *Service) SyncAllShops(ctx context.Context) error {
 	shops, err := s.shopsRepo.ListAll(ctx)
 	if err != nil {
@@ -24,7 +34,6 @@ func (s *Service) SyncAllShops(ctx context.Context) error {
 
 	for _, shop := range shops {
 		if err := s.SyncShop(ctx, shop.ID); err != nil {
-			// логируем, но не фейлим весь процесс
 			s.log.Error("sync shop failed", "shop_id", shop.ID, "error", err)
 		}
 	}
@@ -44,83 +53,37 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 		return fmt.Errorf("sync shop: shop %d has empty WB API key", shopID)
 	}
 
-	// единый апдейт статуса синка при любом выходе
 	defer func() {
 		now := time.Now()
-
-		// всегда фиксируем попытку
-		upd := model.SyncStatusUpdate{
-			LastSyncAt: &now,
-		}
+		upd := model.SyncStatusUpdate{LastSyncAt: &now}
 
 		if err == nil {
 			upd.LastSyncOkAt = &now
 		} else {
 			upd.LastSyncFailedAt = &now
-
 			if sc, ok := wbStatusCode(err); ok {
 				upd.LastSyncStatusCode = &sc
 			}
 			m := err.Error()
 			upd.LastSyncError = &m
-
 			s.log.Error("sync_shop: critical failure — data collection stopped",
-				"shop_id", shopID,
-				"error", err.Error(),
-				"critical", true,
+				"shop_id", shopID, "error", err.Error(), "critical", true,
 			)
 		}
 
 		_ = s.shopsRepo.UpdateSyncStatus(ctx, shopID, upd)
 	}()
 
-	if err := s.syncShopWarehouses(ctx, shop); err != nil {
-		return fmt.Errorf("sync shop: sync warehouses: %w", err)
+	if err = s.runFastSync(ctx, shop); err != nil {
+		return fmt.Errorf("sync shop: fast sync: %w", err)
 	}
 
-	products, err := s.syncShopProducts(ctx, shop)
-	if err != nil {
-		return fmt.Errorf("sync shop: sync products: %w", err)
-	}
-	if len(products) == 0 {
-		// нет товаров – нет снапшотов
-		return nil
+	if s.shouldRunHeavySync(shop) {
+		if err = s.runHeavySync(ctx, shop); err != nil {
+			return fmt.Errorf("sync shop: heavy sync: %w", err)
+		}
 	}
 
-	// 2) цены/остатки -> snapshots
-	if err = s.syncShopSnapshots(ctx, shop, products); err != nil {
-		return fmt.Errorf("sync shop: sync snapshots: %w", err)
-	}
-
-	// 3) FBS, DBW, DBS orders
-	if err = s.syncShopFBSOrders(ctx, shop); err != nil {
-		return fmt.Errorf("sync shop: sync FBS orders: %w", err)
-	}
-	if err = s.syncShopDBWOrders(ctx, shop); err != nil {
-		return fmt.Errorf("sync shop: sync DBW orders: %w", err)
-	}
-	if err = s.syncShopDBSOrders(ctx, shop); err != nil {
-		return fmt.Errorf("sync shop: sync DBS orders: %w", err)
-	}
-
-	if err = s.syncShopFeedbacks(ctx, shop); err != nil {
-		return fmt.Errorf("sync shop: sync feedbacks: %w", err)
-	}
-	if err = s.syncShopQuestions(ctx, shop); err != nil {
-		return fmt.Errorf("sync shop: sync questions: %w", err)
-	}
-
-	// 4) sales (выкупы/возвраты)
-	if err = s.syncShopSales(ctx, shop); err != nil {
-		return fmt.Errorf("sync shop: sync sales: %w", err)
-	}
-
-	// 5) orders → отказы (заказы не забраны, isCancel=true); связь с sales по srid
-	if err = s.syncShopOrderRefusals(ctx, shop); err != nil {
-		return fmt.Errorf("sync shop: sync order refusals: %w", err)
-	}
-
-	// aha-moment (первый синк) — оставляем как у тебя
 	if shop.FirstSyncNotifiedAt == nil {
 		n, err2 := s.productsRepo.CountByShop(ctx, shopID)
 		if err2 == nil {
@@ -138,6 +101,87 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 				}
 			}
 		}
+	}
+
+	return nil
+}
+
+func (s *Service) shouldRunHeavySync(shop *domain.Shop) bool {
+	if shop.LastHeavySyncAt == nil {
+		return true
+	}
+	return time.Since(*shop.LastHeavySyncAt) >= heavySyncInterval
+}
+
+// runFastSync выполняется при каждом тике планировщика (каждые 30 мин).
+// Содержит только вызовы с высокими лимитами WB: заказы, отзывы, продажи.
+func (s *Service) runFastSync(ctx context.Context, shop *domain.Shop) error {
+	if err := s.syncShopFBSOrders(ctx, shop); err != nil {
+		return fmt.Errorf("fbs orders: %w", err)
+	}
+	if err := s.syncShopDBWOrders(ctx, shop); err != nil {
+		return fmt.Errorf("dbw orders: %w", err)
+	}
+	if err := s.syncShopDBSOrders(ctx, shop); err != nil {
+		return fmt.Errorf("dbs orders: %w", err)
+	}
+	if err := s.syncShopFeedbacks(ctx, shop); err != nil {
+		return fmt.Errorf("feedbacks: %w", err)
+	}
+	if err := s.syncShopQuestions(ctx, shop); err != nil {
+		return fmt.Errorf("questions: %w", err)
+	}
+	if err := s.syncShopSales(ctx, shop); err != nil {
+		return fmt.Errorf("sales: %w", err)
+	}
+	if err := s.syncShopOrderRefusals(ctx, shop); err != nil {
+		return fmt.Errorf("order refusals: %w", err)
+	}
+	return nil
+}
+
+// runHeavySync выполняется не чаще 1 раза в час (ограничен лимитами Content API WB).
+// Синхронизирует склады, карточки товаров (инкрементально) и снапшоты цен/остатков.
+func (s *Service) runHeavySync(ctx context.Context, shop *domain.Shop) error {
+	if err := s.syncShopWarehouses(ctx, shop); err != nil {
+		return fmt.Errorf("warehouses: %w", err)
+	}
+
+	newCursor, isFullSync, err := s.syncShopProductsIncremental(ctx, shop)
+	if err != nil {
+		return fmt.Errorf("products: %w", err)
+	}
+
+	// снапшоты делаем по всем товарам магазина, а не только по изменённым
+	allPtrs, err := s.productsRepo.ListByShop(ctx, shop.ID, 0, 0)
+	if err != nil {
+		return fmt.Errorf("list products for snapshots: %w", err)
+	}
+
+	if len(allPtrs) > 0 {
+		products := make([]domain.Product, len(allPtrs))
+		for i, p := range allPtrs {
+			products[i] = *p
+		}
+		if err := s.syncShopSnapshots(ctx, shop, products); err != nil {
+			return fmt.Errorf("snapshots: %w", err)
+		}
+	}
+
+	now := time.Now()
+	upd := model.HeavySyncUpdate{LastHeavySyncAt: &now}
+
+	if newCursor != nil {
+		upd.CardsCursorUpdatedAt = &newCursor.UpdatedAt
+		nmID := newCursor.NmID
+		upd.CardsCursorNmID = &nmID
+	}
+	if isFullSync {
+		upd.LastFullCardsSyncAt = &now
+	}
+
+	if err := s.shopsRepo.UpdateHeavySyncState(ctx, shop.ID, upd); err != nil {
+		return fmt.Errorf("update heavy sync state: %w", err)
 	}
 
 	return nil
@@ -529,42 +573,37 @@ func formatRevenueRU(v float64) string {
 	return sign + s + "₽"
 }
 
-// syncShopProducts синхронизирует карточки WB в таблицу products
-// и возвращает актуальный список продуктов этого магазина.
-func (s *Service) syncShopProducts(ctx context.Context, shop *domain.Shop) ([]domain.Product, error) {
+// syncShopProductsIncremental синхронизирует карточки WB инкрементально, используя
+// курсор из предыдущего синка. Раз в fullCardsSyncInterval делает полный синк.
+// Возвращает новый курсор (nil если карточек не было), флаг isFullSync и ошибку.
+func (s *Service) syncShopProductsIncremental(ctx context.Context, shop *domain.Shop) (*dto.ResponseCursor, bool, error) {
+	isFullSync := shop.LastFullCardsSyncAt == nil || time.Since(*shop.LastFullCardsSyncAt) >= fullCardsSyncInterval
+
+	var startCursor *dto.ResponseCursor
+	if !isFullSync && shop.CardsCursorUpdatedAt != "" {
+		startCursor = &dto.ResponseCursor{
+			UpdatedAt: shop.CardsCursorUpdatedAt,
+			NmID:      shop.CardsCursorNmID,
+		}
+	}
+
 	req := dto.GetCardsRequest{
 		Settings: dto.Settings{
-			Cursor: dto.Cursor{
-				Limit: 100,
-			},
-			Filter: dto.Filter{
-				TextSearch:            "",
-				AllowedCategoriesOnly: false,
-				TagIDs:                []int{},
-				ObjectIDs:             []int{},
-				Brands:                []string{},
-				ImtID:                 0,
-				WithPhoto:             -1,
-			},
+			Cursor: dto.Cursor{Limit: 100},
+			Filter: dto.Filter{WithPhoto: -1},
 		},
 	}
 
-	cards, err := s.wbClient.GetAllCards(ctx, shop.APIToken, req)
+	cards, newCursor, err := s.wbClient.GetAllCards(ctx, shop.APIToken, req, startCursor)
 	if err != nil {
-		return nil, fmt.Errorf("wb get cards: %w", err)
+		return nil, false, fmt.Errorf("wb get cards: %w", err)
 	}
 
-	if len(cards) == 0 {
-		return nil, nil
-	}
-
-	products := make([]domain.Product, 0, len(cards))
 	for _, card := range cards {
 		p := wbmapper.CardToProduct(card, shop.ID, wbProductBaseURL)
 
 		if err := s.productsRepo.Upsert(ctx, &p); err != nil {
-			return nil, fmt.Errorf("upsert product external_id=%s: %w",
-				p.ExternalID, err)
+			return nil, false, fmt.Errorf("upsert product external_id=%s: %w", p.ExternalID, err)
 		}
 
 		for _, sz := range card.Sizes {
@@ -583,20 +622,16 @@ func (s *Service) syncShopProducts(ctx context.Context, shop *domain.Shop) ([]do
 			}
 
 			if err := s.productSizesRepo.Upsert(ctx, &ps); err != nil {
-				return nil, fmt.Errorf("upsert product_size product_id=%d chrt_id=%s: %w", p.ID, chrtID, err)
+				return nil, false, fmt.Errorf("upsert product_size product_id=%d chrt_id=%s: %w", p.ID, chrtID, err)
 			}
 
-			// Replace — важно, чтобы старые SKUs удалялись
 			if err := s.productSizeSKUsRepo.ReplaceByProductSizeID(ctx, ps.ID, sz.Skus); err != nil {
-				return nil, fmt.Errorf("replace product_size_skus size_id=%d: %w", ps.ID, err)
+				return nil, false, fmt.Errorf("replace product_size_skus size_id=%d: %w", ps.ID, err)
 			}
 		}
-
-		// важно: Upsert через GORM обычно проставляет p.ID
-		products = append(products, p)
 	}
 
-	return products, nil
+	return newCursor, isFullSync, nil
 }
 
 func (s *Service) syncShopSnapshots(

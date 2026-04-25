@@ -56,11 +56,13 @@ type (
 		UpdateLastSyncAt(ctx context.Context, shopID int, t time.Time) error
 		UpdateSyncStatus(ctx context.Context, shopID int, update model.SyncStatusUpdate) error
 		UpdateFirstSyncNotifiedAt(ctx context.Context, shopID int, t time.Time) error
+		UpdateHeavySyncState(ctx context.Context, shopID int, upd model.HeavySyncUpdate) error
 	}
 
 	ProductRepository interface {
 		Upsert(ctx context.Context, p *domain.Product) error
 		ListIDsByShopID(ctx context.Context, shopID int) ([]int, error)
+		ListByShop(ctx context.Context, shopID, limit, offset int) ([]*domain.Product, error)
 		CountByShop(ctx context.Context, shopID int) (int, error)
 	}
 
@@ -158,7 +160,7 @@ type (
 	// Локальный интерфейс под WB-клиент
 	WBClient interface {
 		GetCards(ctx context.Context, apiKey string, req dto.GetCardsRequest) (*dto.GetCardsResponse, error)
-		GetAllCards(ctx context.Context, apiKey string, baseReq dto.GetCardsRequest) ([]dto.Card, error)
+		GetAllCards(ctx context.Context, apiKey string, baseReq dto.GetCardsRequest, startCursor *dto.ResponseCursor) ([]dto.Card, *dto.ResponseCursor, error)
 		GetPrices(ctx context.Context, token string, req dto.GetPricesRequest) (*dto.GetPricesResponse, error)
 		GetPricesByNmIDs(ctx context.Context, apiKey string, nmIDs []int64) ([]dto.PriceGood, error)
 		GetStocks(ctx context.Context, apiKey string, warehouseID int64, req dto.GetStocksRequest) (*dto.GetStocksResponse, error)

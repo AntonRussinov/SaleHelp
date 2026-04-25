@@ -74,14 +74,14 @@ func (c *Client) GetQuestions(ctx context.Context, apiKey string, isAnswered boo
 // Документация: https://dev.wildberries.ru/docs/openapi/user-communication#tag/Otzyvy/paths/~1api~1v1~1feedbacks~1answer/post
 func (c *Client) AnswerFeedback(ctx context.Context, apiKey string, feedbackID string, text string) error {
 	req := dto.AnswerFeedbackRequest{ID: feedbackID, Text: text}
-	return c.doJSON(ctx, http.MethodPost, c.feedbacksURL+"/api/v1/feedbacks/answer", apiKey, RateFeedbacks, req, nil)
+	return c.doJSON(ctx, http.MethodPost, c.feedbacksURL+"/api/v1/feedbacks/answer", apiKey, RateFeedbacksWrite, req, nil)
 }
 
 // PatchQuestion выполняет действие над вопросом (PATCH /api/v1/questions).
 // body — один из: QuestionViewRequest (просмотр), QuestionAnswerRequest (ответ/редактирование) и т.д.
 // Документация: https://dev.wildberries.ru/docs/openapi/user-communication#tag/Voprosy/paths/~1api~1v1~1questions/patch
 func (c *Client) PatchQuestion(ctx context.Context, apiKey string, body any) error {
-	return c.doJSON(ctx, http.MethodPatch, c.feedbacksURL+"/api/v1/questions", apiKey, RateFeedbacks, body, nil)
+	return c.doJSON(ctx, http.MethodPatch, c.feedbacksURL+"/api/v1/questions", apiKey, RateFeedbacksWrite, body, nil)
 }
 
 // MarkQuestionViewed отмечает вопрос как просмотренный (PATCH /api/v1/questions, body: id + wasViewed).

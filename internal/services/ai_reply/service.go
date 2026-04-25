@@ -175,8 +175,14 @@ func (s *Service) ProcessOne(ctx context.Context, f *domain.WBFeedback) error {
 	}
 	s.saveReplyLog(ctx, f.ID, f.ShopID, answerText, result.ModelUsed, domain.AIReplyStatusGenerated, "", result.TokensUsed)
 
-	// Отправляем ответ в WB, если есть текст (WB требует 2–5000 символов).
+	// Помечаем как обработанный ДО отправки в WB: квота уже списана, повторная обработка недопустима.
+	// Если WB-отправка упадёт — отзыв всё равно не будет обработан снова и не сожжёт квоту.
 	now := time.Now()
+	if err := s.feedbackRepo.MarkReplied(ctx, []int{f.ID}, now); err != nil {
+		s.log.Error("ai_reply: mark replied failed", "feedback_id", f.ID, "err", err)
+	}
+
+	// Отправляем ответ в WB, если есть текст (WB требует 2–5000 символов).
 	if len([]rune(answerText)) >= 2 && s.wbFeedbackSend != nil && s.shopRepo != nil {
 		shop, err := s.shopRepo.GetByID(ctx, f.ShopID)
 		if err != nil {
@@ -188,7 +194,7 @@ func (s *Service) ProcessOne(ctx context.Context, f *domain.WBFeedback) error {
 		}
 	}
 
-	return s.feedbackRepo.MarkReplied(ctx, []int{f.ID}, now)
+	return nil
 }
 
 func ptr(i int) *int { return &i }
