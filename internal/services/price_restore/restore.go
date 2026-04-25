@@ -190,7 +190,7 @@ func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 
 	now := time.Now()
 	if err := s.batchRepo.SetRestoredAt(ctx, batchID, now); err != nil {
-		return RestoreResult{Error: err, RestoredCount: restoredCount}
+		return failAndReturn(restoredCount, err)
 	}
 	return RestoreResult{ShopID: shopID, RestoredCount: restoredCount, RestoredAt: &now}
 }

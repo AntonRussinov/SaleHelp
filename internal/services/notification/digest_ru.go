@@ -318,12 +318,6 @@ func buildPriceDropSectionLines(trs []*domain.AlertTriggered, productsByID map[i
 		}
 		prev, next, amt, pct, ok := parsePriceDropMessage(tr.Message)
 		if !ok {
-			// fallback: show raw message
-			p := productsByID[tr.ProductID]
-			entries = append(entries, priceDropEntry{
-				prodLine: formatProductHeaderRU(p, tr.ProductID),
-				prevPrice: prev, newPrice: next, dropAmt: amt, dropPct: pct,
-			})
 			continue
 		}
 		p := productsByID[tr.ProductID]
