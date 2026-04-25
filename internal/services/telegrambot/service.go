@@ -109,6 +109,8 @@ type (
 	// PriceRestoreBatchRepo — проверка restored_at при нажатии «Вернуть цены назад».
 	PriceRestoreBatchRepo interface {
 		GetByID(ctx context.Context, id int) (*domain.PriceRestoreBatch, error)
+		TrySetRestoring(ctx context.Context, batchID int) (bool, error)
+		SetRestoreFailed(ctx context.Context, batchID int) error
 	}
 
 	WBClient interface {

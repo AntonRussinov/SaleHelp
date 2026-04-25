@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"salehelp/domain"
 	"salehelp/internal/handler/telegram/dto"
 )
 
@@ -108,10 +109,23 @@ func (s *Service) handleRestorePrices(ctx context.Context, chatID int64, payload
 	}
 	if s.restoreBatchRepo != nil {
 		batch, _ := s.restoreBatchRepo.GetByID(ctx, batchID)
-		if batch != nil && batch.RestoredAt != nil {
-			t := batch.RestoredAt.In(time.FixedZone("MSK", 3*3600))
-			_ = s.tg.SendMessage(ctx, chatID, "ℹ️ Цены уже были восстановлены в "+t.Format("15:04")+" МСК")
-			return
+		if batch != nil {
+			switch batch.RestoreStatus {
+			case domain.RestoreStatusRestoring:
+				_ = s.tg.SendMessage(ctx, chatID, "⏳ Цены уже восстанавливаются, подождите...")
+				return
+			case domain.RestoreStatusRestored:
+				t := batch.RestoredAt
+				if t == nil {
+					_ = s.tg.SendMessage(ctx, chatID, "ℹ️ Цены уже были восстановлены.")
+				} else {
+					msk := t.In(time.FixedZone("MSK", 3*3600))
+					_ = s.tg.SendMessage(ctx, chatID, "ℹ️ Цены уже были восстановлены в "+msk.Format("15:04")+" МСК")
+				}
+				return
+			case domain.RestoreStatusFailed:
+				// allow retry — fall through to confirm dialog
+			}
 		}
 	}
 	// Отправляем сообщение с подтверждением и кнопками
@@ -152,6 +166,10 @@ func (s *Service) handleConfirmRestore(ctx context.Context, chatID int64, payloa
 		return
 	}
 	result := s.priceRestore.Restore(ctx, batchID)
+	if result.AlreadyRestoring {
+		_ = s.tg.SendMessage(ctx, chatID, "⏳ Цены уже восстанавливаются, подождите...")
+		return
+	}
 	if result.AlreadyRestored && result.RestoredAt != nil {
 		t := result.RestoredAt.In(time.FixedZone("MSK", 3*3600))
 		_ = s.tg.SendMessage(ctx, chatID, "ℹ️ Цены уже были восстановлены в "+t.Format("15:04")+" МСК")
@@ -162,8 +180,33 @@ func (s *Service) handleConfirmRestore(ctx context.Context, chatID int64, payloa
 			"❌ Не удалось восстановить цены\n\nОшибка: "+result.Error.Error()+"\n\nПопробуйте вручную или повторите через несколько минут.")
 		return
 	}
+
 	msk := time.FixedZone("MSK", 3*3600)
 	now := time.Now().In(msk)
-	_ = s.tg.SendMessage(ctx, chatID,
-		fmt.Sprintf("✅ Цены восстановлены!\nВосстановлено товаров: %d\nВремя: %s МСК", result.RestoredCount, now.Format("15:04")))
+	successMsg := fmt.Sprintf("✅ Цены восстановлены!\nВосстановлено товаров: %d\nВремя: %s МСК", result.RestoredCount, now.Format("15:04"))
+
+	// broadcast to all enabled Telegram endpoints for the shop
+	if result.ShopID > 0 && s.endpointsRepo != nil {
+		endpoints, err := s.endpointsRepo.ListByShopID(ctx, result.ShopID, true)
+		if err == nil {
+			notified := map[int64]struct{}{}
+			for _, ep := range endpoints {
+				if ep == nil || ep.Channel != "telegram" {
+					continue
+				}
+				cid, errParse := strconv.ParseInt(ep.Address, 10, 64)
+				if errParse != nil {
+					continue
+				}
+				if _, already := notified[cid]; already {
+					continue
+				}
+				notified[cid] = struct{}{}
+				_ = s.tg.SendMessage(ctx, cid, successMsg)
+			}
+			return
+		}
+	}
+	// fallback: reply only to the requesting chat
+	_ = s.tg.SendMessage(ctx, chatID, successMsg)
 }

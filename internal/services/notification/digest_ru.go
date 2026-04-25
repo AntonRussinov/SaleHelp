@@ -10,6 +10,8 @@ import (
 	"salehelp/pkg/notify"
 )
 
+const maxPriceDropShow = 15
+
 const digestChunkLimit = 3500 // запас под HTML escape + <b>Title</b>
 
 func FormatShopDigestMessagesRU(
@@ -49,114 +51,110 @@ func FormatShopDigestMessagesRU(
 		// section title
 		lines = append(lines, fmt.Sprintf("%s:", sectionTitleRU(at)))
 
-		// group by product
-		byProduct := map[int][]*domain.AlertTriggered{}
-		prodIDs := make([]int, 0, 32)
-		for _, tr := range trs {
-			byProduct[tr.ProductID] = append(byProduct[tr.ProductID], tr)
-		}
-		for pid := range byProduct {
-			prodIDs = append(prodIDs, pid)
-		}
-		sort.Ints(prodIDs)
-
-		for _, pid := range prodIDs {
-			p := productsByID[pid]
-			prodLine := formatProductHeaderRU(p, pid)
-
-			items := byProduct[pid]
-
-			// разделим на size-triggered и product-triggered
-			sizeItems := make([]*domain.AlertTriggered, 0, len(items))
-			prodItems := make([]*domain.AlertTriggered, 0, 1)
-
-			for _, tr := range items {
-				if tr != nil && tr.ProductSizeID != nil {
-					sizeItems = append(sizeItems, tr)
-				} else {
-					prodItems = append(prodItems, tr)
-				}
+		if at == "price_drop" {
+			lines = append(lines, buildPriceDropSectionLines(trs, productsByID)...)
+		} else {
+			// group by product
+			byProduct := map[int][]*domain.AlertTriggered{}
+			prodIDs := make([]int, 0, 32)
+			for _, tr := range trs {
+				byProduct[tr.ProductID] = append(byProduct[tr.ProductID], tr)
 			}
-
-			// 1) product-level события (без размеров) — печатаем как есть
-			for _, tr := range prodItems {
-				if tr == nil {
-					continue
-				}
-				lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, tr.Message))
+			for pid := range byProduct {
+				prodIDs = append(prodIDs, pid)
 			}
+			sort.Ints(prodIDs)
 
-			// 2) size-level события — компактим
-			if len(sizeItems) > 0 {
-				// для стабильности
-				sort.SliceStable(sizeItems, func(i, j int) bool {
-					ai := displaySizeName(sizeItems[i], sizesByID, sizesCountByProduct)
-					aj := displaySizeName(sizeItems[j], sizesByID, sizesCountByProduct)
-					return ai < aj
-				})
+			for _, pid := range prodIDs {
+				p := productsByID[pid]
+				prodLine := formatProductHeaderRU(p, pid)
 
-				if at == "stock_zero" {
-					// максимальная компрессия: только список размеров
-					szs := make([]string, 0, len(sizeItems))
-					for _, tr := range sizeItems {
-						sn := displaySizeName(tr, sizesByID, sizesCountByProduct)
-						if sn != "" {
-							szs = append(szs, sn)
-						}
-					}
-					szs = uniqueSorted(szs)
+				items := byProduct[pid]
 
-					if len(szs) > 0 {
-						lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, formatSizeNamesLine(szs)))
+				sizeItems := make([]*domain.AlertTriggered, 0, len(items))
+				prodItems := make([]*domain.AlertTriggered, 0, 1)
+
+				for _, tr := range items {
+					if tr != nil && tr.ProductSizeID != nil {
+						sizeItems = append(sizeItems, tr)
 					} else {
-						// fallback
-						lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, sizeItems[0].Message))
+						prodItems = append(prodItems, tr)
 					}
-				} else {
-					// stock_low (и любые другие size-level) — группируем по одинаковому сообщению
-					byMsg := map[string][]string{}
-					msgKeys := make([]string, 0, 4)
+				}
 
-					for _, tr := range sizeItems {
-						msg := ""
-						if tr != nil {
-							msg = strings.TrimSpace(tr.Message)
+				for _, tr := range prodItems {
+					if tr == nil {
+						continue
+					}
+					lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, tr.Message))
+				}
+
+				if len(sizeItems) > 0 {
+					sort.SliceStable(sizeItems, func(i, j int) bool {
+						ai := displaySizeName(sizeItems[i], sizesByID, sizesCountByProduct)
+						aj := displaySizeName(sizeItems[j], sizesByID, sizesCountByProduct)
+						return ai < aj
+					})
+
+					if at == "stock_zero" {
+						szs := make([]string, 0, len(sizeItems))
+						for _, tr := range sizeItems {
+							sn := displaySizeName(tr, sizesByID, sizesCountByProduct)
+							if sn != "" {
+								szs = append(szs, sn)
+							}
 						}
-						sn := displaySizeName(tr, sizesByID, sizesCountByProduct)
-						byMsg[msg] = append(byMsg[msg], sn)
-					}
+						szs = uniqueSorted(szs)
 
-					for msg := range byMsg {
-						msgKeys = append(msgKeys, msg)
-					}
-					sort.Strings(msgKeys)
-
-					if len(msgKeys) == 1 {
-						msg := msgKeys[0]
-						szs := uniqueSorted(byMsg[msg])
-						if len(szs) > 0 && msg != "" {
-							lines = append(lines, fmt.Sprintf("• %s — %s — %s", prodLine, formatSizeNamesLine(szs), msg))
-						} else if len(szs) > 0 {
+						if len(szs) > 0 {
 							lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, formatSizeNamesLine(szs)))
 						} else {
-							lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, msg))
+							lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, sizeItems[0].Message))
 						}
 					} else {
-						lines = append(lines, fmt.Sprintf("• %s", prodLine))
-						for _, msg := range msgKeys {
+						byMsg := map[string][]string{}
+						msgKeys := make([]string, 0, 4)
+
+						for _, tr := range sizeItems {
+							msg := ""
+							if tr != nil {
+								msg = strings.TrimSpace(tr.Message)
+							}
+							sn := displaySizeName(tr, sizesByID, sizesCountByProduct)
+							byMsg[msg] = append(byMsg[msg], sn)
+						}
+
+						for msg := range byMsg {
+							msgKeys = append(msgKeys, msg)
+						}
+						sort.Strings(msgKeys)
+
+						if len(msgKeys) == 1 {
+							msg := msgKeys[0]
 							szs := uniqueSorted(byMsg[msg])
 							if len(szs) > 0 && msg != "" {
-								lines = append(lines, fmt.Sprintf("  – %s — %s", formatSizeNamesLine(szs), msg))
+								lines = append(lines, fmt.Sprintf("• %s — %s — %s", prodLine, formatSizeNamesLine(szs), msg))
 							} else if len(szs) > 0 {
-								lines = append(lines, fmt.Sprintf("  – %s", formatSizeNamesLine(szs)))
+								lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, formatSizeNamesLine(szs)))
 							} else {
-								lines = append(lines, fmt.Sprintf("  – %s", msg))
+								lines = append(lines, fmt.Sprintf("• %s — %s", prodLine, msg))
+							}
+						} else {
+							lines = append(lines, fmt.Sprintf("• %s", prodLine))
+							for _, msg := range msgKeys {
+								szs := uniqueSorted(byMsg[msg])
+								if len(szs) > 0 && msg != "" {
+									lines = append(lines, fmt.Sprintf("  – %s — %s", formatSizeNamesLine(szs), msg))
+								} else if len(szs) > 0 {
+									lines = append(lines, fmt.Sprintf("  – %s", formatSizeNamesLine(szs)))
+								} else {
+									lines = append(lines, fmt.Sprintf("  – %s", msg))
+								}
 							}
 						}
 					}
 				}
 			}
-
 		}
 
 		lines = append(lines, "") // blank line between sections
@@ -293,4 +291,77 @@ func chunkLines(header string, lines []string, limit int) []string {
 func runeLen(s string) int {
 	// чуть быстрее/точнее чем []rune для длинных строк
 	return utf8.RuneCountInString(s)
+}
+
+type priceDropEntry struct {
+	prodLine  string
+	prevPrice float64
+	newPrice  float64
+	dropAmt   float64
+	dropPct   float64
+}
+
+func parsePriceDropMessage(msg string) (prev, next, amt, pct float64, ok bool) {
+	// "Цена упала: 1000.00 → 850.00 (-150.00, 15.00%)"
+	n, err := fmt.Sscanf(msg, "Цена упала: %f → %f (-%f, %f%%)", &prev, &next, &amt, &pct)
+	return prev, next, amt, pct, err == nil && n == 4
+}
+
+func buildPriceDropSectionLines(trs []*domain.AlertTriggered, productsByID map[int]*domain.Product) []string {
+	entries := make([]priceDropEntry, 0, len(trs))
+	totalDropAmt := 0.0
+	totalDropPct := 0.0
+
+	for _, tr := range trs {
+		if tr == nil {
+			continue
+		}
+		prev, next, amt, pct, ok := parsePriceDropMessage(tr.Message)
+		if !ok {
+			// fallback: show raw message
+			p := productsByID[tr.ProductID]
+			entries = append(entries, priceDropEntry{
+				prodLine: formatProductHeaderRU(p, tr.ProductID),
+				prevPrice: prev, newPrice: next, dropAmt: amt, dropPct: pct,
+			})
+			continue
+		}
+		p := productsByID[tr.ProductID]
+		entries = append(entries, priceDropEntry{
+			prodLine:  formatProductHeaderRU(p, tr.ProductID),
+			prevPrice: prev,
+			newPrice:  next,
+			dropAmt:   amt,
+			dropPct:   pct,
+		})
+		totalDropAmt += amt
+		totalDropPct += pct
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].dropPct > entries[j].dropPct
+	})
+
+	totalCount := len(entries)
+	shown := entries
+	remaining := 0
+	if totalCount > maxPriceDropShow {
+		remaining = totalCount - maxPriceDropShow
+		shown = entries[:maxPriceDropShow]
+	}
+
+	lines := make([]string, 0, len(shown)+3)
+	for _, e := range shown {
+		lines = append(lines, fmt.Sprintf("• %s: %.2f → %.2f (−%.1f%%)", e.prodLine, e.prevPrice, e.newPrice, e.dropPct))
+	}
+	if remaining > 0 {
+		lines = append(lines, fmt.Sprintf("  ... и ещё %d товаров", remaining))
+	}
+
+	if totalCount > 0 {
+		avgPct := totalDropPct / float64(totalCount)
+		lines = append(lines, fmt.Sprintf("Итого: %d товаров, ср. снижение %.1f%%, суммарно −%.0f ₽", totalCount, avgPct, totalDropAmt))
+	}
+
+	return lines
 }

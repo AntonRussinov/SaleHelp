@@ -17,6 +17,8 @@ type (
 		GetByID(ctx context.Context, id int) (*domain.PriceRestoreBatch, error)
 		GetTriggeredIDsByBatchID(ctx context.Context, batchID int) ([]int, error)
 		SetRestoredAt(ctx context.Context, batchID int, at time.Time) error
+		TrySetRestoring(ctx context.Context, batchID int) (bool, error)
+		SetRestoreFailed(ctx context.Context, batchID int) error
 	}
 	TriggeredRepo interface {
 		GetByIDs(ctx context.Context, ids []int) (map[int]*domain.AlertTriggered, error)
@@ -77,8 +79,10 @@ func NewService(
 
 // RestoreResult — результат попытки восстановления.
 type RestoreResult struct {
+	ShopID          int
 	RestoredCount   int
 	AlreadyRestored bool
+	AlreadyRestoring bool
 	RestoredAt      *time.Time
 	Error           error
 }

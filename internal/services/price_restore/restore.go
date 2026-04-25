@@ -19,21 +19,35 @@ func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 	if batch == nil {
 		return RestoreResult{Error: fmt.Errorf("batch id=%d not found", batchID)}
 	}
-	if batch.RestoredAt != nil {
+	if batch.RestoredAt != nil || batch.RestoreStatus == domain.RestoreStatusRestored {
 		return RestoreResult{AlreadyRestored: true, RestoredAt: batch.RestoredAt}
+	}
+
+	won, err := s.batchRepo.TrySetRestoring(ctx, batchID)
+	if err != nil {
+		return RestoreResult{Error: err}
+	}
+	if !won {
+		return RestoreResult{AlreadyRestoring: true}
+	}
+
+	// After acquiring the lock every error path must call SetRestoreFailed.
+	failAndReturn := func(restoredCount int, wrapErr error) RestoreResult {
+		_ = s.batchRepo.SetRestoreFailed(ctx, batchID)
+		return RestoreResult{Error: wrapErr, RestoredCount: restoredCount}
 	}
 
 	triggeredIDs, err := s.batchRepo.GetTriggeredIDsByBatchID(ctx, batchID)
 	if err != nil {
-		return RestoreResult{Error: err}
+		return failAndReturn(0, err)
 	}
 	if len(triggeredIDs) == 0 {
-		return RestoreResult{Error: fmt.Errorf("batch has no triggered items")}
+		return failAndReturn(0, fmt.Errorf("batch has no triggered items"))
 	}
 
 	triggeredMap, err := s.triggered.GetByIDs(ctx, triggeredIDs)
 	if err != nil {
-		return RestoreResult{Error: err}
+		return failAndReturn(0, err)
 	}
 	var shopID int
 	for _, tr := range triggeredMap {
@@ -43,12 +57,12 @@ func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 		}
 	}
 	if shopID == 0 {
-		return RestoreResult{Error: fmt.Errorf("shop_id not found for batch")}
+		return failAndReturn(0, fmt.Errorf("shop_id not found for batch"))
 	}
 
 	shop, err := s.shopRepo.GetByID(ctx, shopID)
 	if err != nil || shop == nil {
-		return RestoreResult{Error: fmt.Errorf("shop id=%d: %w", shopID, err)}
+		return failAndReturn(0, fmt.Errorf("shop id=%d: %w", shopID, err))
 	}
 	apiKey := strings.TrimSpace(shop.APIToken)
 	if apiKey != "" && !strings.HasPrefix(apiKey, "Bearer ") {
@@ -67,11 +81,11 @@ func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 	}
 	productsByID, err := s.productRepo.GetByIDs(ctx, productIDs)
 	if err != nil {
-		return RestoreResult{Error: err}
+		return failAndReturn(0, err)
 	}
 	sizesByProduct, err := s.sizeRepo.ListByProductIDs(ctx, productIDs)
 	if err != nil {
-		return RestoreResult{Error: err}
+		return failAndReturn(0, err)
 	}
 	sizeByID := make(map[int]*domain.ProductSize)
 	for _, sz := range sizesByProduct {
@@ -86,7 +100,7 @@ func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 		}
 		prevSnap, err := s.snapRepo.GetPreviousBySnapshotID(ctx, tr.SnapshotID)
 		if err != nil {
-			return RestoreResult{Error: fmt.Errorf("previous snapshot for triggered %d: %w", tr.ID, err)}
+			return failAndReturn(0, fmt.Errorf("previous snapshot for triggered %d: %w", tr.ID, err))
 		}
 		if prevSnap == nil {
 			s.log.Warn("no previous snapshot for triggered", "triggered_id", tr.ID, "snapshot_id", tr.SnapshotID)
@@ -120,7 +134,7 @@ func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 
 		sizeSnaps, err := s.sizeSnapRepo.ListBySnapshotID(ctx, prevSnap.ID)
 		if err != nil {
-			return RestoreResult{Error: fmt.Errorf("size snapshots for snapshot %d: %w", prevSnap.ID, err)}
+			return failAndReturn(0, fmt.Errorf("size snapshots for snapshot %d: %w", prevSnap.ID, err))
 		}
 		for _, ss := range sizeSnaps {
 			if ss == nil {
@@ -154,7 +168,7 @@ func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 			chunk := taskGoods[i:end]
 			_, err := s.wbClient.UploadPrices(ctx, apiKey, dto.UploadTaskRequest{Data: chunk})
 			if err != nil {
-				return RestoreResult{Error: fmt.Errorf("wb upload prices: %w", err), RestoredCount: restoredCount}
+				return failAndReturn(restoredCount, fmt.Errorf("wb upload prices: %w", err))
 			}
 			restoredCount += len(chunk)
 		}
@@ -168,7 +182,7 @@ func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 			chunk := taskSizeGoods[i:end]
 			_, err := s.wbClient.UploadPricesBySize(ctx, apiKey, dto.UploadTaskSizeRequest{Data: chunk})
 			if err != nil {
-				return RestoreResult{Error: fmt.Errorf("wb upload prices by size: %w", err), RestoredCount: restoredCount}
+				return failAndReturn(restoredCount, fmt.Errorf("wb upload prices by size: %w", err))
 			}
 			restoredCount += len(chunk)
 		}
@@ -178,5 +192,5 @@ func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 	if err := s.batchRepo.SetRestoredAt(ctx, batchID, now); err != nil {
 		return RestoreResult{Error: err, RestoredCount: restoredCount}
 	}
-	return RestoreResult{RestoredCount: restoredCount, RestoredAt: &now}
+	return RestoreResult{ShopID: shopID, RestoredCount: restoredCount, RestoredAt: &now}
 }

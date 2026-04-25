@@ -255,7 +255,7 @@ func (d *Dispatcher) RunOnce(ctx context.Context) error {
 				}
 			}
 			if len(priceDropTriggeredIDs) > 0 && d.restoreBatchRepo != nil {
-				batch := &domain.PriceRestoreBatch{CreatedAt: now}
+				batch := &domain.PriceRestoreBatch{CreatedAt: now, ShopID: k.ShopID}
 				batchID, errCreate := d.restoreBatchRepo.Create(ctx, batch, priceDropTriggeredIDs)
 				if errCreate == nil {
 					lastIdx := len(msgs) - 1
