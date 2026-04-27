@@ -115,6 +115,7 @@ type (
 
 	WBClient interface {
 		GetNewOrders(ctx context.Context, apiKey string) (*wbdto.GetNewOrdersResponse, error)
+		GetNewDBWOrders(ctx context.Context, apiKey string) (*wbdto.GetNewDBWOrdersResponse, error)
 	}
 
 	Service struct {

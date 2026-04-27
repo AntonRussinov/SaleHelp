@@ -27,6 +27,7 @@ type OrderRefusalRepo interface {
 // ProductRepo загружает товары магазина для подстановки названий.
 type ProductRepo interface {
 	ListByShop(ctx context.Context, shopID int, limit, offset int) ([]*domain.Product, error)
+	GetTitlesByBarcodes(ctx context.Context, shopID int, barcodes []string) (map[string]string, error)
 }
 
 // EndpointRepo отдаёт chat_id Telegram-эндпоинтов магазина.
@@ -146,7 +147,22 @@ func (s *Service) processShop(ctx context.Context, shopID int) error {
 		titleByNmID[nmID] = p.Title
 	}
 
-	text := notifications.FormatOrderRefusalsMessageRU(refs, titleByNmID, s.loc)
+	// Barcode-based fallback: WB Statistics API sometimes returns nmId=0 for cancelled orders,
+	// or the nmID can differ from the Content API (nmID migration). Use the barcode to resolve.
+	barcodes := make([]string, 0, len(refs))
+	for _, r := range refs {
+		if r.Barcode != "" && titleByNmID[r.NmID] == "" {
+			barcodes = append(barcodes, r.Barcode)
+		}
+	}
+	titleByBarcode := make(map[string]string)
+	if len(barcodes) > 0 {
+		if tb, err := s.products.GetTitlesByBarcodes(ctx, shopID, barcodes); err == nil {
+			titleByBarcode = tb
+		}
+	}
+
+	text := notifications.FormatOrderRefusalsMessageRU(refs, titleByNmID, titleByBarcode, s.loc)
 	if text == "" {
 		return nil
 	}

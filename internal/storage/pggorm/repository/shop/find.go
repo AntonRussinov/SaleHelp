@@ -124,6 +124,7 @@ func (r *Repository) ListByTelegramChat(
 	var models []model.Shop
 
 	err := r.DB.WithContext(ctx).
+		Select("shops.*").
 		Joins(`
 			JOIN shop_notification_endpoints e
 			  ON e.shop_id = shops.id

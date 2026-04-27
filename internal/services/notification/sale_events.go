@@ -40,7 +40,7 @@ func FormatSaleEventsMessageRU(events []*domain.SaleEvent, productTitleByNmID ma
 // FormatOrderRefusalsMessageRU формирует текст блока об отказах (заказы не забраны).
 // Группирует по дате отмены (CancelDate), внутри каждого дня — по названию товара со счётчиком.
 // Так сообщение остаётся точным, даже если отказы накопились за несколько дней.
-func FormatOrderRefusalsMessageRU(refusals []*domain.OrderRefusal, productTitleByNmID map[int64]string, loc *time.Location) string {
+func FormatOrderRefusalsMessageRU(refusals []*domain.OrderRefusal, productTitleByNmID map[int64]string, productTitleByBarcode map[string]string, loc *time.Location) string {
 	if len(refusals) == 0 {
 		return ""
 	}
@@ -64,8 +64,11 @@ func FormatOrderRefusalsMessageRU(refusals []*domain.OrderRefusal, productTitleB
 	for _, r := range refusals {
 		dateKey := r.CancelDate.In(loc).Format("02.01.2006")
 		name := productTitleByNmID[r.NmID]
-		if name == "" {
-			name = r.SupplierArticle
+		if name == "" && r.Barcode != "" && productTitleByBarcode != nil {
+			name = productTitleByBarcode[r.Barcode]
+		}
+		if name == "" && r.SupplierArticle != "" {
+			name = "арт. " + r.SupplierArticle
 		}
 		if name == "" {
 			name = fmt.Sprintf("nm %d", r.NmID)
@@ -110,7 +113,7 @@ func FormatSalesAndRefusalsMessageRU(events []*domain.SaleEvent, refusals []*dom
 		parts = append(parts, FormatSaleEventsMessageRU(events, productTitleByNmID, loc))
 	}
 	if len(refusals) > 0 {
-		parts = append(parts, FormatOrderRefusalsMessageRU(refusals, productTitleByNmID, loc))
+		parts = append(parts, FormatOrderRefusalsMessageRU(refusals, productTitleByNmID, nil, loc))
 	}
 	return strings.Join(parts, "\n\n")
 }
@@ -120,8 +123,8 @@ func formatSaleEventsBlockRU(header string, events []*domain.SaleEvent, productT
 	lines = append(lines, header)
 	for _, e := range events {
 		name := productTitleByNmID[e.NmID]
-		if name == "" {
-			name = e.SupplierArticle
+		if name == "" && e.SupplierArticle != "" {
+			name = "арт. " + e.SupplierArticle
 		}
 		if name == "" {
 			name = fmt.Sprintf("nm %d", e.NmID)

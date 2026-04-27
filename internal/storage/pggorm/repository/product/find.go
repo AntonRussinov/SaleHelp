@@ -124,6 +124,38 @@ func (r *Repository) GetByIDs(ctx context.Context, ids []int) (map[int]*domain.P
 	return out, nil
 }
 
+// GetTitlesByBarcodes returns a sku→title map for the given barcodes belonging to the shop.
+// Used as fallback when NmID from the Statistics API doesn't match the product's external_id.
+func (r *Repository) GetTitlesByBarcodes(ctx context.Context, shopID int, barcodes []string) (map[string]string, error) {
+	if len(barcodes) == 0 {
+		return map[string]string{}, nil
+	}
+
+	type row struct {
+		SKU   string `gorm:"column:sku"`
+		Title string `gorm:"column:title"`
+	}
+
+	var rows []row
+	if err := r.DB.WithContext(ctx).
+		Table("product_size_skus pssk").
+		Select("pssk.sku, p.title").
+		Joins("JOIN product_sizes ps ON ps.id = pssk.product_size_id").
+		Joins("JOIN products p ON p.id = ps.product_id").
+		Where("p.shop_id = ? AND pssk.sku IN ?", shopID, barcodes).
+		Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("product get titles by barcodes: %w", err)
+	}
+
+	out := make(map[string]string, len(rows))
+	for _, row := range rows {
+		if row.Title != "" {
+			out[row.SKU] = row.Title
+		}
+	}
+	return out, nil
+}
+
 func (r *Repository) CountByShop(ctx context.Context, shopID int) (int, error) {
 	var cnt int64
 	if err := r.DB.WithContext(ctx).

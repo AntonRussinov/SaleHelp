@@ -30,50 +30,66 @@ type (
 
 // basicPolicies — лимиты для базового токена WB (с 16 апреля 2026).
 // Документация: https://dev.wildberries.ru/news/281
+//
+// Burst = кол-во одновременных вызовов одной категории за один синк-цикл.
+// RegisterKey сбрасывает лимитеры в начале каждого синка, поэтому Burst не
+// приводит к превышению часового лимита WB: за час проходит 2 синка × Burst вызовов.
 var basicPolicies = map[RateCategory]RatePolicy{
 	// POST /content/v2/get/cards/list — 1/час (инкрементальный синк карточек, тяжёлый синк)
+	// Вызывается 1 раз за тяжёлый синк.
 	RateContent: {
 		Limit:    1,
 		Interval: time.Hour,
 		Burst:    1,
 	},
-	// GET /api/v3/stocks/{id}, GET /api/v3/warehouses — 10/час (тяжёлый синк)
+	// GET /api/v3/stocks/{id}, GET /api/v3/warehouses, GET /api/v3/warehouses/seller —
+	// 10/час (тяжёлый синк). За один тяжёлый синк: GetWarehouses + GetSellerWarehouses +
+	// GetStocks (×N складов). Burst=4 покрывает типовой магазин (2 склада × 1 чанк).
 	RateMarketplace: {
 		Limit:    10,
 		Interval: time.Hour,
-		Burst:    1,
+		Burst:    4,
 	},
-	// GET /api/v3/orders/new — 30/час (быстрый синк FBS-заказов)
+	// GET /api/v3/orders/new — 30/час (быстрый синк FBS-заказов).
+	// Вызывается 1 раз за быстрый синк.
 	RateFBSOrders: {
 		Limit:    30,
 		Interval: time.Hour,
 		Burst:    1,
 	},
-	// GET /api/v3/dbw/orders/new, /api/v3/dbs/orders/new — 10/час (быстрый синк)
+	// GET /api/v3/dbw/orders/new + /api/v3/dbs/orders/new — 10/час.
+	// За один быстрый синк: 2 вызова (DBW + DBS). Burst=2 → оба проходят сразу.
+	// Итого за час: 2 синка × 2 вызова = 4 req/hr << 10.
 	RateDBOrders: {
 		Limit:    10,
 		Interval: time.Hour,
-		Burst:    1,
+		Burst:    2,
 	},
-	// POST /api/v2/list/goods/filter, upload/task — 1/час (тяжёлый синк цен)
+	// POST /api/v2/list/goods/filter, upload/task — 1/час (тяжёлый синк цен).
+	// Вызывается 1 раз за тяжёлый синк.
 	RatePrices: {
 		Limit:    1,
 		Interval: time.Hour,
 		Burst:    1,
 	},
-	// statistics-api.wildberries.ru — не вошёл в новую таблицу лимитов WB, оставляем консервативно
+	// statistics-api.wildberries.ru — 1/мин (sales + order_refusals в быстром синке).
+	// За один быстрый синк: 2 вызова. Burst=2 → оба проходят сразу.
+	// Итого за час: 2 синка × 2 вызова = 4 req/hr << 60.
 	RateStatistics: {
 		Limit:    1,
 		Interval: time.Minute,
-		Burst:    1,
+		Burst:    2,
 	},
-	// GET /api/v1/feedbacks, GET /api/v1/questions — 5/час (чтение, базовый токен WB)
+	// GET /api/v1/feedbacks + GET /api/v1/questions — 5/час.
+	// За один быстрый синк: 2 вызова. Burst=2 → оба проходят сразу.
+	// Итого за час: 2 синка × 2 вызова = 4 req/hr ≤ 5.
 	RateFeedbacks: {
 		Limit:    5,
 		Interval: time.Hour,
-		Burst:    1,
+		Burst:    2,
 	},
-	// POST /api/v1/feedbacks/answer, PATCH /api/v1/questions — 5/час, burst 1 (базовый токен WB)
+	// POST /api/v1/feedbacks/answer, PATCH /api/v1/questions — 5/час.
+	// Вызывается по 1 разу за синк (если есть что отвечать).
 	RateFeedbacksWrite: {
 		Limit:    5,
 		Interval: time.Hour,

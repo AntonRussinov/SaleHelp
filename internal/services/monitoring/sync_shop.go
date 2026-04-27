@@ -209,7 +209,7 @@ func (s *Service) syncShopFBSOrders(ctx context.Context, shop *domain.Shop) erro
 }
 
 // syncShopDBWOrders получает новые сборочные задания DBW из WB и сохраняет в dbw_orders.
-// Дубликаты (shop_id, wb_order_id) игнорируются. Используется RateMarketplace (rate limiter).
+// Дубликаты (shop_id, wb_order_id) игнорируются. Используется RateDBOrders (rate limiter).
 func (s *Service) syncShopDBWOrders(ctx context.Context, shop *domain.Shop) error {
 	resp, err := s.wbClient.GetNewDBWOrders(ctx, shop.APIToken)
 	if err != nil {
