@@ -23,6 +23,7 @@ type (
 
 	ShopsRepo interface {
 		GetByID(ctx context.Context, id int) (*domain.Shop, error)
+		GetByExternalID(ctx context.Context, externalID string) (*domain.Shop, error)
 		ListByUser(ctx context.Context, userID, limit, offset int) ([]*domain.Shop, error)
 		Create(ctx context.Context, s *domain.Shop) error
 		Update(ctx context.Context, s *domain.Shop) error
@@ -37,26 +38,20 @@ type (
 		GetActiveByShopID(ctx context.Context, shopID int, now time.Time) (*domain.Subscription, error)
 	}
 
-	WBTokenChecker interface {
-		CheckWBToken(ctx context.Context, token string) error
-	}
-
 	Handler struct {
-		service         Service
-		shopsRepo       ShopsRepo
-		productRepo     ProductRepo
+		service          Service
+		shopsRepo        ShopsRepo
+		productRepo      ProductRepo
 		subscriptionRepo SubscriptionRepo
-		wbCheck         WBTokenChecker
 	}
 )
 
-func NewHandler(service Service, shopsRepo ShopsRepo, productRepo ProductRepo, wbCheck WBTokenChecker, subscriptionRepo SubscriptionRepo) *Handler {
+func NewHandler(service Service, shopsRepo ShopsRepo, productRepo ProductRepo, subscriptionRepo SubscriptionRepo) *Handler {
 	return &Handler{
-		service:         service,
-		shopsRepo:       shopsRepo,
-		productRepo:     productRepo,
+		service:          service,
+		shopsRepo:        shopsRepo,
+		productRepo:      productRepo,
 		subscriptionRepo: subscriptionRepo,
-		wbCheck:         wbCheck,
 	}
 }
 

@@ -8,14 +8,15 @@ import (
 	"salehelp/api"
 	"salehelp/domain"
 	auth_google_handler "salehelp/internal/handler/auth_google"
+	"salehelp/pkg/wbtoken"
 
 	"github.com/labstack/echo/v4"
 )
 
-// CreateShop создаёт магазин (проверка WB-токена, создание записи).
+// CreateShop создаёт магазин (декодирование и валидация WB-токена, дедупликация по sid).
 //
 // @Summary     Создать магазин
-// @Description Подключение магазина WB: проверка apiToken, создание shop. Требует JWT.
+// @Description Подключение магазина WB: валидация JWT-токена, создание shop. Требует JWT.
 // @Tags        shops
 // @Accept      json
 // @Produce     json
@@ -24,6 +25,7 @@ import (
 // @Success     201  {object} api.ShopResponse
 // @Failure     400  {object} api.HTTPError
 // @Failure     401  {object} api.HTTPError
+// @Failure     409  {object} api.HTTPError
 // @Router      /v1/shops [post]
 func (h *Handler) CreateShop(c echo.Context) error {
 	userID := auth_google_handler.UserIDFromContext(c.Request().Context())
@@ -40,11 +42,24 @@ func (h *Handler) CreateShop(c echo.Context) error {
 	}
 
 	token := strings.TrimSpace(req.APIToken)
-	if len(token) < 20 {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "apiToken too short"})
+
+	claims, err := wbtoken.Decode(token)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
-	if err := h.wbCheck.CheckWBToken(c.Request().Context(), token); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid wb token: " + err.Error()})
+	if err := wbtoken.Validate(claims); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	// Дедупликация по WB seller ID — один продавец может быть зарегистрирован только один раз.
+	existing, err := h.shopsRepo.GetByExternalID(c.Request().Context(), claims.SID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "ошибка проверки магазина"})
+	}
+	if existing != nil {
+		return c.JSON(http.StatusConflict, map[string]string{
+			"error": "Этот магазин уже подключён к системе. Если это твой магазин — войди в тот аккаунт, к которому он привязан.",
+		})
 	}
 
 	marketplace := strings.TrimSpace(strings.ToLower(req.Marketplace))
@@ -63,17 +78,13 @@ func (h *Handler) CreateShop(c echo.Context) error {
 		}
 	}
 
-	tokenType := strings.TrimSpace(req.TokenType)
-	if tokenType != domain.TokenTypeService {
-		tokenType = domain.TokenTypeBasic
-	}
-
 	shop := &domain.Shop{
 		UserID:           userID,
 		Marketplace:      marketplace,
+		ExternalID:       claims.SID,
+		TokenType:        claims.TokenType(),
 		Name:             name,
 		APIToken:         token,
-		TokenType:        tokenType,
 		IsActive:         true,
 		WBReportTimezone: tz,
 	}

@@ -41,6 +41,7 @@ type (
 	ShopsRepo interface {
 		Create(ctx context.Context, s *domain.Shop) error
 		GetByID(ctx context.Context, id int) (*domain.Shop, error)
+		GetByExternalID(ctx context.Context, externalID string) (*domain.Shop, error)
 		GetLastSyncAtMap(ctx context.Context, shopIDs []int) (map[int]*time.Time, error)
 		ListByUser(ctx context.Context, userID int, limit, offset int) ([]*domain.Shop, error)
 		ListByTelegramChat(ctx context.Context, chatID int64) ([]*domain.Shop, error)

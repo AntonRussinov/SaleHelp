@@ -4,17 +4,15 @@ import "time"
 
 // CreateShopRequest тело POST /shops.
 type CreateShopRequest struct {
-	Name             string `json:"name"             validate:"required,max=255"              example:"Мой магазин WB"`
-	APIToken         string `json:"apiToken"         validate:"required"                      example:"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ"`
-	Marketplace      string `json:"marketplace"      validate:"required,oneof=wildberries"    example:"wildberries"`
-	WBReportTimezone string `json:"wbReportTimezone"                                          example:"Europe/Moscow"`
-	TokenType        string `json:"tokenType"        validate:"omitempty,oneof=basic service" example:"basic"`
+	Name             string `json:"name"             validate:"required,max=255"           example:"Мой магазин WB"`
+	APIToken         string `json:"apiToken"         validate:"required"                   example:"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ"`
+	Marketplace      string `json:"marketplace"      validate:"required,oneof=wildberries" example:"wildberries"`
+	WBReportTimezone string `json:"wbReportTimezone"                                       example:"Europe/Moscow"`
 }
 
 // UpdateShopRequest тело PATCH /shop/:id.
 type UpdateShopRequest struct {
 	WBReportTimezone *string `json:"wbReportTimezone" example:"Asia/Almaty"`
-	TokenType        *string `json:"tokenType"        example:"service"`
 }
 
 // SubscriptionSummary краткая информация о подписке магазина.

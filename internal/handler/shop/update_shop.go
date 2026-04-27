@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"salehelp/api"
-	"salehelp/domain"
 
 	"github.com/labstack/echo/v4"
 )
@@ -50,14 +49,6 @@ func (h *Handler) UpdateShop(c echo.Context) error {
 			}
 		}
 		shop.WBReportTimezone = tz
-	}
-
-	if req.TokenType != nil {
-		tt := strings.TrimSpace(*req.TokenType)
-		if tt != domain.TokenTypeBasic && tt != domain.TokenTypeService {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "tokenType must be 'basic' or 'service'"})
-		}
-		shop.TokenType = tt
 	}
 
 	if err = h.shopsRepo.Update(c.Request().Context(), shop); err != nil {
