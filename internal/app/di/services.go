@@ -125,6 +125,7 @@ func (prov *Provider) initDependentServices() {
 		tgAdapter,
 		prov.WBClient,
 		wbReportLoc,
+		prov.cfg.TelegramAdminID,
 		prov.log,
 	)
 

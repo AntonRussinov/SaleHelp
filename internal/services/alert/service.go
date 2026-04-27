@@ -124,7 +124,6 @@ type DeliveriesFanoutRepo interface {
 type FBSOrderRepo interface {
 	ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.FBSOrder, error)
 	MarkNotified(ctx context.Context, orderIDs []int, at time.Time) error
-	CountNewByShopGroupedByNmID(ctx context.Context, shopID int) (map[int64]int, error)
 }
 
 type DBWOrderRepo interface {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"salehelp/domain"
@@ -71,6 +72,7 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 			s.log.Error("sync_shop: critical failure — data collection stopped",
 				"shop_id", shopID, "error", err.Error(), "critical", true,
 			)
+			s.notifyAdminSyncFailed(shop, err)
 		}
 
 		_ = s.shopsRepo.UpdateSyncStatus(ctx, shopID, upd)
@@ -81,8 +83,14 @@ func (s *Service) SyncShop(ctx context.Context, shopID int) (err error) {
 	}
 
 	if s.shouldRunHeavySync(shop) {
-		if err = s.runHeavySync(ctx, shop); err != nil {
-			return fmt.Errorf("sync shop: heavy sync: %w", err)
+		// Heavy sync получает отдельный контекст: он не делит таймаут с fast sync
+		// и его ошибка не блокирует алерты (fast sync данные уже в БД).
+		heavyCtx, heavyCancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		defer heavyCancel()
+		if heavyErr := s.runHeavySync(heavyCtx, shop); heavyErr != nil {
+			s.log.Error("sync_shop: heavy sync failed (non-fatal for alerts)",
+				"shop_id", shopID, "err", heavyErr)
+			s.notifyAdminSyncFailed(shop, fmt.Errorf("heavy sync: %w", heavyErr))
 		}
 	}
 
@@ -115,31 +123,49 @@ func (s *Service) shouldRunHeavySync(shop *domain.Shop) bool {
 	return time.Since(*shop.LastHeavySyncAt) >= heavySyncInterval
 }
 
+// nonFatalStepTimeout — максимальное время на один нефатальный шаг (DBW/DBS/feedbacks/questions).
+// Если WB API зависает, этот таймаут не даёт ему съесть весь ShopTimeout.
+const nonFatalStepTimeout = 90 * time.Second
+
 // runFastSync выполняется при каждом тике планировщика (каждые 30 мин).
-// Содержит только вызовы с высокими лимитами WB: заказы, отзывы, продажи.
+// Все шаги запускаются параллельно — лимиты WB раздельные по категориям.
+// Все шаги нефатальны: WB API нестабилен, синк best-effort.
+// Алерты запускаются всегда на основе того, что успело попасть в БД.
 func (s *Service) runFastSync(ctx context.Context, shop *domain.Shop) error {
-	if err := s.syncShopFBSOrders(ctx, shop); err != nil {
-		return fmt.Errorf("fbs orders: %w", err)
+	steps := []struct {
+		name string
+		fn   func(context.Context, *domain.Shop) error
+	}{
+		{"fbs orders", s.syncShopFBSOrders},
+		{"dbw orders", s.syncShopDBWOrders},
+		{"dbs orders", s.syncShopDBSOrders},
+		{"feedbacks", s.syncShopFeedbacks},
+		{"questions", s.syncShopQuestions},
+		{"sales", s.syncShopSales},
+		{"order refusals", s.syncShopOrderRefusals},
 	}
-	if err := s.syncShopDBWOrders(ctx, shop); err != nil {
-		return fmt.Errorf("dbw orders: %w", err)
+
+	var wg sync.WaitGroup
+	for _, st := range steps {
+		wg.Add(1)
+		st := st
+		go func() {
+			defer wg.Done()
+			s.runNonFatal(ctx, shop, st.name, st.fn)
+		}()
 	}
-	if err := s.syncShopDBSOrders(ctx, shop); err != nil {
-		return fmt.Errorf("dbs orders: %w", err)
-	}
-	if err := s.syncShopFeedbacks(ctx, shop); err != nil {
-		return fmt.Errorf("feedbacks: %w", err)
-	}
-	if err := s.syncShopQuestions(ctx, shop); err != nil {
-		return fmt.Errorf("questions: %w", err)
-	}
-	if err := s.syncShopSales(ctx, shop); err != nil {
-		return fmt.Errorf("sales: %w", err)
-	}
-	if err := s.syncShopOrderRefusals(ctx, shop); err != nil {
-		return fmt.Errorf("order refusals: %w", err)
-	}
+	wg.Wait()
 	return nil
+}
+
+// runNonFatal запускает шаг синка в дочернем контексте с таймаутом nonFatalStepTimeout.
+// Ошибка логируется как Warn и не прерывает синк.
+func (s *Service) runNonFatal(ctx context.Context, shop *domain.Shop, name string, fn func(context.Context, *domain.Shop) error) {
+	stepCtx, cancel := context.WithTimeout(ctx, nonFatalStepTimeout)
+	defer cancel()
+	if err := fn(stepCtx, shop); err != nil {
+		s.log.Warn("fast sync: step failed (non-fatal)", "step", name, "shop_id", shop.ID, "err", err)
+	}
 }
 
 // runHeavySync выполняется не чаще 1 раза в час (ограничен лимитами Content API WB).

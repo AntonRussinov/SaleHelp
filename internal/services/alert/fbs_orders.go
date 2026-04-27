@@ -60,7 +60,7 @@ func (e *AlertEngine) runShopFBSOrders(ctx context.Context, shopID int, products
 	}
 
 	// Определяем, по каким nmID активные заказы исчерпывают остаток.
-	stockWarningByNmID := e.buildStockWarningByNmID(ctx, shopID, nmIDSet, productIDByNmID)
+	stockWarningByNmID := e.buildStockWarningByNmID(ctx, shopID, orders, productIDByNmID)
 
 	endpoints, err := e.endpointsRepo.ListByShopID(ctx, shopID, true)
 	if err != nil {

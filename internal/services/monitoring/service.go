@@ -38,6 +38,7 @@ type (
 		tg                TelegramAPI
 		wbClient          WBClient
 		defaultReportLoc  *time.Location // пояс по умолчанию для отчётов WB (из конфига), если у магазина не задан wb_report_timezone
+		adminChatID       int64
 		log               *slog.Logger
 	}
 
@@ -207,6 +208,7 @@ func NewMonitoringService(
 	tg TelegramAPI,
 	wb WBClient,
 	defaultReportLoc *time.Location,
+	adminChatID int64,
 	log *slog.Logger,
 ) *Service {
 	return &Service{
@@ -233,6 +235,7 @@ func NewMonitoringService(
 		tg:                     tg,
 		wbClient:               wb,
 		defaultReportLoc:       defaultReportLoc,
+		adminChatID:            adminChatID,
 		log:                    log,
 	}
 }
