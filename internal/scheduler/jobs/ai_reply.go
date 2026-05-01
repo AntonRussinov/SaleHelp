@@ -13,6 +13,7 @@ type AISettingsRepo interface {
 // AIReplyRunner сервис генерации AI-ответов.
 type AIReplyRunner interface {
 	RunShop(ctx context.Context, shopID int, batchSize int) error
+	RunPendingSends(ctx context.Context) error
 }
 
 // AIReplyJob — джоба: для каждого магазина с is_active=true запускает обработку батча отзывов.
@@ -31,7 +32,7 @@ func NewAIReplyJob(log *slog.Logger, settings AISettingsRepo, runner AIReplyRunn
 	return &AIReplyJob{log: log, settings: settings, runner: runner, batchSize: batchSize}
 }
 
-// Run выполняет один проход: список магазинов с AI → для каждого RunShop.
+// Run выполняет один проход: генерация ответов + повторная отправка незавершённых.
 func (j *AIReplyJob) Run(ctx context.Context) {
 	shopIDs, err := j.settings.ListActiveShopIDs(ctx, 200)
 	if err != nil {
@@ -42,5 +43,9 @@ func (j *AIReplyJob) Run(ctx context.Context) {
 		if err := j.runner.RunShop(ctx, shopID, j.batchSize); err != nil {
 			j.log.Error("ai_reply job: run shop failed", "shop_id", shopID, "err", err)
 		}
+	}
+	// Повторная отправка ответов, которые были сгенерированы но не дошли до WB (rate limit или ошибка).
+	if err := j.runner.RunPendingSends(ctx); err != nil {
+		j.log.Error("ai_reply job: run pending sends failed", "err", err)
 	}
 }

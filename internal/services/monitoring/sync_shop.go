@@ -356,6 +356,11 @@ func (s *Service) syncShopSales(ctx context.Context, shop *domain.Shop) error {
 		notifiedAt = &now
 	}
 
+	// WB возвращает до ~100k записей за запрос. Если получили меньше — страниц больше нет,
+	// делать второй вызов не нужно. Это устраняет конкуренцию за RateStatistics-токен
+	// с параллельно работающим syncShopOrderRefusals.
+	const wbSalesPageLimit = 100_000
+
 	var batch []*domain.SaleEvent
 	for {
 		resp, err := s.wbClient.GetSales(ctx, shop.APIToken, dateFrom, 0, nil)
@@ -390,6 +395,9 @@ func (s *Service) syncShopSales(ctx context.Context, shop *domain.Shop) error {
 			if lastChange, _ := resp[len(resp)-1].ParseLastChangeDate(nil); !lastChange.IsZero() {
 				dateFrom = lastChange.Add(time.Millisecond)
 			}
+		}
+		if len(resp) < wbSalesPageLimit {
+			break // не полная страница — данных больше нет
 		}
 	}
 	if len(batch) > 0 {
@@ -457,6 +465,9 @@ func (s *Service) syncShopOrderRefusals(ctx context.Context, shop *domain.Shop) 
 		now := time.Now()
 		notifiedAt = &now
 	}
+
+	// WB возвращает до ~100k записей за запрос. Если меньше — страниц больше нет.
+	const wbOrdersPageLimit = 100_000
 
 	for {
 		resp, err := s.wbClient.GetOrders(ctx, shop.APIToken, dateFrom, 0, nil)
@@ -529,6 +540,9 @@ func (s *Service) syncShopOrderRefusals(ctx context.Context, shop *domain.Shop) 
 				dateFrom = lastChange.Add(time.Millisecond)
 				_ = s.orderSyncCursorRepo.Set(ctx, shop.ID, lastChange)
 			}
+		}
+		if len(resp) < wbOrdersPageLimit {
+			break // не полная страница — данных больше нет
 		}
 	}
 

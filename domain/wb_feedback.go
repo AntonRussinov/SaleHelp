@@ -67,7 +67,16 @@ type AIFeedbackReply struct {
 	Status       string // generated | error | skipped | no_quota
 	ErrorMessage string
 	TokensUsed   int
+	WBSentAt     *time.Time
 	CreatedAt    time.Time
+}
+
+// AIFeedbackPendingSend — сгенерированный ответ, ещё не отправленный в WB.
+type AIFeedbackPendingSend struct {
+	ReplyID      int
+	ShopID       int
+	AnswerText   string
+	WBFeedbackID string // WB-идентификатор отзыва (из wb_feedbacks.wb_feedback_id)
 }
 
 // ShopAIReplyQuota — квота/баланс ответов по магазину за месяц.

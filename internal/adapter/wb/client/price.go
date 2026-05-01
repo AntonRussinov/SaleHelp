@@ -77,7 +77,7 @@ func (c *Client) UploadPrices(ctx context.Context, apiKey string, req dto.Upload
 	}
 	var result dto.UploadTaskResponse
 	url := c.priceURL + "/api/v2/upload/task"
-	if err := c.doJSON(ctx, http.MethodPost, url, apiKey, RatePrices, req, &result); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, url, apiKey, RatePricesWrite, req, &result); err != nil {
 		return nil, err
 	}
 	if result.Error && result.ErrorText != "" {
@@ -94,7 +94,7 @@ func (c *Client) UploadPricesBySize(ctx context.Context, apiKey string, req dto.
 	}
 	var result dto.UploadTaskResponse
 	url := c.priceURL + "/api/v2/upload/task/size"
-	if err := c.doJSON(ctx, http.MethodPost, url, apiKey, RatePrices, req, &result); err != nil {
+	if err := c.doJSON(ctx, http.MethodPost, url, apiKey, RatePricesWrite, req, &result); err != nil {
 		return nil, err
 	}
 	if result.Error && result.ErrorText != "" {

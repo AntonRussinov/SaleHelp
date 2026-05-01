@@ -6,15 +6,16 @@ import (
 )
 
 type AIFeedbackReply struct {
-	ID           int       `gorm:"primaryKey;column:id"`
-	FeedbackID   int       `gorm:"column:feedback_id;not null"`
-	ShopID       int       `gorm:"column:shop_id;not null"`
-	AnswerText   string    `gorm:"column:answer_text;type:text"`
-	ModelUsed    string    `gorm:"column:model_used;type:text;not null"`
-	Status       string    `gorm:"column:status;type:text;not null"`
-	ErrorMessage string    `gorm:"column:error_message;type:text"`
-	TokensUsed   int       `gorm:"column:tokens_used;not null"`
-	CreatedAt    time.Time `gorm:"column:created_at;not null"`
+	ID           int        `gorm:"primaryKey;column:id"`
+	FeedbackID   int        `gorm:"column:feedback_id;not null"`
+	ShopID       int        `gorm:"column:shop_id;not null"`
+	AnswerText   string     `gorm:"column:answer_text;type:text"`
+	ModelUsed    string     `gorm:"column:model_used;type:text;not null"`
+	Status       string     `gorm:"column:status;type:text;not null"`
+	ErrorMessage string     `gorm:"column:error_message;type:text"`
+	TokensUsed   int        `gorm:"column:tokens_used;not null"`
+	WBSentAt     *time.Time `gorm:"column:wb_sent_at"`
+	CreatedAt    time.Time  `gorm:"column:created_at;not null"`
 }
 
 func (m *AIFeedbackReply) ToDomain() *domain.AIFeedbackReply {
@@ -30,6 +31,7 @@ func (m *AIFeedbackReply) ToDomain() *domain.AIFeedbackReply {
 		Status:       m.Status,
 		ErrorMessage: m.ErrorMessage,
 		TokensUsed:   m.TokensUsed,
+		WBSentAt:     m.WBSentAt,
 		CreatedAt:    m.CreatedAt,
 	}
 }

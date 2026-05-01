@@ -154,7 +154,8 @@ c.Response().Header().Get(echo.HeaderXRequestID)
 | `RateMarketplace` | GET заказы FBS/DBW/DBS | 10/hr | ~6 мин |
 | `RateFBSOrders` | GET новые сборочные задания | 30/hr | ~2 мин |
 | `RateDBOrders` | GET DB-заказы | 10/hr | ~6 мин |
-| `RatePrices` | GET/POST цены | 1/hr | ~1 час |
+| `RatePrices` | GET цены | 1/hr | ~1 час |
+| `RatePricesWrite` | POST цены (UploadPrices) | 1/hr | ~1 час |
 | `RateStatistics` | GET остатки, продажи | 1/min | ~1 мин |
 | `RateFeedbacks` | GET отзывы/вопросы | 5/hr | ~12 мин |
 | `RateFeedbacksWrite` | POST ответы на отзывы/вопросы | 5/hr | ~12 мин |
@@ -162,6 +163,8 @@ c.Response().Header().Get(echo.HeaderXRequestID)
 Для **сервисного токена** (`TokenTypeService = "service"`) — отдельная политика `servicePolicies` с повышенными лимитами (WB официально не публикует точные значения).
 
 Spacing реализован через `limiter.Wait(ctx)` — запрос блокируется до разрешения, не ретраит.
+
+Флаг `PersistAcrossSync: true` в `RatePolicy` — категория **не сбрасывается** при `RegisterKey`. Используется для `RateFeedbacksWrite`: AI-джоба отправляет ответы между синками, и сброс лимитера каждые 30 мин убивал retry-механизм (burst=1 пересоздавался → проходил только 1 ответ за цикл).
 
 ## Синк магазинов — архитектура
 
@@ -181,6 +184,7 @@ Spacing реализован через `limiter.Wait(ctx)` — запрос б�
 - Карточки товаров — инкрементально по курсору (`RateContent`, 1/hr)
 - Полный синк карточек раз в 7 дней (`fullCardsSyncInterval`)
 - Снапшоты цен и остатков (`RatePrices` + `RateStatistics`)
+- Запись цен (`RatePricesWrite`) — отделена от `RatePrices`, чтобы restore цен не ждал heavy sync
 
 `ShopTimeout: 8m` — таймаут на один магазин.
 
@@ -223,8 +227,8 @@ Spacing реализован через `limiter.Wait(ctx)` — запрос б�
 
 `internal/services/alert/stock_zero_orders.go` → `buildStockWarningByNmID`:
 - Вызывается в `runShopFBSOrders` перед форматированием сообщения
-- Считает pending FBS-заказы (`supplier_status='new'`) из DB — **без WB API**
-- Если `pending_count >= snapshot.StockTotal > 0` → ставит флаг `StockWarning` на строку заказа
+- Считает заказы из **текущего батча** (`[]*domain.FBSOrder` переданного аргументом) — не DB-запрос, только новые заказы из текущего уведомления
+- Если `count_in_batch >= snapshot.StockTotal > 0` → ставит флаг `StockWarning` на строку заказа
 - В уведомлении о заказе добавляется `⚠️ последний товар!`
 - Не создаёт отдельный `AlertTriggered` — нет дублей с последующим снапшотным алертом
 
@@ -244,7 +248,19 @@ Spacing реализован через `limiter.Wait(ctx)` — запрос б�
 ### Уведомления о заказах (`internal/services/notification/assembly_orders.go`)
 
 `AssemblyOrderRow.StockWarning = true` → добавляет `⚠️ последний товар!` к строке заказа.
-FBS: `FormatFBSOrdersMessageRU(orders, titleByNmID, stockWarningByNmID, loc)`.
+FBS: `FormatAssemblyOrdersMessageRU(orderType, orders, titleByNmID, loc)` — группирует заказы по NmID, показывает `• <название> — N шт.` (номер заказа не выводится).
+
+### Пагинация синка продаж и отказов
+
+`syncShopSales` и `syncShopOrderRefusals` используют `RateStatistics` (burst=2). Оба делают pagination-loop; каждый цикл — 2 вызова API. Чтобы не тратить лишний токен на финальный пустой запрос, цикл завершается **досрочно** при `len(resp) < pageLimit`:
+
+```go
+const wbSalesPageLimit = 100_000
+// в конце цикла:
+if len(resp) < wbSalesPageLimit { break }
+```
+
+Без этого 3-й вызов ждёт 60 с и превышает `nonFatalStepTimeout` → алерты по продажам не доставляются.
 
 ### Telegram callback — кнопка «Вернуть цены назад»
 
@@ -255,3 +271,21 @@ FBS: `FormatFBSOrdersMessageRU(orders, titleByNmID, stockWarningByNmID, loc)`.
    - `failed` → показывает диалог подтверждения (ретрай)
    - `pending` → показывает диалог подтверждения
 2. «Да» → `handleConfirmRestore` → `priceRestore.Restore` → broadcast при успехе
+
+## AI-ответы на отзывы — retry-механизм
+
+Квота списывается и `is_replied=true` ставится **до** отправки в WB — чтобы при ошибке отправки не обработать отзыв повторно. Факт доставки в WB трекается отдельным полем `wb_sent_at TIMESTAMPTZ` (миграция `0024_ai_feedback_reply_wb_sent.sql`).
+
+Поток `ProcessOne` (`internal/services/ai_reply/service.go`):
+1. Генерирует ответ → списывает квоту → сохраняет в `ai_feedback_replies` (status=`generated`, `wb_sent_at=NULL`)
+2. Вызывает `MarkReplied` на `wb_feedbacks` (предотвращает повторную обработку)
+3. Пытается `AnswerFeedback` в WB — при успехе вызывает `MarkWBSent` (проставляет `wb_sent_at`)
+4. При ошибке отправки — логирует Warn "will retry", `wb_sent_at` остаётся NULL
+
+`RunPendingSends` (`internal/services/ai_reply/worker.go`):
+- Берёт до 10 записей с `status=generated AND wb_sent_at IS NULL`
+- Каждая попытка — `context.WithTimeout(5s)`
+- `DeadlineExceeded` (rate limit WB 1/hr) → логирует Info, пропускает, попробует на следующем тике джобы
+- Успех → `MarkWBSent`
+
+Джоба (`internal/scheduler/jobs/ai_reply.go`): сначала `RunShop` по всем активным магазинам, затем `RunPendingSends`.
