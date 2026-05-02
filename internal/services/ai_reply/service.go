@@ -175,30 +175,12 @@ func (s *Service) ProcessOne(ctx context.Context, f *domain.WBFeedback) error {
 	}); err != nil {
 		s.log.Warn("ai_reply: ledger create failed", "feedback_id", f.ID, "err", err)
 	}
-	replyID := s.saveReplyLog(ctx, f.ID, f.ShopID, answerText, result.ModelUsed, domain.AIReplyStatusGenerated, "", result.TokensUsed)
+	s.saveReplyLog(ctx, f.ID, f.ShopID, answerText, result.ModelUsed, domain.AIReplyStatusGenerated, "", result.TokensUsed)
 
-	// Помечаем как обработанный ДО отправки в WB: квота уже списана, повторная обработка недопустима.
-	// Если WB-отправка упадёт — retry-джоба подберёт запись по wb_sent_at IS NULL.
-	now := time.Now()
-	if err := s.feedbackRepo.MarkReplied(ctx, []int{f.ID}, now); err != nil {
+	// Помечаем как обработанный сразу после сохранения: квота уже списана, повторная
+	// обработка недопустима. Отправка в WB — задача AIReplySendJob (по wb_sent_at IS NULL).
+	if err := s.feedbackRepo.MarkReplied(ctx, []int{f.ID}, time.Now()); err != nil {
 		s.log.Error("ai_reply: mark replied failed", "feedback_id", f.ID, "err", err)
-	}
-
-	// Отправляем ответ в WB, если есть текст (WB требует 2–5000 символов).
-	// При ошибке (rate limit, таймаут) — RunPendingSends подберёт и повторит отправку.
-	if len([]rune(answerText)) >= 2 && s.wbFeedbackSend != nil && s.shopRepo != nil {
-		shop, err := s.shopRepo.GetByID(ctx, f.ShopID)
-		if err != nil {
-			s.log.Warn("ai_reply: get shop for WB send failed", "feedback_id", f.ID, "shop_id", f.ShopID, "err", err)
-		} else if shop != nil && shop.APIToken != "" {
-			if err := s.wbFeedbackSend.AnswerFeedback(ctx, shop.APIToken, f.WBFeedbackID, answerText); err != nil {
-				s.log.Warn("ai_reply: send reply to WB failed, will retry", "feedback_id", f.ID, "wb_feedback_id", f.WBFeedbackID, "err", err)
-			} else if replyID > 0 {
-				if err := s.replyRepo.MarkWBSent(ctx, replyID, time.Now()); err != nil {
-					s.log.Warn("ai_reply: mark wb_sent_at failed", "reply_id", replyID, "err", err)
-				}
-			}
-		}
 	}
 
 	return nil
@@ -215,7 +197,7 @@ func truncate500(s string) string {
 	return string(runes[:max])
 }
 
-func (s *Service) saveReplyLog(ctx context.Context, feedbackID, shopID int, answerText, modelUsed, status, errMsg string, tokensUsed int) int {
+func (s *Service) saveReplyLog(ctx context.Context, feedbackID, shopID int, answerText, modelUsed, status, errMsg string, tokensUsed int) {
 	if modelUsed == "" {
 		modelUsed = "n/a"
 	}
@@ -229,5 +211,4 @@ func (s *Service) saveReplyLog(ctx context.Context, feedbackID, shopID int, answ
 		TokensUsed:   tokensUsed,
 	}
 	_ = s.replyRepo.Create(ctx, d)
-	return d.ID
 }

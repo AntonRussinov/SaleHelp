@@ -276,16 +276,19 @@ if len(resp) < wbSalesPageLimit { break }
 
 Квота списывается и `is_replied=true` ставится **до** отправки в WB — чтобы при ошибке отправки не обработать отзыв повторно. Факт доставки в WB трекается отдельным полем `wb_sent_at TIMESTAMPTZ` (миграция `0024_ai_feedback_reply_wb_sent.sql`).
 
-Поток `ProcessOne` (`internal/services/ai_reply/service.go`):
+**Разделение генерации и отправки:**
+
+`ProcessOne` (`internal/services/ai_reply/service.go`) — только генерация:
 1. Генерирует ответ → списывает квоту → сохраняет в `ai_feedback_replies` (status=`generated`, `wb_sent_at=NULL`)
 2. Вызывает `MarkReplied` на `wb_feedbacks` (предотвращает повторную обработку)
-3. Пытается `AnswerFeedback` в WB — при успехе вызывает `MarkWBSent` (проставляет `wb_sent_at`)
-4. При ошибке отправки — логирует Warn "will retry", `wb_sent_at` остаётся NULL
+3. В WB НЕ отправляет — это задача `AIReplySendJob`
 
-`RunPendingSends` (`internal/services/ai_reply/worker.go`):
+`RunPendingSends` (`internal/services/ai_reply/worker.go`) — только отправка:
 - Берёт до 10 записей с `status=generated AND wb_sent_at IS NULL`
-- Каждая попытка — `context.WithTimeout(5s)`
-- `DeadlineExceeded` (rate limit WB 1/hr) → логирует Info, пропускает, попробует на следующем тике джобы
-- Успех → `MarkWBSent`
+- Каждая попытка — `context.WithTimeout(5s)` (быстро определяет наличие токена в rate limiter)
+- Если токен доступен → `AnswerFeedback` → `MarkWBSent`
+- `DeadlineExceeded` → rate limit, пропускает, попробует на следующем тике
 
-Джоба (`internal/scheduler/jobs/ai_reply.go`): сначала `RunShop` по всем активным магазинам, затем `RunPendingSends`.
+Джоба генерации (`internal/scheduler/jobs/ai_reply.go`, `AIReplySpec: "0/30 * * * *"`): вызывает `RunShop` для каждого активного магазина. Интерфейс: `AIReplyGenerator`.
+
+Джоба отправки (`internal/scheduler/jobs/ai_reply_send.go`, `AIReplySendSpec: "0/12 * * * *"`): только `RunPendingSends` каждые 12 минут. Совпадает с лимитом WB 5/час (1 ответ каждые 12 мин). Интерфейс: `AIReplySender`.

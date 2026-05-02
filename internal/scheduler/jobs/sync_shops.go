@@ -49,7 +49,8 @@ type SyncActiveShopsConfig struct {
 	BatchSize              int
 	SubscriptionNotifySpec string
 	StockReplenishSpec     string // cron для ежедневной рассылки о пополнении склада, напр. "0 10 * * *" (10:00)
-	AIReplySpec            string // cron для генерации AI-ответов на отзывы, напр. "0/10 * * * *" (каждые 10 мин)
+	AIReplySpec            string // cron для генерации AI-ответов на отзывы, напр. "0/30 * * * *" (каждые 30 мин)
+	AIReplySendSpec        string // cron для отправки сгенерированных ответов в WB, напр. "0/12 * * * *" (каждые 12 мин = лимит WB 5/час)
 	RefusalDigestSpec      string // cron для суточного дайджеста отказов (не забрали), напр. "0 7 * * *" (07:00)
 }
 
