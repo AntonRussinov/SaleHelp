@@ -88,7 +88,7 @@ func (h *Handler) CreateShop(c echo.Context) error {
 		IsActive:         true,
 		WBReportTimezone: tz,
 	}
-	if err := h.shopsRepo.Create(c.Request().Context(), shop); err != nil {
+	if err := h.shopCreator.CreateShop(c.Request().Context(), shop); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 

@@ -21,11 +21,14 @@ type (
 		SyncShop(ctx context.Context, shopID int) error
 	}
 
+	ShopCreator interface {
+		CreateShop(ctx context.Context, shop *domain.Shop) error
+	}
+
 	ShopsRepo interface {
 		GetByID(ctx context.Context, id int) (*domain.Shop, error)
 		GetByExternalID(ctx context.Context, externalID string) (*domain.Shop, error)
 		ListByUser(ctx context.Context, userID, limit, offset int) ([]*domain.Shop, error)
-		Create(ctx context.Context, s *domain.Shop) error
 		Update(ctx context.Context, s *domain.Shop) error
 	}
 
@@ -40,15 +43,17 @@ type (
 
 	Handler struct {
 		service          Service
+		shopCreator      ShopCreator
 		shopsRepo        ShopsRepo
 		productRepo      ProductRepo
 		subscriptionRepo SubscriptionRepo
 	}
 )
 
-func NewHandler(service Service, shopsRepo ShopsRepo, productRepo ProductRepo, subscriptionRepo SubscriptionRepo) *Handler {
+func NewHandler(service Service, shopCreator ShopCreator, shopsRepo ShopsRepo, productRepo ProductRepo, subscriptionRepo SubscriptionRepo) *Handler {
 	return &Handler{
 		service:          service,
+		shopCreator:      shopCreator,
 		shopsRepo:        shopsRepo,
 		productRepo:      productRepo,
 		subscriptionRepo: subscriptionRepo,

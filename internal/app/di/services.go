@@ -14,6 +14,7 @@ import (
 	"salehelp/internal/services/price_restore"
 	"salehelp/internal/services/product"
 	"salehelp/internal/services/refusal_digest"
+	shopservice "salehelp/internal/services/shop"
 	"salehelp/internal/services/stock_replenish"
 	"salehelp/internal/services/subscription"
 	subscriptionmonitor "salehelp/internal/services/subscription_monitor"
@@ -34,6 +35,7 @@ type Services struct {
 	Monitoring           *monitoring.Service
 	Notifier             *notifications.Service //Dispatcher
 	ProductList          *product.ListService
+	Shop                 *shopservice.Service
 	TelegramBot          *telegrambot.Service
 	Subscription         *subscription.Service
 	SubscriptionMonitor  *subscriptionmonitor.Monitor
@@ -53,6 +55,13 @@ func (prov *Provider) InitServices() {
 func (prov *Provider) initIndependentServices() {
 	prov.Services.AlertService = alert.NewAlertService(
 		prov.Repositories.Alert,
+		prov.log,
+	)
+
+	prov.Services.Shop = shopservice.New(
+		prov.Repositories.Shop,
+		prov.Repositories.Alert,
+		prov.Repositories.Subscription,
 		prov.log,
 	)
 

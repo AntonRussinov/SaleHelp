@@ -36,7 +36,7 @@ func (prov *Provider) InitHandlers() error {
 	// temporary
 	// prov.Handlers.Product = product.NewHandler(prov.Services.Product, prov.Presenters.Product)
 
-	prov.Handlers.Shop = shop.NewHandler(prov.Services.Monitoring, prov.Repositories.Shop, prov.Repositories.Product, prov.Repositories.Subscription)
+	prov.Handlers.Shop = shop.NewHandler(prov.Services.Monitoring, prov.Services.Shop, prov.Repositories.Shop, prov.Repositories.Product, prov.Repositories.Subscription)
 	prov.Handlers.TelegramBot = telegram.NewHandler(prov.Services.TelegramBot, prov.cfg.TelegramSecret)
 	prov.Handlers.Product = product.NewHandler(prov.Services.ProductList, nil)
 	prov.Handlers.Subscription = subscription.NewHandler(prov.Services.Subscription, prov.Repositories.Shop)
