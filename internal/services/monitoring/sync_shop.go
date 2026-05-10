@@ -141,8 +141,6 @@ func (s *Service) runFastSync(ctx context.Context, shop *domain.Shop) error {
 		{"dbs orders", s.syncShopDBSOrders},
 		{"feedbacks", s.syncShopFeedbacks},
 		{"questions", s.syncShopQuestions},
-		{"sales", s.syncShopSales},
-		{"order refusals", s.syncShopOrderRefusals},
 	}
 
 	var wg sync.WaitGroup
@@ -613,6 +611,31 @@ func formatRevenueRU(v float64) string {
 		s = string(b)
 	}
 	return sign + s + "₽"
+}
+
+// SyncShopDailyStats синхронизирует статистику продаж и отказов для одного магазина.
+// Вызывается ежедневной cron-джобой вместо fast sync, чтобы снизить расход WB API.
+func (s *Service) SyncShopDailyStats(ctx context.Context, shopID int) error {
+	shop, err := s.shopsRepo.GetByID(ctx, shopID)
+	if err != nil {
+		return fmt.Errorf("sync daily stats: get shop %d: %w", shopID, err)
+	}
+	if shop == nil {
+		return fmt.Errorf("sync daily stats: shop %d not found", shopID)
+	}
+	if shop.APIToken == "" {
+		return fmt.Errorf("sync daily stats: shop %d has empty API key", shopID)
+	}
+
+	s.wbClient.SetTokenType(shop.APIToken, shop.TokenType)
+
+	if err := s.syncShopSales(ctx, shop); err != nil {
+		s.log.Warn("sync daily stats: sales failed", "shop_id", shopID, "err", err)
+	}
+	if err := s.syncShopOrderRefusals(ctx, shop); err != nil {
+		s.log.Warn("sync daily stats: order refusals failed", "shop_id", shopID, "err", err)
+	}
+	return nil
 }
 
 // syncShopProductsIncremental синхронизирует карточки WB инкрементально, используя

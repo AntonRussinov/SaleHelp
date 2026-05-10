@@ -125,11 +125,6 @@ func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
 		return err
 	}
 
-	// новые выкупы/возвраты: отправить в Telegram и пометить как уведомлённые
-	if err := e.runShopSaleEvents(ctx, shopID, products, loc); err != nil {
-		return err
-	}
-
 	// новые отзывы и вопросы: отправить в Telegram и пометить как уведомлённые
 	if err := e.runShopWBFeedbacks(ctx, shopID); err != nil {
 		return err

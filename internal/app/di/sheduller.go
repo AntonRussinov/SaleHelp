@@ -131,6 +131,37 @@ func (prov *Provider) initScheduler(ctx context.Context) error {
 		}
 	}
 
+	// Ежедневный синк продаж + отказов из WB (до дайджестов, 06:00 МСК).
+	// supplier/sales и supplier/orders — дорогие WB API вызовы; раз в сутки достаточно для дайджестов.
+	if prov.Services.SalesDigest != nil {
+		syncStatsDailySpec := prov.cfg.Scheduler.SyncStatsDailySpec
+		if syncStatsDailySpec == "" {
+			syncStatsDailySpec = "0 6 * * *"
+		}
+		syncStatsDailyJob := jobs.NewSyncStatsDailyJob(
+			prov.log,
+			prov.Repositories.Shop,
+			prov.Services.Monitoring,
+			prov.cfg.Scheduler.Concurrency,
+			prov.cfg.Scheduler.ShopTimeout,
+		)
+		if err := prov.scheduler.Register(ctx, syncStatsDailySpec, "sync_stats_daily", syncStatsDailyJob.Run); err != nil {
+			return err
+		}
+	}
+
+	// Дайджест выкупов/возвратов: ежедневно в 07:00 МСК (после sync_stats_daily).
+	if prov.Services.SalesDigest != nil {
+		salesDigestSpec := prov.cfg.Scheduler.SalesDigestSpec
+		if salesDigestSpec == "" {
+			salesDigestSpec = "0 7 * * *"
+		}
+		salesDigestJob := jobs.NewSalesDigestJob(prov.log, prov.Services.SalesDigest)
+		if err := prov.scheduler.Register(ctx, salesDigestSpec, "sales_digest", salesDigestJob.Run); err != nil {
+			return err
+		}
+	}
+
 	// Дайджест отказов (не забрали в ПВЗ): ежедневно по расписанию из конфига (по умолчанию 07:00 МСК).
 	if prov.Services.RefusalDigest != nil {
 		refusalDigestSpec := prov.cfg.Scheduler.RefusalDigestSpec

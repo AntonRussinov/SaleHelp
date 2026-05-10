@@ -80,8 +80,12 @@ func (c *Client) UploadPrices(ctx context.Context, apiKey string, req dto.Upload
 	if err := c.doJSON(ctx, http.MethodPost, url, apiKey, RatePricesWrite, req, &result); err != nil {
 		return nil, err
 	}
-	if result.Error && result.ErrorText != "" {
-		return &result, fmt.Errorf("wb upload prices: %s", result.ErrorText)
+	if result.Error {
+		msg := result.ErrorText
+		if msg == "" {
+			msg = "unknown error"
+		}
+		return &result, fmt.Errorf("wb upload prices: %s", msg)
 	}
 	return &result, nil
 }
@@ -97,8 +101,12 @@ func (c *Client) UploadPricesBySize(ctx context.Context, apiKey string, req dto.
 	if err := c.doJSON(ctx, http.MethodPost, url, apiKey, RatePricesWrite, req, &result); err != nil {
 		return nil, err
 	}
-	if result.Error && result.ErrorText != "" {
-		return &result, fmt.Errorf("wb upload prices by size: %s", result.ErrorText)
+	if result.Error {
+		msg := result.ErrorText
+		if msg == "" {
+			msg = "unknown error"
+		}
+		return &result, fmt.Errorf("wb upload prices by size: %s", msg)
 	}
 	return &result, nil
 }

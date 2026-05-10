@@ -14,6 +14,7 @@ import (
 	"salehelp/internal/services/price_restore"
 	"salehelp/internal/services/product"
 	"salehelp/internal/services/refusal_digest"
+	"salehelp/internal/services/sales_digest"
 	shopservice "salehelp/internal/services/shop"
 	"salehelp/internal/services/stock_replenish"
 	"salehelp/internal/services/subscription"
@@ -41,6 +42,7 @@ type Services struct {
 	SubscriptionMonitor  *subscriptionmonitor.Monitor
 	StockReplenish       *stock_replenish.Service
 	RefusalDigest        *refusal_digest.Service
+	SalesDigest          *sales_digest.Service
 	PriceRestore         *price_restore.Service
 	AIReply              *ai_reply.Service
 	AuthGoogle           *auth_google.Service
@@ -256,6 +258,17 @@ func (prov *Provider) initDependentServices() {
 	prov.Services.RefusalDigest = refusal_digest.New(
 		prov.Repositories.Shop,
 		prov.Repositories.OrderRefusal,
+		prov.Repositories.Product,
+		prov.Repositories.NotificationEndpoint,
+		tgAdapter,
+		prov.Services.NotificationSettings,
+		wbReportLoc,
+		prov.log,
+	)
+
+	prov.Services.SalesDigest = sales_digest.New(
+		prov.Repositories.Shop,
+		prov.Repositories.SaleEvent,
 		prov.Repositories.Product,
 		prov.Repositories.NotificationEndpoint,
 		tgAdapter,

@@ -65,9 +65,6 @@ func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 		return failAndReturn(0, fmt.Errorf("shop id=%d: %w", shopID, err))
 	}
 	apiKey := strings.TrimSpace(shop.APIToken)
-	if apiKey != "" && !strings.HasPrefix(apiKey, "Bearer ") {
-		apiKey = "Bearer " + apiKey
-	}
 
 	var taskGoods []dto.UploadTaskGood
 	var taskSizeGoods []dto.UploadTaskSizeGood

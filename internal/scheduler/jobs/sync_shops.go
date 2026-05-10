@@ -52,6 +52,8 @@ type SyncActiveShopsConfig struct {
 	AIReplySpec            string // cron для генерации AI-ответов на отзывы, напр. "0/30 * * * *" (каждые 30 мин)
 	AIReplySendSpec        string // cron для отправки сгенерированных ответов в WB, напр. "0/12 * * * *" (каждые 12 мин = лимит WB 5/час)
 	RefusalDigestSpec      string // cron для суточного дайджеста отказов (не забрали), напр. "0 7 * * *" (07:00)
+	SyncStatsDailySpec     string // cron для ежедневного синка продаж+отказов из WB, напр. "0 6 * * *" (06:00)
+	SalesDigestSpec        string // cron для суточного дайджеста выкупов/возвратов, напр. "0 7 * * *" (07:00)
 }
 
 type SyncActiveShopsJob struct {

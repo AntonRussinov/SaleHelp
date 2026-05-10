@@ -70,7 +70,7 @@ func (prov *Provider) initWBClient() {
 		}
 	}
 	wbdto.SetWBReportLocation(loc)
-	prov.WBClient = wbclient.New(httpClient, loc)
+	prov.WBClient = wbclient.New(httpClient, loc, prov.cfg.WBXClientSecret)
 }
 
 func (prov *Provider) Init(ctx context.Context) error {

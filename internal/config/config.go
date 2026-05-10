@@ -19,7 +19,8 @@ type (
 		TelegramBotUsername string
 		TelegramAdminID     int64
 		GormLogLevel        int
-		ClientSecret        string
+		// WBXClientSecret — сервисный секрет WB для заголовка X-Client-Secret. Через env: WB_X_CLIENT_SECRET. Пока не получен — оставить пустым, запросы уйдут без заголовка.
+		WBXClientSecret string `mapstructure:"wb_x_client_secret"`
 		AllowedOrigins      []string
 		Auth                auth.Config
 		DB                  db.Config
@@ -92,6 +93,9 @@ func Read(file string) (*Config, error) {
 	}
 	if v := os.Getenv("JWT_SECRET"); v != "" {
 		cfg.Service.JWTSecret = v
+	}
+	if v := os.Getenv("WB_X_CLIENT_SECRET"); v != "" {
+		cfg.Service.WBXClientSecret = v
 	}
 
 	return &cfg, nil

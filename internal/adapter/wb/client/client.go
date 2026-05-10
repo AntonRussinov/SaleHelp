@@ -14,6 +14,7 @@ type Client struct {
 	feedbacksURL    string
 	limiters        *LimiterManager
 	reportLocation  *time.Location // для dateFrom в отчётах (sales, orders) — в каком поясе отправлять
+	xClientSecret   string         // X-Client-Secret; пустая строка — заголовок не выставляется
 }
 
 // SetTokenType регистрирует тип токена для apiKey, выбирая соответствующий набор rate-limit политик.
@@ -23,8 +24,9 @@ func (c *Client) SetTokenType(apiKey, tokenType string) {
 }
 
 // New создаёт WB-клиент. reportLocation — часовой пояс для параметра dateFrom в отчётах (sales, orders);
-// если nil, используется Europe/Moscow.
-func New(httpClient *http.Client, reportLocation *time.Location) *Client {
+// если nil, используется Europe/Moscow. xClientSecret — сервисный секрет WB (X-Client-Secret);
+// если пустая строка, заголовок не выставляется.
+func New(httpClient *http.Client, reportLocation *time.Location, xClientSecret string) *Client {
 	if reportLocation == nil {
 		reportLocation, _ = time.LoadLocation("Europe/Moscow")
 		if reportLocation == nil {
@@ -40,5 +42,6 @@ func New(httpClient *http.Client, reportLocation *time.Location) *Client {
 		feedbacksURL:   "https://feedbacks-api.wildberries.ru",
 		limiters:       NewLimiterManager(),
 		reportLocation: reportLocation,
+		xClientSecret:  xClientSecret,
 	}
 }

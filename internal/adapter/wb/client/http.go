@@ -63,6 +63,9 @@ func (c *Client) doJSON(
 		if apiKey != "" {
 			req.Header.Set("Authorization", apiKey)
 		}
+		if c.xClientSecret != "" {
+			req.Header.Set("X-Client-Secret", c.xClientSecret)
+		}
 
 		// 4) Выполняем запрос
 		resp, err := c.httpClient.Do(req)
