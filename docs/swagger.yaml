@@ -99,12 +99,6 @@ definitions:
         example: Мой магазин WB
         maxLength: 255
         type: string
-      tokenType:
-        enum:
-        - basic
-        - service
-        example: basic
-        type: string
       wbReportTimezone:
         example: Europe/Moscow
         type: string
@@ -229,14 +223,14 @@ definitions:
     type: object
   api.SubscriptionSummary:
     properties:
+      expiresAt:
+        example: "2025-01-15T00:00:00Z"
+        type: string
       hasActive:
         example: true
         type: boolean
-      plan:
-        example: base
-        type: string
-      validTo:
-        example: "2025-01-15T00:00:00Z"
+      tier:
+        example: business
         type: string
     type: object
   api.UpdateAlertRequest:
@@ -277,9 +271,6 @@ definitions:
     type: object
   api.UpdateShopRequest:
     properties:
-      tokenType:
-        example: service
-        type: string
       wbReportTimezone:
         example: Asia/Almaty
         type: string
@@ -419,89 +410,70 @@ definitions:
     type: object
   subscription.GrantInput:
     properties:
-      base_amount_minor:
-        description: 'База за период (в minor units: копейки/тиыны)'
-        example: 49900
-        type: integer
       comment:
-        description: опционально
-        example: Оплата по счёту №123
-        type: string
-      currency_code:
-        description: '"RUB"|"KZT"|...'
-        example: RUB
-        type: string
-      extra_telegram_chats:
-        description: Сколько доп. телеграм чатов купить (помимо 1 базового)
-        example: 0
-        type: integer
-      paid_at:
-        description: опционально
-        example: "2024-01-15T10:00:00Z"
+        example: manual grant
         type: string
       period_months:
-        description: 1|3|6
+        description: 1|3|6|12
         example: 1
+        type: integer
+      price_minor:
+        description: monthly price in kopecks
+        example: 299000
         type: integer
       shopID:
         type: integer
-      source:
-        description: manual|...
-        example: manual
+      tier:
+        description: start|business|pro
+        example: business
         type: string
-      telegram_addon_amount_minor:
-        description: |-
-          Цена аддона за весь период (minor units).
-          Например: 2 доп чата на 1 месяц * 500₽ = 100000 (копеек)
-        example: 0
-        type: integer
     type: object
   subscription.GrantResult:
     properties:
-      allowed_telegram_chats:
-        example: 1
+      ai_quota:
+        example: 200
+        type: integer
+      expires_at:
+        example: "2026-06-11T00:00:00Z"
+        type: string
+      max_shops:
+        example: 2
         type: integer
       subscription_id:
         example: 7
         type: integer
-      valid_from:
-        example: "2024-01-15T00:00:00Z"
+      tier:
+        example: business
         type: string
-      valid_to:
-        example: "2024-02-15T00:00:00Z"
-        type: string
+      user_id:
+        example: 3
+        type: integer
     type: object
   subscription.StatusResult:
     properties:
+      ai_quota:
+        example: 200
+        type: integer
+      ai_used:
+        example: 12
+        type: integer
       allowed_telegram_chats:
-        example: 1
+        example: 3
         type: integer
-      base_amount_minor:
-        example: 49900
-        type: integer
-      currency_code:
-        example: RUB
+      expires_at:
+        example: "2026-06-11T00:00:00Z"
         type: string
-      enabled_telegram_chats:
-        example: 1
-        type: integer
       has_active_subscription:
         example: true
         type: boolean
-      period_months:
-        example: 1
+      max_shops:
+        example: 2
         type: integer
-      plan:
-        example: base
-        type: string
       status:
         example: active
         type: string
-      valid_from:
-        example: "2024-01-15T00:00:00Z"
-        type: string
-      valid_to:
-        example: "2024-02-15T00:00:00Z"
+      tier:
+        example: business
         type: string
     type: object
 host: localhost:8080
@@ -789,15 +761,15 @@ paths:
     post:
       consumes:
       - application/json
-      description: 'Создаёт запись подписки (period_months: 1|3|6), опционально аддоны
-        на доп. Telegram-чаты. Вызывать может только админ.'
+      description: Создаёт подписку для пользователя, владеющего магазином. Вызывать
+        может только админ.
       parameters:
       - description: ID магазина
         in: path
         name: id
         required: true
         type: integer
-      - description: Период, валюта, суммы, доп. чаты
+      - description: Тариф, период, сумма
         in: body
         name: body
         required: true
@@ -903,8 +875,7 @@ paths:
       - shops
   /v1/shops:
     get:
-      description: 'Магазины пользователя (JWT). Query: limit, offset. Включает краткую
-        информацию о подписке каждого магазина.'
+      description: 'Магазины пользователя (JWT). Query: limit, offset.'
       parameters:
       - default: 20
         description: Лимит
@@ -937,8 +908,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: 'Подключение магазина WB: проверка apiToken, создание shop. Требует
-        JWT.'
+      description: 'Подключение магазина WB: валидация JWT-токена, создание shop.
+        Требует JWT.'
       parameters:
       - description: Название, токен WB, маркетплейс
         in: body
@@ -959,6 +930,10 @@ paths:
             $ref: '#/definitions/api.HTTPError'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/api.HTTPError'
       security:

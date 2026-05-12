@@ -443,7 +443,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Создаёт запись подписки (period_months: 1|3|6), опционально аддоны на доп. Telegram-чаты. Вызывать может только админ.",
+                "description": "Создаёт подписку для пользователя, владеющего магазином. Вызывать может только админ.",
                 "consumes": [
                     "application/json"
                 ],
@@ -463,7 +463,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Период, валюта, суммы, доп. чаты",
+                        "description": "Тариф, период, сумма",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -623,7 +623,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Магазины пользователя (JWT). Query: limit, offset. Включает краткую информацию о подписке каждого магазина.",
+                "description": "Магазины пользователя (JWT). Query: limit, offset.",
                 "produces": [
                     "application/json"
                 ],
@@ -671,7 +671,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Подключение магазина WB: проверка apiToken, создание shop. Требует JWT.",
+                "description": "Подключение магазина WB: валидация JWT-токена, создание shop. Требует JWT.",
                 "consumes": [
                     "application/json"
                 ],
@@ -708,6 +708,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/api.HTTPError"
                         }
@@ -1613,14 +1619,6 @@ const docTemplate = `{
                     "maxLength": 255,
                     "example": "Мой магазин WB"
                 },
-                "tokenType": {
-                    "type": "string",
-                    "enum": [
-                        "basic",
-                        "service"
-                    ],
-                    "example": "basic"
-                },
                 "wbReportTimezone": {
                     "type": "string",
                     "example": "Europe/Moscow"
@@ -1791,17 +1789,17 @@ const docTemplate = `{
         "api.SubscriptionSummary": {
             "type": "object",
             "properties": {
+                "expiresAt": {
+                    "type": "string",
+                    "example": "2025-01-15T00:00:00Z"
+                },
                 "hasActive": {
                     "type": "boolean",
                     "example": true
                 },
-                "plan": {
+                "tier": {
                     "type": "string",
-                    "example": "base"
-                },
-                "validTo": {
-                    "type": "string",
-                    "example": "2025-01-15T00:00:00Z"
+                    "example": "business"
                 }
             }
         },
@@ -1860,10 +1858,6 @@ const docTemplate = `{
         "api.UpdateShopRequest": {
             "type": "object",
             "properties": {
-                "tokenType": {
-                    "type": "string",
-                    "example": "service"
-                },
                 "wbReportTimezone": {
                     "type": "string",
                     "example": "Asia/Almaty"
@@ -2060,114 +2054,93 @@ const docTemplate = `{
         "subscription.GrantInput": {
             "type": "object",
             "properties": {
-                "base_amount_minor": {
-                    "description": "База за период (в minor units: копейки/тиыны)",
-                    "type": "integer",
-                    "example": 49900
-                },
                 "comment": {
-                    "description": "опционально",
                     "type": "string",
-                    "example": "Оплата по счёту №123"
-                },
-                "currency_code": {
-                    "description": "\"RUB\"|\"KZT\"|...",
-                    "type": "string",
-                    "example": "RUB"
-                },
-                "extra_telegram_chats": {
-                    "description": "Сколько доп. телеграм чатов купить (помимо 1 базового)",
-                    "type": "integer",
-                    "example": 0
-                },
-                "paid_at": {
-                    "description": "опционально",
-                    "type": "string",
-                    "example": "2024-01-15T10:00:00Z"
+                    "example": "manual grant"
                 },
                 "period_months": {
-                    "description": "1|3|6",
+                    "description": "1|3|6|12",
                     "type": "integer",
                     "example": 1
+                },
+                "price_minor": {
+                    "description": "monthly price in kopecks",
+                    "type": "integer",
+                    "example": 299000
                 },
                 "shopID": {
                     "type": "integer"
                 },
-                "source": {
-                    "description": "manual|...",
+                "tier": {
+                    "description": "start|business|pro",
                     "type": "string",
-                    "example": "manual"
-                },
-                "telegram_addon_amount_minor": {
-                    "description": "Цена аддона за весь период (minor units).\nНапример: 2 доп чата на 1 месяц * 500₽ = 100000 (копеек)",
-                    "type": "integer",
-                    "example": 0
+                    "example": "business"
                 }
             }
         },
         "subscription.GrantResult": {
             "type": "object",
             "properties": {
-                "allowed_telegram_chats": {
+                "ai_quota": {
                     "type": "integer",
-                    "example": 1
+                    "example": 200
+                },
+                "expires_at": {
+                    "type": "string",
+                    "example": "2026-06-11T00:00:00Z"
+                },
+                "max_shops": {
+                    "type": "integer",
+                    "example": 2
                 },
                 "subscription_id": {
                     "type": "integer",
                     "example": 7
                 },
-                "valid_from": {
+                "tier": {
                     "type": "string",
-                    "example": "2024-01-15T00:00:00Z"
+                    "example": "business"
                 },
-                "valid_to": {
-                    "type": "string",
-                    "example": "2024-02-15T00:00:00Z"
+                "user_id": {
+                    "type": "integer",
+                    "example": 3
                 }
             }
         },
         "subscription.StatusResult": {
             "type": "object",
             "properties": {
+                "ai_quota": {
+                    "type": "integer",
+                    "example": 200
+                },
+                "ai_used": {
+                    "type": "integer",
+                    "example": 12
+                },
                 "allowed_telegram_chats": {
                     "type": "integer",
-                    "example": 1
+                    "example": 3
                 },
-                "base_amount_minor": {
-                    "type": "integer",
-                    "example": 49900
-                },
-                "currency_code": {
+                "expires_at": {
                     "type": "string",
-                    "example": "RUB"
-                },
-                "enabled_telegram_chats": {
-                    "type": "integer",
-                    "example": 1
+                    "example": "2026-06-11T00:00:00Z"
                 },
                 "has_active_subscription": {
                     "type": "boolean",
                     "example": true
                 },
-                "period_months": {
+                "max_shops": {
                     "type": "integer",
-                    "example": 1
-                },
-                "plan": {
-                    "type": "string",
-                    "example": "base"
+                    "example": 2
                 },
                 "status": {
                     "type": "string",
                     "example": "active"
                 },
-                "valid_from": {
+                "tier": {
                     "type": "string",
-                    "example": "2024-01-15T00:00:00Z"
-                },
-                "valid_to": {
-                    "type": "string",
-                    "example": "2024-02-15T00:00:00Z"
+                    "example": "business"
                 }
             }
         }
