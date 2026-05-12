@@ -32,93 +32,53 @@ type (
 
 // basicPolicies — лимиты для базового токена WB (с 16 апреля 2026).
 // Документация: https://dev.wildberries.ru/news/281
-//
-// Burst = кол-во одновременных вызовов одной категории за один синк-цикл.
-// RegisterKey сбрасывает лимитеры в начале каждого синка, поэтому Burst не
-// приводит к превышению часового лимита WB: за час проходит 2 синка × Burst вызовов.
 var basicPolicies = map[RateCategory]RatePolicy{
-	// POST /content/v2/get/cards/list — 1/час (инкрементальный синк карточек, тяжёлый синк)
-	// Вызывается 1 раз за тяжёлый синк.
-	RateContent: {
-		Limit:    1,
-		Interval: time.Hour,
-		Burst:    1,
-	},
-	// GET /api/v3/stocks/{id}, GET /api/v3/warehouses, GET /api/v3/warehouses/seller —
-	// 10/час (тяжёлый синк). За один тяжёлый синк: GetWarehouses + GetSellerWarehouses +
-	// GetStocks (×N складов). Burst=4 покрывает типовой магазин (2 склада × 1 чанк).
-	RateMarketplace: {
-		Limit:    10,
-		Interval: time.Hour,
-		Burst:    4,
-	},
-	// GET /api/v3/orders/new — 30/час (быстрый синк FBS-заказов).
-	// Вызывается 1 раз за быстрый синк.
-	RateFBSOrders: {
-		Limit:    30,
-		Interval: time.Hour,
-		Burst:    1,
-	},
-	// GET /api/v3/dbw/orders/new + /api/v3/dbs/orders/new — 10/час.
-	// За один быстрый синк: 2 вызова (DBW + DBS). Burst=2 → оба проходят сразу.
-	// Итого за час: 2 синка × 2 вызова = 4 req/hr << 10.
-	RateDBOrders: {
-		Limit:    10,
-		Interval: time.Hour,
-		Burst:    2,
-	},
-	// POST /api/v2/list/goods/filter — 1/час (тяжёлый синк, чтение цен).
-	RatePrices: {
-		Limit:    1,
-		Interval: time.Hour,
-		Burst:    1,
-	},
-	// POST /api/v2/upload/task — 1/час (запись цен: восстановление по кнопке из Telegram).
-	// Отдельная категория чтобы не блокировать на час после тяжёлого синка GetPrices.
-	RatePricesWrite: {
-		Limit:    1,
-		Interval: time.Hour,
-		Burst:    1,
-	},
-	// statistics-api.wildberries.ru — 1/мин (sales + order_refusals в быстром синке).
-	// За один быстрый синк: 2 вызова. Burst=2 → оба проходят сразу.
-	// Итого за час: 2 синка × 2 вызова = 4 req/hr << 60.
-	RateStatistics: {
-		Limit:    1,
-		Interval: time.Minute,
-		Burst:    2,
-	},
-	// GET /api/v1/feedbacks + GET /api/v1/questions — 5/час.
-	// За один быстрый синк: 2 вызова. Burst=2 → оба проходят сразу.
-	// Итого за час: 2 синка × 2 вызова = 4 req/hr ≤ 5.
-	RateFeedbacks: {
-		Limit:    5,
-		Interval: time.Hour,
-		Burst:    2,
-	},
-	// POST /api/v1/feedbacks/answer, PATCH /api/v1/questions — 5/час, всплеск 1 (базовый токен).
-	// PersistAcrossSync: AI-джоба отправляет ответы отдельно от синка — нельзя сбрасывать на
-	// каждом RegisterKey, иначе burst-токен пересоздаётся каждые 30 мин и блокирует retry-логику.
-	RateFeedbacksWrite: {
-		Limit:             5,
-		Interval:          time.Hour,
-		Burst:             1,
-		PersistAcrossSync: true,
-	},
+	// POST /content/v2/get/cards/list — 1/час.
+	RateContent: {Limit: 1, Interval: time.Hour, Burst: 1},
+	// GET /api/v3/stocks/{id}, /warehouses/seller — 10/час.
+	// Burst=4: warehouses + stocks×N складов за один тяжёлый синк.
+	RateMarketplace: {Limit: 10, Interval: time.Hour, Burst: 4},
+	// GET /api/v3/orders/new — 30/час.
+	RateFBSOrders: {Limit: 30, Interval: time.Hour, Burst: 1},
+	// GET /api/v3/dbw/orders/new + /dbs/orders/new — 10/час. Burst=2: оба вызова за синк.
+	RateDBOrders: {Limit: 10, Interval: time.Hour, Burst: 2},
+	// GET+POST /api/v2/list/goods/filter и /upload/task — 1/час (одна категория WB).
+	RatePrices:      {Limit: 1, Interval: time.Hour, Burst: 1},
+	RatePricesWrite: {Limit: 1, Interval: time.Hour, Burst: 1, PersistAcrossSync: true},
+	// statistics-api — 1 запрос в 2 часа (базовый токен).
+	// Sales, orders, supplier/stocks — все в одной категории.
+	RateStatistics: {Limit: 1, Interval: 2 * time.Hour, Burst: 1},
+	// GET feedbacks/questions — 5/час, burst=1 (WB: 12 мин интервал).
+	RateFeedbacks: {Limit: 5, Interval: time.Hour, Burst: 1},
+	// POST answer — 5/час. PersistAcrossSync: AI-джоба работает вне синка.
+	RateFeedbacksWrite: {Limit: 5, Interval: time.Hour, Burst: 1, PersistAcrossSync: true},
 }
 
-// servicePolicies — лимиты для сервисного секрета WB.
-// Точные значения уточнить при получении секрета на business-solutions@rwb.ru.
+// servicePolicies — лимиты для сервисного/персонального токена WB (подтверждены май 2026).
+//
+// FBS/DBW/DBS/Marketplace: 300 req/min, интервал 200 мс, burst 20.
+// Content:                 100 req/min, интервал 600 мс, burst 5.
+// Prices (read+write):      10 req/6sec, интервал 600 мс, burst 5 (одна категория WB).
+// Feedbacks (read+write):    3 req/sec,  интервал 333 мс, burst 6.
+// Statistics (sales/orders/stocks): 1 req/min, burst 1 — ограничение одинаково для всех типов токенов.
 var servicePolicies = map[RateCategory]RatePolicy{
-	RateContent:        {Limit: 100, Interval: time.Hour, Burst: 1},
-	RateMarketplace:    {Limit: 300, Interval: time.Hour, Burst: 1},
-	RateFBSOrders:      {Limit: 300, Interval: time.Hour, Burst: 1},
-	RateDBOrders:       {Limit: 300, Interval: time.Hour, Burst: 1},
-	RatePrices:         {Limit: 300, Interval: time.Hour, Burst: 1},
-	RatePricesWrite:    {Limit: 300, Interval: time.Hour, Burst: 1},
-	RateStatistics:     {Limit: 60, Interval: time.Minute, Burst: 1},
-	RateFeedbacks:      {Limit: 300, Interval: time.Hour, Burst: 1},
-	RateFeedbacksWrite: {Limit: 300, Interval: time.Hour, Burst: 1},
+	// 100 req/min, interval 600ms, burst 5
+	RateContent: {Limit: 100, Interval: time.Minute, Burst: 5},
+	// 300 req/min, interval 200ms, burst 20 (stocks + warehouses)
+	RateMarketplace: {Limit: 300, Interval: time.Minute, Burst: 20},
+	// 300 req/min, interval 200ms, burst 20
+	RateFBSOrders: {Limit: 300, Interval: time.Minute, Burst: 20},
+	// 300 req/min, interval 200ms, burst 20
+	RateDBOrders: {Limit: 300, Interval: time.Minute, Burst: 20},
+	// 10 req/6sec, interval 600ms, burst 5 (одна категория: GET + POST цены)
+	RatePrices:      {Limit: 10, Interval: 6 * time.Second, Burst: 5},
+	RatePricesWrite: {Limit: 10, Interval: 6 * time.Second, Burst: 5, PersistAcrossSync: true},
+	// 1 req/min — лимит одинаков для всех типов токенов. Daily sync: sales+refusals+stocks.
+	RateStatistics: {Limit: 1, Interval: time.Minute, Burst: 1},
+	// 3 req/sec, interval 333ms, burst 6
+	RateFeedbacks: {Limit: 3, Interval: time.Second, Burst: 6},
+	// 3 req/sec, burst 6. PersistAcrossSync: AI-джоба работает вне синка.
+	RateFeedbacksWrite: {Limit: 3, Interval: time.Second, Burst: 6, PersistAcrossSync: true},
 }
 
 type LimiterManager struct {

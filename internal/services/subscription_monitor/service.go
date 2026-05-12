@@ -15,11 +15,11 @@ const (
 )
 
 type SubscriptionsRepo interface {
-	ListByValidToRange(ctx context.Context, from, to time.Time) ([]*domain.Subscription, error)
+	ListExpiringBetween(ctx context.Context, from, to time.Time) ([]*domain.Subscription, error)
 }
 
-type SubsriptionNotificationEventsRepo interface {
-	CreateOnce(ctx context.Context, subscriptionID int, event string) (inserted bool, err error)
+type ShopsRepo interface {
+	ListByUser(ctx context.Context, userID int, limit, offset int) ([]*domain.Shop, error)
 }
 
 type EndpointsRepo interface {
@@ -31,23 +31,27 @@ type TelegramAPI interface {
 }
 
 type Monitor struct {
-	subsRepo   SubscriptionsRepo
-	eventsRepo SubsriptionNotificationEventsRepo
-	endpoints  EndpointsRepo
-	tg         TelegramAPI
-	settings   *notification_settings.Service
-	now        func() time.Time
-	loc        *time.Location
+	subsRepo  SubscriptionsRepo
+	shopsRepo ShopsRepo
+	endpoints EndpointsRepo
+	tg        TelegramAPI
+	settings  *notification_settings.Service
+	now       func() time.Time
+	loc       *time.Location
 }
 
-func New(subsRepo SubscriptionsRepo, eventsRepo SubsriptionNotificationEventsRepo, endpoints EndpointsRepo, tg TelegramAPI, settings *notification_settings.Service, loc *time.Location) *Monitor {
+func New(subsRepo SubscriptionsRepo, shopsRepo ShopsRepo, endpoints EndpointsRepo, tg TelegramAPI, settings *notification_settings.Service, loc *time.Location) *Monitor {
 	if loc == nil {
 		loc = time.Local
 	}
 	return &Monitor{
-		subsRepo: subsRepo, eventsRepo: eventsRepo, endpoints: endpoints, tg: tg, settings: settings,
-		now: time.Now,
-		loc: loc,
+		subsRepo:  subsRepo,
+		shopsRepo: shopsRepo,
+		endpoints: endpoints,
+		tg:        tg,
+		settings:  settings,
+		now:       time.Now,
+		loc:       loc,
 	}
 }
 
@@ -62,68 +66,59 @@ func (m *Monitor) Run(ctx context.Context) error {
 	}
 
 	startToday := dayStart(now)
-	startTomorrow := startToday.AddDate(0, 0, 1)
-
-	startIn3 := startToday.AddDate(0, 0, 3)
-	startIn4 := startToday.AddDate(0, 0, 4)
-
-	startYesterday := startToday.AddDate(0, 0, -1)
-
-	if err := m.process(ctx, startIn3, startIn4, EventExpiring3d); err != nil {
+	if err := m.process(ctx, startToday.AddDate(0, 0, 3), startToday.AddDate(0, 0, 4), EventExpiring3d); err != nil {
 		return err
 	}
-	if err := m.process(ctx, startToday, startTomorrow, EventExpiring0d); err != nil {
+	if err := m.process(ctx, startToday, startToday.AddDate(0, 0, 1), EventExpiring0d); err != nil {
 		return err
 	}
-	if err := m.process(ctx, startYesterday, startToday, EventExpired1d); err != nil {
+	if err := m.process(ctx, startToday.AddDate(0, 0, -1), startToday, EventExpired1d); err != nil {
 		return err
 	}
-
 	return nil
 }
 
 func (m *Monitor) process(ctx context.Context, from, to time.Time, event string) error {
-	subs, err := m.subsRepo.ListByValidToRange(ctx, from, to)
+	subs, err := m.subsRepo.ListExpiringBetween(ctx, from, to)
 	if err != nil {
 		return fmt.Errorf("list subs for %s: %w", event, err)
 	}
 
 	for _, s := range subs {
-		inserted, err := m.eventsRepo.CreateOnce(ctx, s.ID, event)
+		shops, err := m.shopsRepo.ListByUser(ctx, s.UserID, 20, 0)
 		if err != nil {
-			return fmt.Errorf("create event %s: %w", event, err)
-		}
-		if !inserted {
-			continue
+			return fmt.Errorf("list shops for user %d: %w", s.UserID, err)
 		}
 
-		if m.settings != nil {
-			enabled, err := m.settings.EffectiveEnabled(ctx, s.ShopID, domain.NotificationEventSubscriptionStatus)
-			if err == nil && !enabled {
-				continue
+		notified := map[int64]struct{}{}
+		for _, shop := range shops {
+			if m.settings != nil {
+				enabled, err := m.settings.EffectiveEnabled(ctx, shop.ID, domain.NotificationEventSubscriptionStatus)
+				if err == nil && !enabled {
+					continue
+				}
+			}
+
+			chatIDs, err := m.endpoints.ListEnabledTelegramChatIDsByShopID(ctx, shop.ID)
+			if err != nil {
+				return fmt.Errorf("list chat ids for shop %d: %w", shop.ID, err)
+			}
+
+			text := buildText(event, s.ExpiresAt.In(m.loc))
+			for _, chatID := range chatIDs {
+				if _, already := notified[chatID]; already {
+					continue
+				}
+				notified[chatID] = struct{}{}
+				_ = m.tg.SendMessage(ctx, chatID, text)
 			}
 		}
-
-		chatIDs, err := m.endpoints.ListEnabledTelegramChatIDsByShopID(ctx, s.ShopID)
-		if err != nil {
-			return fmt.Errorf("list chat ids: %w", err)
-		}
-		if len(chatIDs) == 0 {
-			continue
-		}
-
-		text := buildText(event, s.ValidTo.In(m.loc))
-
-		for _, chatID := range chatIDs {
-			_ = m.tg.SendMessage(ctx, chatID, text) // v0: best-effort
-		}
 	}
-
 	return nil
 }
 
-func buildText(event string, validTo time.Time) string {
-	d := validTo.Format("02.01.2006")
+func buildText(event string, expiresAt time.Time) string {
+	d := expiresAt.Format("02.01.2006")
 	switch event {
 	case EventExpiring3d:
 		return fmt.Sprintf("⏳ Подписка истекает через 3 дня (%s).\nЕсли не продлить — алерты остановятся.", d)

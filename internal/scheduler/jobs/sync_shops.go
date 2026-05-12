@@ -69,13 +69,6 @@ type SyncActiveShopsJob struct {
 	running atomic.Bool
 }
 
-var (
-	okCount       int64
-	failCount     int64
-	skipCount     int64
-	leaseErrCount int64
-)
-
 func NewSyncActiveShopsJob(
 	log Logger,
 	cfg SyncActiveShopsConfig,
@@ -112,6 +105,13 @@ func (j *SyncActiveShopsJob) Run(ctx context.Context) {
 
 	start := time.Now()
 	j.log.Info("sync_active_shops: started")
+
+	var (
+		okCount       int64
+		failCount     int64
+		skipCount     int64
+		leaseErrCount int64
+	)
 
 	offset := 0
 	total := 0

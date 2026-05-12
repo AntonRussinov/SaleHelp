@@ -63,15 +63,13 @@ func (prov *Provider) initIndependentServices() {
 	prov.Services.Shop = shopservice.New(
 		prov.Repositories.Shop,
 		prov.Repositories.Alert,
-		prov.Repositories.Subscription,
 		prov.log,
 	)
 
 	prov.Services.Subscription = subscription.New(
-		prov.Repositories.TxRunner,
 		prov.Repositories.Subscription,
-		prov.Repositories.SubscriptionAddon,
-		prov.Repositories.NotificationEndpoint,
+		prov.Repositories.AIPackages,
+		prov.Repositories.Shop,
 	)
 
 	prov.Services.NotificationSettings = notification_settings.New(prov.Repositories.ShopNotificationSetting)
@@ -236,7 +234,7 @@ func (prov *Provider) initDependentServices() {
 
 	prov.Services.SubscriptionMonitor = subscriptionmonitor.New(
 		prov.Repositories.Subscription,
-		prov.Repositories.SubscriptionNotificationEvent,
+		prov.Repositories.Shop,
 		prov.Repositories.NotificationEndpoint,
 		tgAdapter,
 		prov.Services.NotificationSettings,
@@ -281,6 +279,9 @@ func (prov *Provider) initDependentServices() {
 	modelCfg := ai.DefaultModelConfig()
 	if prov.cfg.AI.ModelForPositive != "" {
 		modelCfg.ModelForPositive = prov.cfg.AI.ModelForPositive
+	}
+	if prov.cfg.AI.ModelForMid != "" {
+		modelCfg.ModelForMid = prov.cfg.AI.ModelForMid
 	}
 	if prov.cfg.AI.ModelForOther != "" {
 		modelCfg.ModelForOther = prov.cfg.AI.ModelForOther

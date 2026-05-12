@@ -22,6 +22,7 @@ type (
 		SendMessageWithKeyboard(ctx context.Context, chatID int64, text string, keyboard map[string]any) error
 		SendMessageWithInlineKeyboard(ctx context.Context, chatID int64, text string, inlineKeyboard map[string]any) error
 		AnswerCallbackQuery(ctx context.Context, callbackQueryID string) error
+		EditMessageReplyMarkup(ctx context.Context, chatID int64, messageID int, replyMarkup any) error
 	}
 
 	// TelegramChatStatesRepo — твой репозиторий состояний мастера.

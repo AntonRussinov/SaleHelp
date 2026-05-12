@@ -10,6 +10,16 @@ import (
 	"time"
 )
 
+// wbAlreadySetError returns true when WB responds that prices are already at the requested values.
+// Treat this as success: the goal (prices at target level) is already achieved.
+func wbAlreadySetError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "already set")
+}
+
 // Restore выполняет восстановление цен по пакету: загружает данные из предыдущего снапшота и шлёт в WB.
 func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 	batch, err := s.batchRepo.GetByID(ctx, batchID)
@@ -164,7 +174,7 @@ func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 			}
 			chunk := taskGoods[i:end]
 			_, err := s.wbClient.UploadPrices(ctx, apiKey, dto.UploadTaskRequest{Data: chunk})
-			if err != nil {
+			if err != nil && !wbAlreadySetError(err) {
 				return failAndReturn(restoredCount, fmt.Errorf("wb upload prices: %w", err))
 			}
 			restoredCount += len(chunk)
@@ -178,7 +188,7 @@ func (s *Service) Restore(ctx context.Context, batchID int) RestoreResult {
 			}
 			chunk := taskSizeGoods[i:end]
 			_, err := s.wbClient.UploadPricesBySize(ctx, apiKey, dto.UploadTaskSizeRequest{Data: chunk})
-			if err != nil {
+			if err != nil && !wbAlreadySetError(err) {
 				return failAndReturn(restoredCount, fmt.Errorf("wb upload prices by size: %w", err))
 			}
 			restoredCount += len(chunk)

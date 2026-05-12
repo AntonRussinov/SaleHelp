@@ -71,6 +71,11 @@ func (s *Sender) AnswerCallbackQuery(ctx context.Context, callbackQueryID string
 	return s.client.AnswerCallbackQuery(ctx, callbackQueryID)
 }
 
+// EditMessageReplyMarkup заменяет inline-клавиатуру уже отправленного сообщения.
+func (s *Sender) EditMessageReplyMarkup(ctx context.Context, chatID int64, messageID int, replyMarkup any) error {
+	return s.client.EditMessageReplyMarkup(ctx, chatID, messageID, replyMarkup)
+}
+
 func (s *Sender) Channel() notify.Channel {
 	return notify.ChannelTelegram
 }

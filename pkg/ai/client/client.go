@@ -61,13 +61,10 @@ func New(models ai.ModelConfig, apiKey string, opts ...openai.Option) (*Client, 
 	}, nil
 }
 
-// GenerateFeedbackReply генерирует ответ на отзыв. Модель выбирается по рейтингу (5 → mini, 1–4 → other).
+// GenerateFeedbackReply генерирует ответ на отзыв. Модель выбирается по рейтингу (4–5 → positive, 3 → mid, 1–2 → other).
 // Для reasoning-моделей (gpt-5-mini, gpt-5.2 и т.д.) вызывается Responses API; для остальных — Chat Completions через langchaingo.
 func (c *Client) GenerateFeedbackReply(ctx context.Context, prompt string, rating int) (*ai.FeedbackReplyResult, error) {
-	model := c.models.ModelForOther
-	if rating == 5 {
-		model = c.models.ModelForPositive
-	}
+	model := c.models.SelectModel(rating)
 	if isReasoningModel(model) {
 		return c.generateViaResponsesAPI(ctx, model, prompt)
 	}

@@ -20,7 +20,6 @@ type DataBuilder struct {
 	now time.Time
 }
 
-// setupSubscriptionRepo поднимает gorm.DB поверх sqlmock
 func setupSubscriptionRepo(t *testing.T) (*subscription.Repository, sqlmock.Sqlmock) {
 	t.Helper()
 
@@ -56,29 +55,23 @@ func NewDataBuilder(t *testing.T) *DataBuilder {
 	}
 }
 
-func (b *DataBuilder) SubscriptionV0() domain.Subscription {
+func (b *DataBuilder) Subscription() domain.Subscription {
 	b.t.Helper()
-
-	validFrom := b.now.Add(-time.Hour)
-	validTo := b.now.Add(30 * 24 * time.Hour)
-
-	paidAt := b.now.Add(-30 * time.Minute)
-	comment := "manual grant"
-
+	nextMonth := time.Date(b.now.Year(), b.now.Month()+1, 1, 0, 0, 0, 0, time.UTC)
 	return domain.Subscription{
-		// ID не задаём — BIGSERIAL
-		ShopID:          123,
-		Plan:            "basic",
-		Status:          "active",
-		ValidFrom:       validFrom,
-		ValidTo:         validTo,
-		PeriodMonths:    1,
-		BaseAmountMinor: 1500 * 100, // 1500.00 в minor units
-		CurrencyCode:    "RUB",
-		PaidAt:          &paidAt,
-		Source:          "manual",
-		Comment:         &comment,
-		CreatedAt:       b.now,
-		UpdatedAt:       b.now,
+		UserID:       42,
+		Tier:         domain.TierBusiness,
+		Status:       domain.SubStatusActive,
+		PeriodMonths: 1,
+		StartedAt:    b.now.Add(-time.Hour),
+		ExpiresAt:    b.now.Add(30 * 24 * time.Hour),
+		AIQuota:      200,
+		AIUsed:       0,
+		AIResetsAt:   nextMonth,
+		MaxShops:     2,
+		ExtraShops:   0,
+		PriceMinor:   149000,
+		CreatedAt:    b.now,
+		UpdatedAt:    b.now,
 	}
 }

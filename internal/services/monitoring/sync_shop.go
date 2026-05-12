@@ -19,7 +19,7 @@ const wbProductBaseURL = "https://www.wildberries.ru"
 
 const (
 	// heavySyncInterval — минимальный интервал между тяжёлыми синками (карточки, склады, снапшоты).
-	// Контент API WB — лимит 1 запрос/час на базовом токене.
+	// Раз в час достаточно для алертов по ценам/остаткам; экономим вызовы Content API.
 	heavySyncInterval = time.Hour
 
 	// fullCardsSyncInterval — интервал полного (не инкрементального) синка карточек.
@@ -778,7 +778,7 @@ func (s *Service) syncShopSnapshots(
 		chrtIDs = append(chrtIDs, chrtID)
 	}
 
-	// 5) stocks by warehouse
+	// 5) stocks by warehouse (FBS — seller's own warehouses)
 	stockByChrtID := make(map[int64]int)
 	stocksUnavailable := false
 
@@ -802,6 +802,58 @@ func (s *Service) syncShopSnapshots(
 			}
 			for _, st := range items {
 				stockByChrtID[st.ChrtID] += st.Amount
+			}
+		}
+	}
+
+	// 6) WB warehouse stocks (returns stored/sold by WB, GET /api/v1/supplier/stocks).
+	// Non-fatal: failure falls back to FBS-only data.
+	// Matching: nmId + techSize → chrtId via existing size maps.
+	if !stocksUnavailable && len(chrtIDs) > 0 {
+		// Build productID → nmId reverse lookup
+		productIDToNmID := make(map[int]int64, len(prodByNm))
+		for nmID, p := range prodByNm {
+			productIDToNmID[p.ID] = nmID
+		}
+
+		type nmSizeKey struct {
+			NmID     int64
+			TechSize string
+		}
+		nmSizeToChrtID := make(map[nmSizeKey]int64, len(sizes))
+		for _, sz := range sizes {
+			if sz.ExternalID == "" {
+				continue
+			}
+			nmID, ok := productIDToNmID[sz.ProductID]
+			if !ok {
+				continue
+			}
+			chrtID, err := strconv.ParseInt(sz.ExternalID, 10, 64)
+			if err != nil {
+				continue
+			}
+			techSize := ""
+			if sz.TechSizeName != nil {
+				techSize = *sz.TechSizeName
+			}
+			nmSizeToChrtID[nmSizeKey{NmID: nmID, TechSize: techSize}] = chrtID
+		}
+
+		wbStocks, err := s.wbClient.GetSupplierStocks(ctx, shop.APIToken, time.Now().AddDate(0, 0, -90))
+		if err != nil {
+			s.log.Warn("get supplier stocks failed, using FBS-only", "shop_id", shop.ID, "err", err)
+		} else {
+			for _, st := range wbStocks {
+				if st.Quantity <= 0 {
+					continue
+				}
+				key := nmSizeKey{NmID: st.NmID, TechSize: st.TechSize}
+				chrtID, ok := nmSizeToChrtID[key]
+				if !ok {
+					continue
+				}
+				stockByChrtID[chrtID] += st.Quantity
 			}
 		}
 	}

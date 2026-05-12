@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"strconv"
-	"time"
 
 	"salehelp/domain"
 	auth_google_handler "salehelp/internal/handler/auth_google"
@@ -37,26 +36,20 @@ type (
 		CountByShop(ctx context.Context, shopID int) (int, error)
 	}
 
-	SubscriptionRepo interface {
-		GetActiveByShopID(ctx context.Context, shopID int, now time.Time) (*domain.Subscription, error)
-	}
-
 	Handler struct {
-		service          Service
-		shopCreator      ShopCreator
-		shopsRepo        ShopsRepo
-		productRepo      ProductRepo
-		subscriptionRepo SubscriptionRepo
+		service     Service
+		shopCreator ShopCreator
+		shopsRepo   ShopsRepo
+		productRepo ProductRepo
 	}
 )
 
-func NewHandler(service Service, shopCreator ShopCreator, shopsRepo ShopsRepo, productRepo ProductRepo, subscriptionRepo SubscriptionRepo) *Handler {
+func NewHandler(service Service, shopCreator ShopCreator, shopsRepo ShopsRepo, productRepo ProductRepo) *Handler {
 	return &Handler{
-		service:          service,
-		shopCreator:      shopCreator,
-		shopsRepo:        shopsRepo,
-		productRepo:      productRepo,
-		subscriptionRepo: subscriptionRepo,
+		service:     service,
+		shopCreator: shopCreator,
+		shopsRepo:   shopsRepo,
+		productRepo: productRepo,
 	}
 }
 

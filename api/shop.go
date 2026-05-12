@@ -17,9 +17,9 @@ type UpdateShopRequest struct {
 
 // SubscriptionSummary краткая информация о подписке магазина.
 type SubscriptionSummary struct {
-	HasActive bool       `json:"hasActive"        example:"true"`
-	Plan      *string    `json:"plan,omitempty"   example:"base"`
-	ValidTo   *time.Time `json:"validTo,omitempty" example:"2025-01-15T00:00:00Z"`
+	HasActive bool       `json:"hasActive"          example:"true"`
+	Tier      *string    `json:"tier,omitempty"     example:"business"`
+	ExpiresAt *time.Time `json:"expiresAt,omitempty" example:"2025-01-15T00:00:00Z"`
 }
 
 // ShopResponse один магазин в ответе.

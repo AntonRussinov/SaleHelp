@@ -128,6 +128,40 @@ func (c *Client) SetMyCommands(ctx context.Context, commands []BotCommand) error
 	return nil
 }
 
+// EditMessageReplyMarkup заменяет inline-клавиатуру уже отправленного сообщения.
+// replyMarkup — map[string]any{"inline_keyboard": ...} или map[string]any{} чтобы убрать кнопки.
+func (c *Client) EditMessageReplyMarkup(ctx context.Context, chatID int64, messageID int, replyMarkup any) error {
+	payload := map[string]any{
+		"chat_id":      chatID,
+		"message_id":   messageID,
+		"reply_markup": replyMarkup,
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("telegram marshal editMessageReplyMarkup: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/editMessageReplyMarkup", bytes.NewReader(b))
+	if err != nil {
+		return fmt.Errorf("telegram new editMessageReplyMarkup request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("telegram editMessageReplyMarkup request: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	var terr telegramErrorResponse
+	_ = json.Unmarshal(body, &terr)
+	if !terr.Ok && terr.Description != "" {
+		return fmt.Errorf("telegram editMessageReplyMarkup api error (%d): %s", terr.ErrorCode, terr.Description)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("telegram editMessageReplyMarkup http status: %s", resp.Status)
+	}
+	return nil
+}
+
 // AnswerCallbackQuery снимает "часики" с inline-кнопки после нажатия.
 func (c *Client) AnswerCallbackQuery(ctx context.Context, callbackQueryID string) error {
 	payload := map[string]any{"callback_query_id": callbackQueryID}

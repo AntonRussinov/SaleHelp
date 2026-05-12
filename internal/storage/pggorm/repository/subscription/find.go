@@ -11,58 +11,53 @@ import (
 	"gorm.io/gorm"
 )
 
-// GetActiveByShopID возвращает текущую активную подписку (valid_to > now) либо nil.
-func (r *Repository) GetActiveByShopID(ctx context.Context, shopID int, now time.Time) (*domain.Subscription, error) {
+// GetActiveByUserID returns the current active/trial subscription for a user, or nil.
+func (r *Repository) GetActiveByUserID(ctx context.Context, userID int) (*domain.Subscription, error) {
 	var m model.Subscription
-
 	err := r.DB.WithContext(ctx).
-		Where("shop_id = ? AND status = ? AND valid_to > ?", shopID, "active", now).
-		Order("valid_to DESC").
+		Where("user_id = ? AND status IN ('active','trial') AND expires_at > ?", userID, time.Now()).
+		Order("expires_at DESC").
 		Limit(1).
 		First(&m).Error
-
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("get active subscription by shop_id: %w", err)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
 	}
-
+	if err != nil {
+		return nil, fmt.Errorf("get active subscription by user_id: %w", err)
+	}
 	return m.ToDomain(), nil
 }
 
-func (r *Repository) ListByValidToRange(ctx context.Context, from, to time.Time) ([]*domain.Subscription, error) {
-	var ms []model.Subscription
-
+// GetLatestByUserID returns the most recent subscription for a user (any status), or nil.
+func (r *Repository) GetLatestByUserID(ctx context.Context, userID int) (*domain.Subscription, error) {
+	var m model.Subscription
 	err := r.DB.WithContext(ctx).
-		Where("status = ? AND valid_to >= ? AND valid_to < ?", "active", from, to).
-		Order("valid_to ASC").
+		Where("user_id = ?", userID).
+		Order("expires_at DESC").
+		Limit(1).
+		First(&m).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get latest subscription by user_id: %w", err)
+	}
+	return m.ToDomain(), nil
+}
+
+// ListExpiringBetween returns active/trial subscriptions with expires_at in [from, to).
+func (r *Repository) ListExpiringBetween(ctx context.Context, from, to time.Time) ([]*domain.Subscription, error) {
+	var ms []model.Subscription
+	err := r.DB.WithContext(ctx).
+		Where("status IN ('active','trial') AND expires_at >= ? AND expires_at < ?", from, to).
+		Order("expires_at ASC").
 		Find(&ms).Error
 	if err != nil {
-		return nil, fmt.Errorf("list subscriptions by valid_to range: %w", err)
+		return nil, fmt.Errorf("list expiring subscriptions: %w", err)
 	}
-
 	res := make([]*domain.Subscription, 0, len(ms))
 	for i := range ms {
 		res = append(res, ms[i].ToDomain())
 	}
 	return res, nil
-}
-
-// GetLatestByShopID — последняя подписка по valid_to DESC, либо nil.
-func (r *Repository) GetLatestByShopID(ctx context.Context, shopID int) (*domain.Subscription, error) {
-	var m model.Subscription
-	err := r.DB.WithContext(ctx).
-		Where("shop_id = ?", shopID).
-		Order("valid_to DESC").
-		Limit(1).
-		First(&m).Error
-
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("get latest subscription by shop_id: %w", err)
-	}
-	return m.ToDomain(), nil
 }

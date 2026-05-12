@@ -2,10 +2,7 @@ package subscription_test
 
 import (
 	"context"
-	"database/sql/driver"
-	"salehelp/domain"
 	"testing"
-	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +29,7 @@ func TestSubscriptionRepositoryCreate(t *testing.T) {
 			t.Parallel()
 
 			repo, mock := setupSubscriptionRepo(t)
-			sub := builder.SubscriptionV0() // сделай билдер под новую структуру
+			sub := builder.Subscription()
 
 			mock.ExpectBegin()
 			mock.ExpectQuery(`INSERT INTO "subscriptions"(.+)`).
@@ -45,8 +42,7 @@ func TestSubscriptionRepositoryCreate(t *testing.T) {
 				mock.ExpectRollback()
 			}
 
-			subParam := sub
-			err := repo.Create(ctx, &subParam)
+			err := repo.Create(ctx, &sub)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -56,32 +52,3 @@ func TestSubscriptionRepositoryCreate(t *testing.T) {
 		})
 	}
 }
-
-func saveSubscriptionV0SQLArgs(s domain.Subscription) []driver.Value {
-	// id bigserial: gorm его не вставляет
-	// Важно: порядок должен соответствовать тому, как gorm строит insert по полям struct.
-	var paidAt any = s.PaidAt
-	var comment any = s.Comment
-	// source not null
-	if s.Source == "" {
-		s.Source = "manual"
-	}
-	return []driver.Value{
-		s.ShopID,
-		s.Plan,
-		s.Status,
-		s.ValidFrom,
-		s.ValidTo,
-		s.PeriodMonths,
-		s.BaseAmountMinor,
-		s.CurrencyCode,
-		paidAt,
-		s.Source,
-		comment,
-		s.CreatedAt,
-		s.UpdatedAt,
-	}
-}
-
-// пример, если нужно
-func ptrTime(t time.Time) *time.Time { return &t }

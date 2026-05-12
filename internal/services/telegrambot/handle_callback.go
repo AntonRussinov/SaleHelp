@@ -46,7 +46,11 @@ func (s *Service) handleCallbackQuery(ctx context.Context, q *dto.CallbackQuery)
 	}
 
 	if strings.HasPrefix(data, callbackPrefixRestorePrices) {
-		s.handleRestorePrices(ctx, chatID, strings.TrimPrefix(data, callbackPrefixRestorePrices))
+		msgID := 0
+		if q.Message != nil {
+			msgID = q.Message.MessageID
+		}
+		s.handleRestorePrices(ctx, chatID, msgID, strings.TrimPrefix(data, callbackPrefixRestorePrices))
 		return
 	}
 
@@ -101,7 +105,7 @@ func (s *Service) handleCallbackQuery(ctx context.Context, q *dto.CallbackQuery)
 	}
 }
 
-func (s *Service) handleRestorePrices(ctx context.Context, chatID int64, payload string) {
+func (s *Service) handleRestorePrices(ctx context.Context, chatID int64, messageID int, payload string) {
 	batchID, err := strconv.Atoi(strings.TrimSpace(payload))
 	if err != nil {
 		_ = s.tg.SendMessage(ctx, chatID, "Неверный идентификатор запроса.")
@@ -128,22 +132,24 @@ func (s *Service) handleRestorePrices(ctx context.Context, chatID int64, payload
 			}
 		}
 	}
-	// Отправляем сообщение с подтверждением и кнопками
-	text := "Восстановить цены на прежний уровень по этим товарам?"
+
+	// Edit the original alert message keyboard in place so repeated clicks don't spawn new dialogs.
+	confirmBase := fmt.Sprintf("%s%d:%d:", callbackPrefixConfirmRestore, batchID, messageID)
 	keyboard := map[string]any{
 		"inline_keyboard": [][]map[string]string{
 			{
-				{"text": "Да, изменить", "callback_data": callbackPrefixConfirmRestore + strconv.Itoa(batchID) + ":yes"},
-				{"text": "Нет, оставить как есть", "callback_data": callbackPrefixConfirmRestore + strconv.Itoa(batchID) + ":no"},
+				{"text": "✅ Да, восстановить", "callback_data": confirmBase + "yes"},
+				{"text": "❌ Нет, оставить", "callback_data": confirmBase + "no"},
 			},
 		},
 	}
-	_ = s.tg.SendMessageWithInlineKeyboard(ctx, chatID, text, keyboard)
+	_ = s.tg.EditMessageReplyMarkup(ctx, chatID, messageID, keyboard)
 }
 
 func (s *Service) handleConfirmRestore(ctx context.Context, chatID int64, payload string) {
-	parts := strings.SplitN(payload, ":", 2)
-	if len(parts) != 2 {
+	// payload format: "<batchID>:<messageID>:<yes|no>"
+	parts := strings.SplitN(payload, ":", 3)
+	if len(parts) != 3 {
 		_ = s.tg.SendMessage(ctx, chatID, "Неверный запрос.")
 		return
 	}
@@ -152,9 +158,20 @@ func (s *Service) handleConfirmRestore(ctx context.Context, chatID int64, payloa
 		_ = s.tg.SendMessage(ctx, chatID, "Неверный идентификатор запроса.")
 		return
 	}
-	choice := strings.TrimSpace(strings.ToLower(parts[1]))
+	messageID, _ := strconv.Atoi(strings.TrimSpace(parts[1]))
+	choice := strings.TrimSpace(strings.ToLower(parts[2]))
+
+	restoreOriginalKeyboard := func() {
+		kb := map[string]any{
+			"inline_keyboard": [][]map[string]string{
+				{{"text": "🔄 Вернуть цены назад", "callback_data": callbackPrefixRestorePrices + strconv.Itoa(batchID)}},
+			},
+		}
+		_ = s.tg.EditMessageReplyMarkup(ctx, chatID, messageID, kb)
+	}
+
 	if choice == "no" {
-		_ = s.tg.SendMessage(ctx, chatID, "Запрос отменён.")
+		restoreOriginalKeyboard()
 		return
 	}
 	if choice != "yes" {
@@ -163,6 +180,7 @@ func (s *Service) handleConfirmRestore(ctx context.Context, chatID int64, payloa
 	}
 	if s.priceRestore == nil {
 		_ = s.tg.SendMessage(ctx, chatID, "Сервис восстановления цен недоступен.")
+		restoreOriginalKeyboard()
 		return
 	}
 	result := s.priceRestore.Restore(ctx, batchID)
@@ -172,14 +190,19 @@ func (s *Service) handleConfirmRestore(ctx context.Context, chatID int64, payloa
 	}
 	if result.AlreadyRestored && result.RestoredAt != nil {
 		t := result.RestoredAt.In(time.FixedZone("MSK", 3*3600))
+		_ = s.tg.EditMessageReplyMarkup(ctx, chatID, messageID, map[string]any{"inline_keyboard": [][]map[string]string{}})
 		_ = s.tg.SendMessage(ctx, chatID, "ℹ️ Цены уже были восстановлены в "+t.Format("15:04")+" МСК")
 		return
 	}
 	if result.Error != nil {
+		restoreOriginalKeyboard()
 		_ = s.tg.SendMessage(ctx, chatID,
 			"❌ Не удалось восстановить цены\n\nОшибка: "+result.Error.Error()+"\n\nПопробуйте вручную или повторите через несколько минут.")
 		return
 	}
+
+	// Remove keyboard from the original alert message — restore is done.
+	_ = s.tg.EditMessageReplyMarkup(ctx, chatID, messageID, map[string]any{"inline_keyboard": [][]map[string]string{}})
 
 	msk := time.FixedZone("MSK", 3*3600)
 	now := time.Now().In(msk)

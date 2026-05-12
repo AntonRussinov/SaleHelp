@@ -172,6 +172,7 @@ type (
 		GetNewDBSOrders(ctx context.Context, apiKey string) (*dto.GetNewDBSOrdersResponse, error)
 		GetSales(ctx context.Context, apiKey string, dateFrom time.Time, flag int, reportLoc *time.Location) (dto.GetSalesResponse, error)
 		GetOrders(ctx context.Context, apiKey string, dateFrom time.Time, flag int, reportLoc *time.Location) (dto.GetOrdersResponse, error)
+		GetSupplierStocks(ctx context.Context, apiKey string, dateFrom time.Time) (dto.GetSupplierStocksResponse, error)
 		GetWBWarehouses(ctx context.Context, apiKey string) ([]dto.WBWarehouse, error)
 		GetSellerWarehouses(ctx context.Context, apiKey string) ([]dto.SellerWarehouse, error)
 		GetFeedbacks(ctx context.Context, apiKey string, isAnswered bool, take, skip int, order string, dateFrom, dateTo *int64) (*dto.GetFeedbacksResponse, error)

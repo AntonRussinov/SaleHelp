@@ -5,25 +5,21 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSubscriptionRepositoryExpireActiveByShopID(t *testing.T) {
+func TestSubscriptionRepositoryExpireActiveByUserID(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	repo, mock := setupSubscriptionRepo(t)
 
-	shopID := 123
+	userID := 42
 
-	mock.ExpectBegin()
-	mock.ExpectExec(`UPDATE "subscriptions" SET (.+) WHERE (.+)`).
-		WithArgs("expired", sqlmock.AnyArg(), shopID, "active").
+	mock.ExpectExec(`UPDATE subscriptions SET status='expired'(.+)`).
+		WithArgs(userID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectCommit()
 
-	affected, err := repo.ExpireActiveByShopID(ctx, shopID)
+	err := repo.ExpireActiveByUserID(ctx, userID)
 	require.NoError(t, err)
-	assert.Equal(t, int64(1), affected)
 }

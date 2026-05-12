@@ -153,7 +153,7 @@ func (s *Service) ProcessOne(ctx context.Context, f *domain.WBFeedback) error {
 	}
 	result, err := s.aiClient.GenerateFeedbackReply(ctx, promptStr, f.ProductValuation)
 	if err != nil {
-		s.saveReplyLog(ctx, f.ID, f.ShopID, "", s.modelConfig.ModelForOther, domain.AIReplyStatusError, err.Error(), 0)
+		s.saveReplyLog(ctx, f.ID, f.ShopID, "", s.modelConfig.SelectModel(f.ProductValuation), domain.AIReplyStatusError, err.Error(), 0)
 		return err
 	}
 	answerText := truncate500(sanitize.Text(result.Text))

@@ -48,3 +48,7 @@ func (a *TelegramAdapter) SendMessageWithInlineKeyboard(
 func (a *TelegramAdapter) AnswerCallbackQuery(ctx context.Context, callbackQueryID string) error {
 	return a.sender.AnswerCallbackQuery(ctx, callbackQueryID)
 }
+
+func (a *TelegramAdapter) EditMessageReplyMarkup(ctx context.Context, chatID int64, messageID int, replyMarkup any) error {
+	return a.sender.EditMessageReplyMarkup(ctx, chatID, messageID, replyMarkup)
+}

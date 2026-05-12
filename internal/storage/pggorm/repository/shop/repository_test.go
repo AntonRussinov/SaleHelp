@@ -65,6 +65,7 @@ func (b *DataBuilder) ShopRowValues(shop domain.Shop) []driver.Value {
 		shop.ExternalID,
 		shop.Name,
 		shop.APIToken,
+		shop.TokenType,
 		shop.IsActive,
 		shop.WBReportTimezone,
 		shop.LastSyncAt,
@@ -73,6 +74,10 @@ func (b *DataBuilder) ShopRowValues(shop domain.Shop) []driver.Value {
 		shop.LastSyncError,
 		shop.LastSyncFailedAt,
 		shop.LastSyncOkAt,
+		shop.LastHeavySyncAt,
+		shop.CardsCursorUpdatedAt,
+		shop.CardsCursorNmID,
+		shop.LastFullCardsSyncAt,
 		shop.CreatedAt,
 		shop.UpdatedAt,
 	}

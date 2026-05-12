@@ -10,47 +10,35 @@ func (s *Service) GetSubscriptionStatus(ctx context.Context, shopID int) (*Statu
 		return nil, fmt.Errorf("shopID is required")
 	}
 
-	now := s.now()
-
-	active, err := s.subscriptionsRepo.GetActiveByShopID(ctx, shopID, now)
+	userID, err := s.userIDByShopID(ctx, shopID)
 	if err != nil {
 		return nil, err
 	}
-
-	allowed, err := s.AllowedTelegramChats(ctx, shopID)
-	if err != nil {
-		return nil, err
+	if userID == 0 {
+		return &StatusResult{HasActiveSubscription: false}, nil
 	}
 
-	enabled, err := s.endpoints.CountEnabledByShopAndChannel(ctx, shopID, "telegram")
+	sub, err := s.subscriptionsRepo.GetActiveByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	res := &StatusResult{
-		HasActiveSubscription: active != nil,
-		AllowedTelegramChats:  allowed,
-		EnabledTelegramChats:  enabled,
+		HasActiveSubscription: sub != nil,
+		AllowedTelegramChats:  1,
 	}
 
-	if active == nil {
-		// подписки нет — вернём только entitlements/usage
-		return res, nil
+	if sub != nil {
+		tier := sub.Tier
+		status := sub.Status
+		res.Tier = &tier
+		res.Status = &status
+		res.ExpiresAt = &sub.ExpiresAt
+		res.AIQuota = sub.AIQuota
+		res.AIUsed = sub.AIUsed
+		res.MaxShops = sub.MaxShops
+		res.AllowedTelegramChats = 3
 	}
-
-	plan := active.Plan
-	status := active.Status
-	validFrom := active.ValidFrom
-	validTo := active.ValidTo
-
-	res.Plan = &plan
-	res.Status = &status
-	res.ValidFrom = &validFrom
-	res.ValidTo = &validTo
-
-	res.CurrencyCode = &active.CurrencyCode
-	res.BaseAmountMinor = &active.BaseAmountMinor
-	res.PeriodMonths = &active.PeriodMonths
 
 	return res, nil
 }

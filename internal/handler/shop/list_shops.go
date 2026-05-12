@@ -3,7 +3,6 @@ package shop
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"salehelp/api"
 	"salehelp/domain"
@@ -15,7 +14,7 @@ import (
 // ListShops возвращает список магазинов текущего пользователя.
 //
 // @Summary     Список магазинов
-// @Description Магазины пользователя (JWT). Query: limit, offset. Включает краткую информацию о подписке каждого магазина.
+// @Description Магазины пользователя (JWT). Query: limit, offset.
 // @Tags        shops
 // @Produce     json
 // @Security    BearerAuth
@@ -45,15 +44,9 @@ func (h *Handler) ListShops(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	now := time.Now()
 	out := make([]api.ShopResponse, 0, len(shops))
 	for _, s := range shops {
-		resp := shopToResponse(s)
-		if h.subscriptionRepo != nil {
-			sub, _ := h.subscriptionRepo.GetActiveByShopID(ctx, s.ID, now)
-			resp.Subscription = subscriptionSummary(sub)
-		}
-		out = append(out, resp)
+		out = append(out, shopToResponse(s))
 	}
 	return c.JSON(http.StatusOK, out)
 }
@@ -70,16 +63,5 @@ func shopToResponse(s *domain.Shop) api.ShopResponse {
 		LastSyncAt:         s.LastSyncAt,
 		LastSyncStatusCode: s.LastSyncStatusCode,
 		CreatedAt:          s.CreatedAt,
-	}
-}
-
-func subscriptionSummary(sub *domain.Subscription) *api.SubscriptionSummary {
-	if sub == nil {
-		return &api.SubscriptionSummary{HasActive: false}
-	}
-	return &api.SubscriptionSummary{
-		HasActive: true,
-		Plan:      &sub.Plan,
-		ValidTo:   &sub.ValidTo,
 	}
 }

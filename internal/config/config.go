@@ -52,9 +52,11 @@ type (
 	AIConfig struct {
 		// APIKey — ключ OpenAI API. Можно задать в конфиге или через env OPENAI_API_KEY (env имеет приоритет при пустом значении в конфиге).
 		APIKey string `mapstructure:"api_key"`
-		// ModelForPositive — модель для позитивных отзывов (рейтинг 5). По умолчанию gpt-4o-mini.
+		// ModelForPositive — модель для отзывов 4–5 звёзд (позитив). Дешёвая.
 		ModelForPositive string `mapstructure:"model_positive"`
-		// ModelForOther — модель для отзывов 1–4 звёзд. По умолчанию gpt-4o.
+		// ModelForMid — модель для отзывов 3 звезды (нейтральный). Средняя.
+		ModelForMid string `mapstructure:"model_mid"`
+		// ModelForOther — модель для отзывов 1–2 звезды (негатив). Сложная.
 		ModelForOther string `mapstructure:"model_other"`
 		// IncludedLimit — бесплатных AI-ответов в месяц по умолчанию (если не задано по подписке).
 		IncludedLimit int `mapstructure:"included_limit"`

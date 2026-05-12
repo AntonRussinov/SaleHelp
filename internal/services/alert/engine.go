@@ -54,13 +54,13 @@ func (e *AlertEngine) RunShop(ctx context.Context, shopID int) error {
 
 		sizeSnapsBySize := map[int][]*domain.ProductSizeSnapshot{}
 		if len(sizeIDs) > 0 {
-			sizeSnapsBySize, err = e.productSizeSnapshotsRepo.GetLatestBySizeIDsLimitMap(ctx, sizeIDs, 2)
+			sizeSnapsBySize, err = e.productSizeSnapshotsRepo.GetLatestBySizeIDsLimitMap(ctx, sizeIDs, 3)
 			if err != nil {
 				return err
 			}
 		}
 
-		snapshotsByProduct, err := e.snapshotsRepo.GetLatestByProductIDsLimit(ctx, productIDs, 2)
+		snapshotsByProduct, err := e.snapshotsRepo.GetLatestByProductIDsLimit(ctx, productIDs, 3)
 		if err != nil {
 			return err
 		}
