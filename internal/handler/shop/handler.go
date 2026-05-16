@@ -29,6 +29,7 @@ type (
 		GetByExternalID(ctx context.Context, externalID string) (*domain.Shop, error)
 		ListByUser(ctx context.Context, userID, limit, offset int) ([]*domain.Shop, error)
 		Update(ctx context.Context, s *domain.Shop) error
+		CountByUser(ctx context.Context, userID int) (int, error)
 	}
 
 	ProductRepo interface {
@@ -36,20 +37,26 @@ type (
 		CountByShop(ctx context.Context, shopID int) (int, error)
 	}
 
+	SubscriptionsRepo interface {
+		GetActiveByUserID(ctx context.Context, userID int) (*domain.Subscription, error)
+	}
+
 	Handler struct {
 		service     Service
 		shopCreator ShopCreator
 		shopsRepo   ShopsRepo
 		productRepo ProductRepo
+		subsRepo    SubscriptionsRepo
 	}
 )
 
-func NewHandler(service Service, shopCreator ShopCreator, shopsRepo ShopsRepo, productRepo ProductRepo) *Handler {
+func NewHandler(service Service, shopCreator ShopCreator, shopsRepo ShopsRepo, productRepo ProductRepo, subsRepo SubscriptionsRepo) *Handler {
 	return &Handler{
 		service:     service,
 		shopCreator: shopCreator,
 		shopsRepo:   shopsRepo,
 		productRepo: productRepo,
+		subsRepo:    subsRepo,
 	}
 }
 

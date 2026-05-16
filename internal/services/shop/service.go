@@ -3,39 +3,81 @@ package shop
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"time"
 
 	"salehelp/domain"
 )
 
+const trialDays = 14
+
+// defaultFreeShopLimit — лимит магазинов без активной подписки (после истечения триала).
+const defaultFreeShopLimit = 1
+
 type ShopsRepo interface {
 	Create(ctx context.Context, s *domain.Shop) error
+	CountByUser(ctx context.Context, userID int) (int, error)
 }
 
 type AlertsRepo interface {
 	Create(ctx context.Context, a *domain.Alert) error
 }
 
+type SubscriptionsRepo interface {
+	GetActiveByUserID(ctx context.Context, userID int) (*domain.Subscription, error)
+	Create(ctx context.Context, s *domain.Subscription) error
+}
+
 type Service struct {
 	shops  ShopsRepo
 	alerts AlertsRepo
+	subs   SubscriptionsRepo
 	log    *slog.Logger
 }
 
-func New(shops ShopsRepo, alerts AlertsRepo, log *slog.Logger) *Service {
+func New(shops ShopsRepo, alerts AlertsRepo, subs SubscriptionsRepo, log *slog.Logger) *Service {
 	return &Service{
 		shops:  shops,
 		alerts: alerts,
+		subs:   subs,
 		log:    log.With("service", "shop"),
 	}
 }
 
-// CreateShop создаёт магазин и настраивает стандартные алерты.
+// CreateShop создаёт магазин, стандартные алерты и пробную подписку (если у пользователя ещё нет активной).
 func (s *Service) CreateShop(ctx context.Context, shop *domain.Shop) error {
+	if err := s.checkShopLimit(ctx, shop.UserID); err != nil {
+		return err
+	}
 	if err := s.shops.Create(ctx, shop); err != nil {
 		return err
 	}
 	s.setupDefaultAlerts(ctx, shop.ID)
+	s.createTrialIfNeeded(ctx, shop.UserID)
+	return nil
+}
+
+// checkShopLimit проверяет, не превышен ли лимит магазинов по подписке.
+func (s *Service) checkShopLimit(ctx context.Context, userID int) error {
+	count, err := s.shops.CountByUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	sub, err := s.subs.GetActiveByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	maxShops := defaultFreeShopLimit
+	if sub != nil {
+		maxShops = sub.MaxShops + sub.ExtraShops
+	}
+
+	if count >= maxShops {
+		return fmt.Errorf("достигнут лимит магазинов: ваш тариф позволяет %d магазин(ов), у вас уже %d", maxShops, count)
+	}
 	return nil
 }
 
@@ -69,5 +111,39 @@ func (s *Service) setupDefaultAlerts(ctx context.Context, shopID int) {
 		if err := s.alerts.Create(ctx, alert); err != nil {
 			s.log.Error("failed to create default alert", "shopID", shopID, "type", def.alertType, "error", err)
 		}
+	}
+}
+
+// createTrialIfNeeded выдаёт 14-дневный триал если у пользователя ещё нет активной подписки.
+func (s *Service) createTrialIfNeeded(ctx context.Context, userID int) {
+	existing, err := s.subs.GetActiveByUserID(ctx, userID)
+	if err != nil {
+		s.log.Error("failed to check active subscription", "userID", userID, "error", err)
+		return
+	}
+	if existing != nil {
+		return
+	}
+
+	cfg := domain.TierConfigs[domain.TierTrial]
+	now := time.Now()
+	nextMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location())
+
+	sub := &domain.Subscription{
+		UserID:       userID,
+		Tier:         domain.TierTrial,
+		Status:       domain.SubStatusTrial,
+		PeriodMonths: 0,
+		StartedAt:    now,
+		ExpiresAt:    now.AddDate(0, 0, trialDays),
+		AIQuota:      cfg.AIQuotaMonthly,
+		AIUsed:       0,
+		AIResetsAt:   nextMonth,
+		MaxShops:     cfg.MaxShops,
+		ExtraShops:   0,
+		PriceMinor:   0,
+	}
+	if err := s.subs.Create(ctx, sub); err != nil {
+		s.log.Error("failed to create trial subscription", "userID", userID, "error", err)
 	}
 }

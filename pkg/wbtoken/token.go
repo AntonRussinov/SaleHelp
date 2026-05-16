@@ -49,8 +49,9 @@ type Claims struct {
 }
 
 // TokenType возвращает доменный тип токена по полю acc.
+// AccPersonal и AccService имеют одинаковые лимиты WB (3 req/sec, burst 6).
 func (c *Claims) TokenType() string {
-	if c.ACC == AccService {
+	if c.ACC == AccService || c.ACC == AccPersonal {
 		return domain.TokenTypeService
 	}
 	return domain.TokenTypeBasic

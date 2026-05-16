@@ -174,6 +174,14 @@ func (prov *Provider) initScheduler(ctx context.Context) error {
 		}
 	}
 
+	// Сброс ежемесячной AI-квоты: 1-го числа в 00:00 МСК.
+	if prov.Repositories.Subscription != nil && prov.cfg.Scheduler.AIQuotaResetSpec != "" {
+		quotaResetJob := jobs.NewAIQuotaResetJob(prov.log, prov.Repositories.Subscription)
+		if err := prov.scheduler.Register(ctx, prov.cfg.Scheduler.AIQuotaResetSpec, "ai_quota_reset", quotaResetJob.Run); err != nil {
+			return err
+		}
+	}
+
 	// регистрируем задачу
 	return prov.scheduler.Register(ctx, prov.cfg.Scheduler.Spec, "sync_active_shops", job.Run)
 }

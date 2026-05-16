@@ -2,23 +2,28 @@ package ai
 
 // FeedbackReplyInput — входные данные для генерации ответа на отзыв.
 type FeedbackReplyInput struct {
-	BrandName       string
-	ToneInstruction string
-	ProductName     string
-	Rating          int
-	Text            string
-	Pros            string
-	Cons            string
-	CustomRules     string
-	// OrderStatus — статус заказа из WB: "buyout" (выкуп), "returned" (товар возвращён). Если "returned" — не предлагать оформлять возврат.
-	OrderStatus     string
+	BrandName            string
+	ToneInstruction      string
+	ProductName          string
+	Rating               int
+	Text                 string
+	Pros                 string
+	Cons                 string
+	// OrderStatus — статус заказа из WB: "buyout" (выкуп), "returned" (товар возвращён).
+	OrderStatus          string
+	// CustomRules — список доп. правил бренда (каждый элемент — одно правило).
+	CustomRules          []string
+	// CategoryCustomPrompt — доп. инструкции для конкретной категории (из AI-шаблонов, Phase 4).
+	CategoryCustomPrompt string
 }
 
 // FeedbackReplyResult — результат генерации ответа (текст + метаданные).
 type FeedbackReplyResult struct {
-	Text       string
-	TokensUsed int
-	ModelUsed  string
+	Text         string
+	InputTokens  int
+	OutputTokens int
+	TokensUsed   int // = InputTokens + OutputTokens
+	ModelUsed    string
 }
 
 // ModelConfig — имена моделей по рейтингу отзыва.

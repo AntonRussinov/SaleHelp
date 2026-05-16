@@ -54,6 +54,7 @@ type SyncActiveShopsConfig struct {
 	RefusalDigestSpec      string // cron для суточного дайджеста отказов (не забрали), напр. "0 7 * * *" (07:00)
 	SyncStatsDailySpec     string // cron для ежедневного синка продаж+отказов из WB, напр. "0 6 * * *" (06:00)
 	SalesDigestSpec        string // cron для суточного дайджеста выкупов/возвратов, напр. "0 7 * * *" (07:00)
+	AIQuotaResetSpec       string // cron для сброса ежемесячной AI-квоты, напр. "0 0 1 * *" (1-го числа в 00:00)
 }
 
 type SyncActiveShopsJob struct {

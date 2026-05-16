@@ -51,6 +51,11 @@ func (h *Handler) CreateShop(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
+	// Проверка лимита магазинов по тарифу.
+	if err := h.checkShopLimit(c, userID); err != nil {
+		return err
+	}
+
 	// Дедупликация по WB seller ID — один продавец может быть зарегистрирован только один раз.
 	existing, err := h.shopsRepo.GetByExternalID(c.Request().Context(), claims.SID)
 	if err != nil {

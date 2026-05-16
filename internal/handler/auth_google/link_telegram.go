@@ -1,6 +1,7 @@
 package auth_google
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -10,6 +11,7 @@ import (
 type LinkTelegramResponse struct {
 	LinkCode  string `json:"linkCode"  example:"A3F7XQ"`
 	ExpiresAt string `json:"expiresAt" example:"2024-01-15T10:15:00Z"` // RFC3339
+	DeepLink  string `json:"deepLink"  example:"https://t.me/salehelp_bot?start=link_A3F7XQ"`
 }
 
 // LinkTelegram создаёт одноразовый код для привязки Telegram к аккаунту. Требует JWT.
@@ -33,8 +35,14 @@ func (h *Handler) LinkTelegram(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
+	deepLink := ""
+	if h.botUsername != "" {
+		deepLink = fmt.Sprintf("https://t.me/%s?start=link_%s", h.botUsername, linkCode)
+	}
+
 	return c.JSON(http.StatusOK, LinkTelegramResponse{
 		LinkCode:  linkCode,
 		ExpiresAt: expiresAt.Format("2006-01-02T15:04:05Z07:00"),
+		DeepLink:  deepLink,
 	})
 }

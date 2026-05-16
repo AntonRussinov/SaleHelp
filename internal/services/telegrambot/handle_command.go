@@ -15,6 +15,11 @@ func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) 
 		s.handleJoin(ctx, chatID, token)
 		return
 
+	case len(cmd) > 1 && cmd[0] == "/start" && strings.HasPrefix(cmd[1], "link_"):
+		code := strings.TrimPrefix(cmd[1], "link_")
+		s.handleLink(ctx, chatID, code)
+		return
+
 	case len(cmd) > 0 && cmd[0] == "/start":
 		_ = s.tg.SendMessageWithKeyboard(
 			ctx,

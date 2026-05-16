@@ -63,6 +63,7 @@ func (prov *Provider) initIndependentServices() {
 	prov.Services.Shop = shopservice.New(
 		prov.Repositories.Shop,
 		prov.Repositories.Alert,
+		prov.Repositories.Subscription,
 		prov.log,
 	)
 
@@ -307,6 +308,7 @@ func (prov *Provider) initDependentServices() {
 			includedLimit,
 			prov.log,
 		)
+		prov.Services.AIReply.SetSubscriptionsRepo(prov.Repositories.Subscription)
 	}
 
 	// Google Auth + JWT для фронта (вход по Google, выдача своего JWT)

@@ -277,20 +277,32 @@ func (s *Service) syncShopDBSOrders(ctx context.Context, shop *domain.Shop) erro
 func (s *Service) syncShopFeedbacks(ctx context.Context, shop *domain.Shop) error {
 	const pageSize = 1000
 	skip := 0
+	s.log.Info("wb_feedback_sync: started", "shop_id", shop.ID)
 	for {
 		resp, err := s.wbClient.GetFeedbacks(ctx, shop.APIToken, false, pageSize, skip, "dateDesc", nil, nil)
 		if err != nil {
+			s.log.Error("wb_feedback_sync: api error", "shop_id", shop.ID, "skip", skip, "err", err)
 			return fmt.Errorf("wb get feedbacks: %w", err)
 		}
+		s.log.Info("wb_feedback_sync: page received",
+			"shop_id", shop.ID,
+			"skip", skip,
+			"count_unanswered", resp.Data.CountUnanswered,
+			"count_archive", resp.Data.CountArchive,
+			"feedbacks_in_page", len(resp.Data.Feedbacks),
+		)
 		if len(resp.Data.Feedbacks) == 0 {
+			s.log.Info("wb_feedback_sync: empty page, done", "shop_id", shop.ID, "total_skipped", skip)
 			break
 		}
 		for i := range resp.Data.Feedbacks {
 			f := wbmapper.WBFeedbackToDomain(resp.Data.Feedbacks[i], shop.ID)
 			if err := s.wbFeedbacksRepo.Create(ctx, &f); err != nil {
+				s.log.Error("wb_feedback_sync: db insert failed", "shop_id", shop.ID, "wb_feedback_id", f.WBFeedbackID, "err", err)
 				return fmt.Errorf("create wb_feedback id=%s: %w", f.WBFeedbackID, err)
 			}
 		}
+		s.log.Info("wb_feedback_sync: page saved", "shop_id", shop.ID, "skip", skip, "saved", len(resp.Data.Feedbacks))
 		if len(resp.Data.Feedbacks) < pageSize {
 			break
 		}

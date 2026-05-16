@@ -48,8 +48,8 @@ var basicPolicies = map[RateCategory]RatePolicy{
 	// statistics-api — 1 запрос в 2 часа (базовый токен).
 	// Sales, orders, supplier/stocks — все в одной категории.
 	RateStatistics: {Limit: 1, Interval: 2 * time.Hour, Burst: 1},
-	// GET feedbacks/questions — 5/час, burst=1 (WB: 12 мин интервал).
-	RateFeedbacks: {Limit: 5, Interval: time.Hour, Burst: 1},
+	// GET feedbacks/questions — 5/час, burst=2 (feedbacks+questions запускаются параллельно, нужно 2 токена за тик).
+	RateFeedbacks: {Limit: 5, Interval: time.Hour, Burst: 2},
 	// POST answer — 5/час. PersistAcrossSync: AI-джоба работает вне синка.
 	RateFeedbacksWrite: {Limit: 5, Interval: time.Hour, Burst: 1, PersistAcrossSync: true},
 }

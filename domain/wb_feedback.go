@@ -59,16 +59,20 @@ const (
 
 // AIFeedbackReply — лог попытки/результата генерации AI-ответа на отзыв.
 type AIFeedbackReply struct {
-	ID           int
-	FeedbackID   int
-	ShopID       int
-	AnswerText   string
-	ModelUsed    string
-	Status       string // generated | error | skipped | no_quota
-	ErrorMessage string
-	TokensUsed   int
-	WBSentAt     *time.Time
-	CreatedAt    time.Time
+	ID                   int
+	FeedbackID           int
+	ShopID               int
+	AnswerText           string
+	ModelUsed            string
+	Status               string // generated | error | skipped | no_quota
+	ErrorMessage         string
+	InputTokens          int
+	OutputTokens         int
+	TokensUsed           int
+	AITier               string // paid | free_data_sharing
+	EstimatedCostKopeks  int
+	WBSentAt             *time.Time
+	CreatedAt            time.Time
 }
 
 // AIFeedbackPendingSend — сгенерированный ответ, ещё не отправленный в WB.

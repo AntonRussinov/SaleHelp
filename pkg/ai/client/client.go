@@ -113,14 +113,17 @@ func (c *Client) generateViaResponsesAPI(ctx context.Context, model, prompt stri
 	if strings.TrimSpace(text) == "" {
 		return nil, fmt.Errorf("model returned empty content (model=%s)", model)
 	}
-	tokensUsed := 0
+	inputTokens, outputTokens := 0, 0
 	if out.Usage != nil {
-		tokensUsed = out.Usage.TotalTokens
+		inputTokens = out.Usage.InputTokens
+		outputTokens = out.Usage.OutputTokens
 	}
 	return &ai.FeedbackReplyResult{
-		Text:       text,
-		TokensUsed: tokensUsed,
-		ModelUsed:  model,
+		Text:         text,
+		InputTokens:  inputTokens,
+		OutputTokens: outputTokens,
+		TokensUsed:   inputTokens + outputTokens,
+		ModelUsed:    model,
 	}, nil
 }
 
@@ -141,7 +144,9 @@ type responsesAPIContentPart struct {
 }
 
 type responsesAPIUsage struct {
-	TotalTokens int `json:"total_tokens"`
+	InputTokens  int `json:"input_tokens"`
+	OutputTokens int `json:"output_tokens"`
+	TotalTokens  int `json:"total_tokens"`
 }
 
 func extractOutputTextFromResponses(r responsesAPIResponse) string {
@@ -177,29 +182,36 @@ func (c *Client) generateViaChatCompletions(ctx context.Context, model, prompt s
 	if strings.TrimSpace(text) == "" {
 		return nil, fmt.Errorf("model returned empty content (model=%s)", model)
 	}
-	tokensUsed := extractTokensUsed(resp)
+	inputTokens, outputTokens := extractInputOutputTokens(resp)
 	return &ai.FeedbackReplyResult{
-		Text:       text,
-		TokensUsed: tokensUsed,
-		ModelUsed:  model,
+		Text:         text,
+		InputTokens:  inputTokens,
+		OutputTokens: outputTokens,
+		TokensUsed:   inputTokens + outputTokens,
+		ModelUsed:    model,
 	}, nil
 }
 
-func extractTokensUsed(resp *llms.ContentResponse) int {
+func extractInputOutputTokens(resp *llms.ContentResponse) (inputTokens, outputTokens int) {
 	if len(resp.Choices) == 0 {
-		return 0
+		return 0, 0
 	}
 	info := resp.Choices[0].GenerationInfo
 	if info == nil {
-		return 0
+		return 0, 0
 	}
-	if v, ok := info["total_tokens"]; ok {
+	asInt := func(key string) int {
+		v, ok := info[key]
+		if !ok {
+			return 0
+		}
 		switch n := v.(type) {
 		case int:
 			return n
 		case float64:
 			return int(n)
 		}
+		return 0
 	}
-	return 0
+	return asInt("prompt_tokens"), asInt("completion_tokens")
 }

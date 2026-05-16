@@ -1930,6 +1930,10 @@ const docTemplate = `{
         "auth_google.LinkTelegramResponse": {
             "type": "object",
             "properties": {
+                "deepLink": {
+                    "type": "string",
+                    "example": "https://t.me/salehelp_bot?start=link_A3F7XQ"
+                },
                 "expiresAt": {
                     "description": "RFC3339",
                     "type": "string",

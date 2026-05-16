@@ -20,7 +20,8 @@ type (
 	}
 
 	Handler struct {
-		service Service
+		service     Service
+		botUsername string
 	}
 )
 
@@ -52,6 +53,6 @@ type LoginRequest struct {
 	Password string `json:"password" validate:"required"       example:"mypassword123"`
 }
 
-func NewHandler(service Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service Service, botUsername string) *Handler {
+	return &Handler{service: service, botUsername: botUsername}
 }
