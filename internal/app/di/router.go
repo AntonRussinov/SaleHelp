@@ -3,6 +3,7 @@ package di
 import (
 	"fmt"
 	"reflect"
+	accounthandler "salehelp/internal/handler/account"
 	"salehelp/internal/handler"
 	"salehelp/internal/handler/alert"
 	auth_google_handler "salehelp/internal/handler/auth_google"
@@ -225,6 +226,7 @@ func registerAuthGoogleRoutes(e *echo.Group, prov *Provider) {
 	registerAISettingsRoutes(protected, prov.Handlers.AISettings)
 	registerNotificationSettingsRoutes(protected, prov.Handlers.NotificationSettings)
 	registerSubscriptionStatusRoute(protected, prov.Handlers.Subscription)
+	registerAccountRoutes(protected, prov.Handlers.Account)
 	adminProtected := e.Group("", middleware.AdminAuth(prov.Services.AuthGoogle, auth_google_handler.SetJWTContext))
 	registerSubscriptionGrantRoute(adminProtected, prov.Handlers.Subscription)
 }
@@ -288,4 +290,13 @@ func registerNotificationSettingsRoutes(e *echo.Group, h *notification_settings.
 	grp := shops.Group("/notification-settings")
 	grp.GET("", h.ListSettings)
 	grp.PUT("", h.UpdateSettings)
+}
+
+func registerAccountRoutes(e *echo.Group, h *accounthandler.Handler) {
+	if h == nil {
+		return
+	}
+	acc := e.Group("/account")
+	acc.GET("/status", h.GetStatus)
+	acc.DELETE("", h.DeleteAccount)
 }

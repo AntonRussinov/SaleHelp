@@ -2,6 +2,7 @@ package di
 
 import (
 	"errors"
+	accounthandler "salehelp/internal/handler/account"
 	"salehelp/internal/handler/alert"
 	auth_google_handler "salehelp/internal/handler/auth_google"
 	notification_settings "salehelp/internal/handler/notification_settings"
@@ -21,6 +22,7 @@ type Handlers struct {
 	AISettings           *aisettingshandler.Handler
 	AuthGoogle           *auth_google_handler.Handler
 	NotificationSettings *notification_settings.Handler
+	Account              *accounthandler.Handler
 }
 
 var ErrInitHandlerss = errors.New("failed to initialize Handlerss")
@@ -48,5 +50,12 @@ func (prov *Provider) InitHandlers() error {
 	if prov.Services.AuthGoogle != nil {
 		prov.Handlers.AuthGoogle = auth_google_handler.NewHandler(prov.Services.AuthGoogle, prov.cfg.TelegramBotUsername)
 	}
+	prov.Handlers.Account = accounthandler.NewHandler(
+		prov.log,
+		prov.Repositories.Subscription,
+		prov.Repositories.Shop,
+		prov.Repositories.AIPackages,
+		prov.Repositories.User,
+	)
 	return nil
 }

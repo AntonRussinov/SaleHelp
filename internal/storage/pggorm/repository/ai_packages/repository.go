@@ -61,6 +61,12 @@ func (r *Repository) Create(ctx context.Context, p *domain.AIPackage) error {
 	return nil
 }
 
+// ZeroOutByUserID sets remaining=0 for all packages of a user (used on account deletion).
+func (r *Repository) ZeroOutByUserID(ctx context.Context, userID int) error {
+	return r.DB.WithContext(ctx).
+		Exec("UPDATE ai_packages SET remaining = 0 WHERE user_id = ?", userID).Error
+}
+
 // TotalRemaining returns the sum of remaining replies across all packages for a user.
 func (r *Repository) TotalRemaining(ctx context.Context, userID int) (int, error) {
 	var total int64
