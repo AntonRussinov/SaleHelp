@@ -29,11 +29,22 @@ type SubscriptionsRepo interface {
 	Create(ctx context.Context, s *domain.Subscription) error
 }
 
+type UsersRepo interface {
+	GetByID(ctx context.Context, id int) (*domain.User, error)
+}
+
+type EndpointsRepo interface {
+	Exists(ctx context.Context, shopID int, channel, address string) (bool, error)
+	Create(ctx context.Context, e *domain.NotificationEndpoint) error
+}
+
 type Service struct {
-	shops  ShopsRepo
-	alerts AlertsRepo
-	subs   SubscriptionsRepo
-	log    *slog.Logger
+	shops     ShopsRepo
+	alerts    AlertsRepo
+	subs      SubscriptionsRepo
+	users     UsersRepo
+	endpoints EndpointsRepo
+	log       *slog.Logger
 }
 
 func New(shops ShopsRepo, alerts AlertsRepo, subs SubscriptionsRepo, log *slog.Logger) *Service {
@@ -43,6 +54,13 @@ func New(shops ShopsRepo, alerts AlertsRepo, subs SubscriptionsRepo, log *slog.L
 		subs:   subs,
 		log:    log.With("service", "shop"),
 	}
+}
+
+// WithUserEndpoints wires optional repos for auto-creating Telegram notification endpoints.
+func (s *Service) WithUserEndpoints(users UsersRepo, endpoints EndpointsRepo) *Service {
+	s.users = users
+	s.endpoints = endpoints
+	return s
 }
 
 // CreateShop создаёт магазин, стандартные алерты и пробную подписку (если у пользователя ещё нет активной).
@@ -55,7 +73,36 @@ func (s *Service) CreateShop(ctx context.Context, shop *domain.Shop) error {
 	}
 	s.setupDefaultAlerts(ctx, shop.ID)
 	s.createTrialIfNeeded(ctx, shop.UserID)
+	s.autoCreateTelegramEndpoint(ctx, shop)
 	return nil
+}
+
+// autoCreateTelegramEndpoint создаёт Telegram-эндпоинт для нового магазина,
+// если у владельца уже привязан Telegram-чат (через deep link или бот).
+func (s *Service) autoCreateTelegramEndpoint(ctx context.Context, shop *domain.Shop) {
+	if s.users == nil || s.endpoints == nil {
+		return
+	}
+	user, err := s.users.GetByID(ctx, shop.UserID)
+	if err != nil || user == nil || user.TelegramChatID == nil {
+		return
+	}
+	chatStr := fmt.Sprintf("%d", *user.TelegramChatID)
+	exists, err := s.endpoints.Exists(ctx, shop.ID, "telegram", chatStr)
+	if err != nil || exists {
+		return
+	}
+	label := "owner"
+	ep := &domain.NotificationEndpoint{
+		ShopID:  shop.ID,
+		Channel: "telegram",
+		Address: chatStr,
+		Enabled: true,
+		Label:   &label,
+	}
+	if err := s.endpoints.Create(ctx, ep); err != nil {
+		s.log.Error("auto-create telegram endpoint failed", "shop_id", shop.ID, "user_id", shop.UserID, "err", err)
+	}
 }
 
 // checkShopLimit проверяет, не превышен ли лимит магазинов по подписке.

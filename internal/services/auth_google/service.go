@@ -25,6 +25,7 @@ const linkTokenCharset = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 
 type (
 	UserRepo interface {
+		GetByID(ctx context.Context, id int) (*domain.User, error)
 		GetByGoogleID(ctx context.Context, googleID string) (*domain.User, error)
 		GetByEmail(ctx context.Context, email string) (*domain.User, error)
 		GetByTelegramChatID(ctx context.Context, chatID int64) (*domain.User, error)
@@ -41,6 +42,13 @@ type (
 
 	ShopsRepoForLink interface {
 		ReassignShopsToUser(ctx context.Context, fromUserID, toUserID int) error
+		ListByUser(ctx context.Context, userID int, limit, offset int) ([]*domain.Shop, error)
+	}
+
+	EndpointsRepoForLink interface {
+		Exists(ctx context.Context, shopID int, channel, address string) (bool, error)
+		Create(ctx context.Context, e *domain.NotificationEndpoint) error
+		UpdateAddressByUser(ctx context.Context, userID int, channel, oldAddress, newAddress string) error
 	}
 
 	Service struct {
@@ -48,6 +56,7 @@ type (
 		userRepo       UserRepo
 		linkTokensRepo LinkTokensRepo
 		shopsRepo      ShopsRepoForLink
+		endpoints      EndpointsRepoForLink
 		googleCID      string
 		jwtSecret      []byte
 		jwtExpire      time.Duration
@@ -93,6 +102,12 @@ func NewService(log *slog.Logger, userRepo UserRepo, linkTokensRepo LinkTokensRe
 		jwtExpire:      jwtExpire,
 		bl:             bl,
 	}, nil
+}
+
+// WithEndpoints wires the optional endpoints repo for syncing Telegram notification endpoints on link.
+func (s *Service) WithEndpoints(ep EndpointsRepoForLink) *Service {
+	s.endpoints = ep
+	return s
 }
 
 func (bl *tokenBlocklist) revoke(token string, expiresAt time.Time) {
@@ -397,8 +412,60 @@ func (s *Service) ConfirmTelegramLink(ctx context.Context, userID int, code stri
 			s.log.Warn("clear old user telegram_chat_id failed", "user_id", telegramUser.ID, "err", err)
 		}
 	}
+
+	// Получаем старый chat_id до обновления — нужен для миграции эндпоинтов.
+	var oldChatID int64
+	if existingUser, errU := s.userRepo.GetByID(ctx, userID); errU == nil && existingUser != nil && existingUser.TelegramChatID != nil {
+		oldChatID = *existingUser.TelegramChatID
+	}
+
 	if err := s.userRepo.SetTelegramChatID(ctx, userID, chatID); err != nil {
 		return fmt.Errorf("set telegram_chat_id: %w", err)
 	}
+
+	s.syncTelegramEndpoints(ctx, userID, oldChatID, chatID)
 	return nil
+}
+
+// syncTelegramEndpoints обновляет эндпоинты при смене Telegram chat_id.
+// Если старый chat_id известен — обновляет адрес в существующих эндпоинтах.
+// Затем создаёт эндпоинты для магазинов, у которых их ещё нет.
+func (s *Service) syncTelegramEndpoints(ctx context.Context, userID int, oldChatID, newChatID int64) {
+	if s.endpoints == nil {
+		return
+	}
+
+	newAddr := fmt.Sprintf("%d", newChatID)
+
+	// Обновить адрес в существующих эндпоинтах (старый → новый chat_id).
+	if oldChatID != 0 && oldChatID != newChatID {
+		oldAddr := fmt.Sprintf("%d", oldChatID)
+		if err := s.endpoints.UpdateAddressByUser(ctx, userID, "telegram", oldAddr, newAddr); err != nil {
+			s.log.Warn("syncTelegramEndpoints: update address failed", "user_id", userID, "err", err)
+		}
+	}
+
+	// Создать эндпоинты для магазинов, у которых их ещё нет.
+	shops, err := s.shopsRepo.ListByUser(ctx, userID, 100, 0)
+	if err != nil {
+		s.log.Warn("syncTelegramEndpoints: list shops failed", "user_id", userID, "err", err)
+		return
+	}
+	label := "owner"
+	for _, shop := range shops {
+		exists, err := s.endpoints.Exists(ctx, shop.ID, "telegram", newAddr)
+		if err != nil || exists {
+			continue
+		}
+		ep := &domain.NotificationEndpoint{
+			ShopID:  shop.ID,
+			Channel: "telegram",
+			Address: newAddr,
+			Enabled: true,
+			Label:   &label,
+		}
+		if err := s.endpoints.Create(ctx, ep); err != nil {
+			s.log.Warn("syncTelegramEndpoints: create endpoint failed", "shop_id", shop.ID, "err", err)
+		}
+	}
 }

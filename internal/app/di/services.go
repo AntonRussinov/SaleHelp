@@ -65,7 +65,7 @@ func (prov *Provider) initIndependentServices() {
 		prov.Repositories.Alert,
 		prov.Repositories.Subscription,
 		prov.log,
-	)
+	).WithUserEndpoints(prov.Repositories.User, prov.Repositories.NotificationEndpoint)
 
 	prov.Services.Subscription = subscription.New(
 		prov.Repositories.Subscription,
@@ -338,6 +338,7 @@ func (prov *Provider) initDependentServices() {
 		if errAuth != nil {
 			prov.log.Warn("auth service init failed", "err", errAuth)
 		} else {
+			authGoogleSvc.WithEndpoints(prov.Repositories.NotificationEndpoint)
 			prov.Services.AuthGoogle = authGoogleSvc
 		}
 	}
