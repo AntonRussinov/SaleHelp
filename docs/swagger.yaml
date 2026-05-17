@@ -2,6 +2,54 @@ basePath: /api
 consumes:
 - application/json
 definitions:
+  account.AIBalance:
+    properties:
+      packages_remaining:
+        type: integer
+      subscription_remaining:
+        type: integer
+      total_available:
+        type: integer
+    type: object
+  account.AccountStatusResponse:
+    properties:
+      ai_balance:
+        $ref: '#/definitions/account.AIBalance'
+      shops_count:
+        type: integer
+      shops_limit:
+        type: integer
+      subscription:
+        $ref: '#/definitions/account.SubscriptionStatus'
+    type: object
+  account.SubscriptionStatus:
+    properties:
+      ai_quota:
+        type: integer
+      ai_resets_at:
+        type: string
+      ai_used:
+        type: integer
+      days_remaining:
+        type: integer
+      expires_at:
+        type: string
+      extra_shops:
+        type: integer
+      max_shops:
+        type: integer
+      status:
+        type: string
+      tier:
+        type: string
+    type: object
+  account.deleteAccountRequest:
+    properties:
+      confirmation:
+        type: string
+    required:
+    - confirmation
+    type: object
   api.AlertResponse:
     properties:
       aiRecommendationId:
@@ -452,6 +500,64 @@ paths:
       tags:
       - system
       - system
+  /v1/account:
+    delete:
+      consumes:
+      - application/json
+      description: Необратимо удаляет аккаунт, магазины, AI-настройки и все данные
+        пользователя
+      parameters:
+      - description: Подтверждение (значение должно быть 'DELETE')
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/account.deleteAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Удаление аккаунта
+      tags:
+      - account
+  /v1/account/status:
+    get:
+      description: Текущая подписка, AI-баланс, количество и лимит магазинов
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/account.AccountStatusResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Статус аккаунта
+      tags:
+      - account
   /v1/auth/confirm-telegram-link:
     post:
       consumes:

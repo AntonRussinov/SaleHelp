@@ -44,6 +44,97 @@
                 }
             }
         },
+        "/v1/account": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Необратимо удаляет аккаунт, магазины, AI-настройки и все данные пользователя",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "Удаление аккаунта",
+                "parameters": [
+                    {
+                        "description": "Подтверждение (значение должно быть 'DELETE')",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/account.deleteAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/account/status": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Текущая подписка, AI-баланс, количество и лимит магазинов",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "Статус аккаунта",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/account.AccountStatusResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/auth/confirm-telegram-link": {
             "post": {
                 "security": [
@@ -1346,6 +1437,80 @@
         }
     },
     "definitions": {
+        "account.AIBalance": {
+            "type": "object",
+            "properties": {
+                "packages_remaining": {
+                    "type": "integer"
+                },
+                "subscription_remaining": {
+                    "type": "integer"
+                },
+                "total_available": {
+                    "type": "integer"
+                }
+            }
+        },
+        "account.AccountStatusResponse": {
+            "type": "object",
+            "properties": {
+                "ai_balance": {
+                    "$ref": "#/definitions/account.AIBalance"
+                },
+                "shops_count": {
+                    "type": "integer"
+                },
+                "shops_limit": {
+                    "type": "integer"
+                },
+                "subscription": {
+                    "$ref": "#/definitions/account.SubscriptionStatus"
+                }
+            }
+        },
+        "account.SubscriptionStatus": {
+            "type": "object",
+            "properties": {
+                "ai_quota": {
+                    "type": "integer"
+                },
+                "ai_resets_at": {
+                    "type": "string"
+                },
+                "ai_used": {
+                    "type": "integer"
+                },
+                "days_remaining": {
+                    "type": "integer"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "extra_shops": {
+                    "type": "integer"
+                },
+                "max_shops": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "tier": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.deleteAccountRequest": {
+            "type": "object",
+            "required": [
+                "confirmation"
+            ],
+            "properties": {
+                "confirmation": {
+                    "type": "string"
+                }
+            }
+        },
         "api.AlertResponse": {
             "type": "object",
             "properties": {
