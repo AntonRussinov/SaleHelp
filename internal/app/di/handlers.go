@@ -7,7 +7,7 @@ import (
 	notification_settings "salehelp/internal/handler/notification_settings"
 	"salehelp/internal/handler/product"
 	"salehelp/internal/handler/shop"
-	shopaisettings "salehelp/internal/handler/shop_ai_settings"
+	aisettingshandler "salehelp/internal/handler/ai_settings"
 	"salehelp/internal/handler/subscription"
 	"salehelp/internal/handler/telegram"
 )
@@ -18,7 +18,7 @@ type Handlers struct {
 	Shop                 *shop.Handler
 	Subscription         *subscription.Handler
 	Alert                *alert.Handler
-	ShopAISettings       *shopaisettings.Handler
+	AISettings           *aisettingshandler.Handler
 	AuthGoogle           *auth_google_handler.Handler
 	NotificationSettings *notification_settings.Handler
 }
@@ -41,7 +41,7 @@ func (prov *Provider) InitHandlers() error {
 	prov.Handlers.Product = product.NewHandler(prov.Services.ProductList, nil)
 	prov.Handlers.Subscription = subscription.NewHandler(prov.Services.Subscription, prov.Repositories.Shop)
 	prov.Handlers.Alert = alert.NewHandler(prov.Services.AlertService, prov.Repositories.Shop, prov.log)
-	prov.Handlers.ShopAISettings = shopaisettings.NewHandler(prov.Repositories.ShopAISettings, prov.Repositories.Shop)
+	prov.Handlers.AISettings = aisettingshandler.NewHandler(prov.Repositories.AISettings, prov.Repositories.Shop, prov.Repositories.Subscription)
 	if prov.Services.NotificationSettings != nil {
 		prov.Handlers.NotificationSettings = notification_settings.NewHandler(prov.Services.NotificationSettings, prov.Repositories.Shop)
 	}

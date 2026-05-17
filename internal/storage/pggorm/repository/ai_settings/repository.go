@@ -1,4 +1,4 @@
-package shop_ai_settings
+package ai_settings
 
 import (
 	"log/slog"
@@ -15,7 +15,7 @@ type Repository struct {
 
 func NewRepository(log *slog.Logger, db *gorm.DB) *Repository {
 	r := &Repository{}
-	r.Log = log.With(sl.Module("ShopAISettingsRepository"))
+	r.Log = log.With(sl.Module("AISettingsRepository"))
 	r.DB = db
 	return r
 }

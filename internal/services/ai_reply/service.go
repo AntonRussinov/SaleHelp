@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"strings"
 	"time"
 
 	"salehelp/domain"
@@ -21,7 +20,7 @@ const (
 )
 
 type AISettingsRepo interface {
-	GetByShopID(ctx context.Context, shopID int) (*domain.ShopAISettings, error)
+	LoadBundle(ctx context.Context, shopID int, category string) (*domain.AISettingsBundle, error)
 }
 
 type WBFeedbackRepo interface {
@@ -147,11 +146,12 @@ func (s *Service) trySubscriptionQuota(ctx context.Context, shopID int) (subQuot
 
 // ProcessOne генерирует ответ на один отзыв.
 func (s *Service) ProcessOne(ctx context.Context, f *domain.WBFeedback) error {
-	settings, err := s.settingsRepo.GetByShopID(ctx, f.ShopID)
+	category := domain.CategoryFromRating(f.ProductValuation)
+	bundle, err := s.settingsRepo.LoadBundle(ctx, f.ShopID, category)
 	if err != nil {
 		return err
 	}
-	if settings == nil || !settings.IsActive {
+	if bundle == nil || !bundle.Settings.IsActive {
 		s.saveReplyLog(ctx, f.ID, f.ShopID, "", "", domain.AIReplyStatusSkipped, "AI disabled", nil)
 		return nil
 	}
@@ -182,22 +182,45 @@ func (s *Service) ProcessOne(ctx context.Context, f *domain.WBFeedback) error {
 		}
 	}
 
-	toneInstruction := tone.Instruction(settings.ToneOfVoice)
-	brandName := settings.BrandName
-	if brandName == "" {
-		brandName = "магазина"
+	settings := bundle.Settings
+
+	toneOfVoice := settings.ToneOfVoice
+	if bundle.Template != nil && bundle.Template.ToneVoiceOverride != "" {
+		toneOfVoice = bundle.Template.ToneVoiceOverride
 	}
+
+	var customRules, forbiddenWords []string
+	for _, r := range bundle.Rules {
+		switch r.RuleType {
+		case domain.AIRuleTypeRule:
+			customRules = append(customRules, r.RuleText)
+		case domain.AIRuleTypeForbiddenWord:
+			forbiddenWords = append(forbiddenWords, r.RuleText)
+		}
+	}
+
+	var categoryCustomPrompt string
+	if bundle.Template != nil && bundle.Template.Enabled {
+		categoryCustomPrompt = bundle.Template.CustomPrompt
+	}
+
 	in := &ai.FeedbackReplyInput{
-		BrandName:            brandName,
-		ToneInstruction:      toneInstruction,
+		BrandName:            settings.BrandName,
+		BrandDescription:     settings.BrandDescription,
+		ToneInstruction:      tone.Instruction(toneOfVoice),
 		ProductName:          sanitize.Text(f.ProductName),
 		Rating:               f.ProductValuation,
 		Text:                 sanitize.Text(f.Text),
 		Pros:                 sanitize.Text(f.Pros),
 		Cons:                 sanitize.Text(f.Cons),
-		CustomRules:          splitLines(settings.CustomRules),
 		OrderStatus:          f.OrderStatus,
-		CategoryCustomPrompt: "",
+		Addressing:           settings.Addressing,
+		EmojiMode:            settings.EmojiMode,
+		ResponseLength:       settings.ResponseLength,
+		Signature:            settings.Signature,
+		CustomRules:          customRules,
+		ForbiddenWords:       forbiddenWords,
+		CategoryCustomPrompt: categoryCustomPrompt,
 	}
 	promptStr, err := prompt.FormatFeedbackReply(in)
 	if err != nil {
@@ -248,16 +271,6 @@ func billingMonth() time.Time {
 }
 
 func ptr(i int) *int { return &i }
-
-func splitLines(s string) []string {
-	var result []string
-	for _, line := range strings.Split(s, "\n") {
-		if t := strings.TrimSpace(line); t != "" {
-			result = append(result, t)
-		}
-	}
-	return result
-}
 
 func truncate500(s string) string {
 	const max = 500

@@ -65,7 +65,7 @@ func (prov *Provider) initScheduler(ctx context.Context) error {
 
 	// AI Reply: генерация ответов на отзывы (каждые 30 мин)
 	if prov.Services.AIReply != nil && prov.cfg.Scheduler.AIReplySpec != "" {
-		aiReplyJob := jobs.NewAIReplyJob(prov.log, prov.Repositories.ShopAISettings, prov.Services.AIReply, 10)
+		aiReplyJob := jobs.NewAIReplyJob(prov.log, prov.Repositories.AISettings, prov.Services.AIReply, 10)
 		if err := prov.scheduler.Register(ctx, prov.cfg.Scheduler.AIReplySpec, "ai_reply", aiReplyJob.Run); err != nil {
 			return err
 		}

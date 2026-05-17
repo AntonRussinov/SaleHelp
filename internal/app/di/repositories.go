@@ -28,7 +28,7 @@ import (
 	"salehelp/internal/storage/pggorm/repository/shop"
 	shopairedger "salehelp/internal/storage/pggorm/repository/shop_ai_reply_ledger"
 	shopaireplyquota "salehelp/internal/storage/pggorm/repository/shop_ai_reply_quota"
-	shopaisettings "salehelp/internal/storage/pggorm/repository/shop_ai_settings"
+	aisettings "salehelp/internal/storage/pggorm/repository/ai_settings"
 	shopinvitetokens "salehelp/internal/storage/pggorm/repository/shop_invite_tokens"
 	"salehelp/internal/storage/pggorm/repository/shopabcsettings"
 	"salehelp/internal/storage/pggorm/repository/shopnotificationsetting"
@@ -71,7 +71,7 @@ type Repositories struct {
 	SellerWarehouse          *sellerwarehouse.Repository
 	Shop                     *shop.Repository
 	ShopABCSettings          *shopabcsettings.Repository
-	ShopAISettings           *shopaisettings.Repository
+	AISettings               *aisettings.Repository
 	ShopAIReplyLedger        *shopairedger.Repository
 	ShopAIReplyQuota         *shopaireplyquota.Repository
 	AIFeedbackReply          *aireplyrepo.Repository
@@ -115,7 +115,7 @@ func (prov *Provider) InitRepositories() {
 		SellerWarehouse:          sellerwarehouse.NewRepository(prov.log, prov.Database.GormDB),
 		Shop:                     shop.NewRepository(prov.log, prov.Database.GormDB),
 		ShopABCSettings:          shopabcsettings.NewRepository(prov.log, prov.Database.GormDB),
-		ShopAISettings:           shopaisettings.NewRepository(prov.log, prov.Database.GormDB),
+		AISettings:               aisettings.NewRepository(prov.log, prov.Database.GormDB),
 		ShopAIReplyLedger:        shopairedger.NewRepository(prov.log, prov.Database.GormDB),
 		ShopAIReplyQuota:         shopaireplyquota.NewRepository(prov.log, prov.Database.GormDB),
 		AIFeedbackReply:          aireplyrepo.NewRepository(prov.log, prov.Database.GormDB),

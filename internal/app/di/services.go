@@ -296,7 +296,7 @@ func (prov *Provider) initDependentServices() {
 		prov.log.Warn("ai_reply: OpenAI client init failed, AI replies disabled", "err", errAI)
 	} else {
 		prov.Services.AIReply = ai_reply.New(
-			prov.Repositories.ShopAISettings,
+			prov.Repositories.AISettings,
 			prov.Repositories.WBFeedback,
 			prov.Repositories.AIFeedbackReply,
 			prov.Repositories.ShopAIReplyQuota,

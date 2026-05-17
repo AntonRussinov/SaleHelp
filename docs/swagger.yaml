@@ -2,30 +2,6 @@ basePath: /api
 consumes:
 - application/json
 definitions:
-  api.AISettingsResponse:
-    properties:
-      brandName:
-        example: МойБренд
-        type: string
-      createdAt:
-        example: "2024-01-15T10:00:00Z"
-        type: string
-      customRules:
-        example: Всегда упоминай гарантию.
-        type: string
-      isActive:
-        example: true
-        type: boolean
-      shopId:
-        example: 1
-        type: integer
-      toneOfVoice:
-        example: friendly
-        type: string
-      updatedAt:
-        example: "2024-01-15T10:00:00Z"
-        type: string
-    type: object
   api.AlertResponse:
     properties:
       aiRecommendationId:
@@ -274,36 +250,6 @@ definitions:
       wbReportTimezone:
         example: Asia/Almaty
         type: string
-    type: object
-  api.UpsertAISettingsRequest:
-    properties:
-      brandName:
-        description: BrandName — название бренда для промпта (опционально)
-        example: МойБренд
-        maxLength: 500
-        type: string
-      customRules:
-        description: CustomRules — доп. правила для промпта (опционально)
-        example: Всегда упоминай гарантию. Не обещай скидки.
-        maxLength: 2000
-        type: string
-      isActive:
-        description: IsActive — включена ли генерация AI-ответов для магазина
-        example: true
-        type: boolean
-      toneOfVoice:
-        description: 'ToneOfVoice — тон ответов AI. Допустимые значения: standard,
-          friendly, official, empathic, minimalist'
-        enum:
-        - standard
-        - friendly
-        - official
-        - empathic
-        - minimalist
-        example: friendly
-        type: string
-    required:
-    - toneOfVoice
     type: object
   api.ValidationError:
     properties:
@@ -944,93 +890,6 @@ paths:
       summary: Создать магазин
       tags:
       - shops
-  /v1/shops/{shopId}/ai-settings:
-    get:
-      description: Возвращает настройки AI-ответов на отзывы для магазина (бренд,
-        тон, доп. правила)
-      parameters:
-      - description: ID магазина
-        in: path
-        name: shopId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.AISettingsResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.HTTPError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/api.HTTPError'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/api.HTTPError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.HTTPError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.HTTPError'
-      security:
-      - BearerAuth: []
-      summary: Получить настройки AI
-      tags:
-      - shop-ai-settings
-    put:
-      consumes:
-      - application/json
-      description: 'Задаёт настройки для формирования промпта ИИ: бренд, тон ответа,
-        доп. правила, вкл/выкл генерации'
-      parameters:
-      - description: ID магазина
-        in: path
-        name: shopId
-        required: true
-        type: integer
-      - description: Настройки AI
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.UpsertAISettingsRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.AISettingsResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.HTTPError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/api.HTTPError'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/api.HTTPError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.HTTPError'
-      security:
-      - BearerAuth: []
-      summary: Создать/обновить настройки AI
-      tags:
-      - shop-ai-settings
   /v1/shops/{shopId}/alerts:
     get:
       description: Получает список алертов с фильтрацией и пагинацией. Доступ только

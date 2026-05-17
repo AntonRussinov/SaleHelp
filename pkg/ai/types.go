@@ -3,6 +3,7 @@ package ai
 // FeedbackReplyInput — входные данные для генерации ответа на отзыв.
 type FeedbackReplyInput struct {
 	BrandName            string
+	BrandDescription     string // контекст о бренде (необязательно)
 	ToneInstruction      string
 	ProductName          string
 	Rating               int
@@ -10,10 +11,20 @@ type FeedbackReplyInput struct {
 	Pros                 string
 	Cons                 string
 	// OrderStatus — статус заказа из WB: "buyout" (выкуп), "returned" (товар возвращён).
-	OrderStatus          string
+	OrderStatus string
+	// Addressing — обращение к покупателю: "vy" (вы) или "ty" (ты).
+	Addressing string
+	// EmojiMode — режим эмодзи: "none", "minimal", "expressive".
+	EmojiMode string
+	// ResponseLength — длина ответа: "short" (200), "medium" (400), "long" (600).
+	ResponseLength string
+	// Signature — подпись в конце ответа (необязательно).
+	Signature string
 	// CustomRules — список доп. правил бренда (каждый элемент — одно правило).
-	CustomRules          []string
-	// CategoryCustomPrompt — доп. инструкции для конкретной категории (из AI-шаблонов, Phase 4).
+	CustomRules []string
+	// ForbiddenWords — слова/фразы, которые нельзя упоминать в ответе.
+	ForbiddenWords []string
+	// CategoryCustomPrompt — доп. инструкции для конкретной категории (из AI-шаблонов).
 	CategoryCustomPrompt string
 }
 
