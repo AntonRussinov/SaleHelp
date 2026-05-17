@@ -15,6 +15,7 @@ const (
 	callbackPrefixABCShop        = "abc_shop_"
 	callbackPrefixRestorePrices  = "restore_prices:"
 	callbackPrefixConfirmRestore = "confirm_restore:"
+	callbackPrefixAnswerQuestion = "answer_question:"
 )
 
 func (s *Service) handleCallbackQuery(ctx context.Context, q *dto.CallbackQuery) {
@@ -84,6 +85,12 @@ func (s *Service) handleCallbackQuery(ctx context.Context, q *dto.CallbackQuery)
 		}
 		key := strings.TrimSpace(parts[1])
 		s.handleAlertToggle(ctx, chatID, shopID, key)
+		return
+	}
+
+	if strings.HasPrefix(data, callbackPrefixAnswerQuestion) {
+		payload := strings.TrimPrefix(data, callbackPrefixAnswerQuestion)
+		s.handleAnswerQuestion(ctx, chatID, payload)
 		return
 	}
 

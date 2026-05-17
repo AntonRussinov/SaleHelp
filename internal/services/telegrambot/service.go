@@ -118,6 +118,11 @@ type (
 	WBClient interface {
 		GetNewOrders(ctx context.Context, apiKey string) (*wbdto.GetNewOrdersResponse, error)
 		GetNewDBWOrders(ctx context.Context, apiKey string) (*wbdto.GetNewDBWOrdersResponse, error)
+		AnswerQuestion(ctx context.Context, apiKey string, questionID string, answerText string) error
+	}
+
+	WBQuestionsRepo interface {
+		GetByWBQuestionID(ctx context.Context, shopID int, wbQuestionID string) (*domain.WBQuestion, error)
 	}
 
 	Service struct {
@@ -135,6 +140,7 @@ type (
 		abcSvc           ABCReportService
 		productsRepo     ProductsRepoForABC
 		wbClient         WBClient
+		wbQuestionsRepo  WBQuestionsRepo
 		priceRestore     PriceRestoreService
 		restoreBatchRepo PriceRestoreBatchRepo
 		notifSettings    *notification_settings.Service
@@ -164,6 +170,7 @@ func NewService(
 	restoreBatchRepo PriceRestoreBatchRepo,
 	notifSettings *notification_settings.Service,
 	adminChatID int64,
+	wbQuestionsRepo WBQuestionsRepo,
 ) *Service {
 	return &Service{
 		log:              log.With(sl.Module("TelegramBotService")),
@@ -181,6 +188,7 @@ func NewService(
 		abcSvc:           abcSvc,
 		productsRepo:     productsRepo,
 		wbClient:         wbClient,
+		wbQuestionsRepo:  wbQuestionsRepo,
 		priceRestore:     priceRestore,
 		restoreBatchRepo: restoreBatchRepo,
 		notifSettings:    notifSettings,

@@ -218,6 +218,7 @@ func (prov *Provider) initDependentServices() {
 		prov.Repositories.PriceRestoreBatch,
 		prov.Services.NotificationSettings,
 		prov.cfg.TelegramAdminID,
+		prov.Repositories.WBQuestion,
 	)
 
 	loc, err := time.LoadLocation("Europe/Moscow")

@@ -50,6 +50,9 @@ func (s *Service) handleState(ctx context.Context, chatID int64, text string) {
 	case StateWaitEmailForLink:
 		s.stepEmailForLink(ctx, chatID, text)
 		return
+	case StateWaitQuestionAnswer:
+		s.stepQuestionAnswer(ctx, chatID, text)
+		return
 	default:
 		_ = s.statesRepo.Clear(ctx, chatID)
 		_ = s.tg.SendMessage(ctx, chatID, "Состояние сбилось. Напиши /addshop чтобы начать заново.")

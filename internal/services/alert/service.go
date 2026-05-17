@@ -152,6 +152,7 @@ type EndpointsRepo interface {
 
 type TelegramSender interface {
 	SendMessage(ctx context.Context, chatID int64, text string) error
+	SendMessageWithInlineKeyboard(ctx context.Context, chatID int64, text string, inlineKeyboard map[string]any) error
 }
 
 func NewAlertEngine(

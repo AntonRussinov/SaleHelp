@@ -35,6 +35,7 @@ func (e *AlertEngine) runShopWBQuestions(ctx context.Context, shopID int) error 
 	sent := false
 	for _, q := range questions {
 		text := formatWBQuestionMessageRU(q)
+		keyboard := buildQuestionKeyboard(shopID, q.WBQuestionID)
 		for _, ep := range endpoints {
 			if ep.Channel != "telegram" || !ep.Enabled {
 				continue
@@ -44,7 +45,7 @@ func (e *AlertEngine) runShopWBQuestions(ctx context.Context, shopID int) error 
 				e.log.Warn("wb questions: invalid telegram chat_id", "endpoint_id", ep.ID, "address", ep.Address, "err", err)
 				continue
 			}
-			if err := e.tg.SendMessage(ctx, chatID, text); err != nil {
+			if err := e.tg.SendMessageWithInlineKeyboard(ctx, chatID, text, keyboard); err != nil {
 				e.log.Error("wb questions: send failed", "endpoint_id", ep.ID, "question_id", q.ID, "err", err)
 				continue
 			}
@@ -71,4 +72,16 @@ func formatWBQuestionMessageRU(q *domain.WBQuestion) string {
 	}
 	return fmt.Sprintf("❓ Новый вопрос о товаре\n\nТовар: %s\nВопрос: \"%s\"",
 		productName, q.Text)
+}
+
+// buildQuestionKeyboard строит inline-клавиатуру для уведомления о вопросе.
+func buildQuestionKeyboard(shopID int, wbQuestionID string) map[string]any {
+	answerCallback := fmt.Sprintf("answer_question:%d:%s", shopID, wbQuestionID)
+	return map[string]any{
+		"inline_keyboard": [][]map[string]any{
+			{
+				{"text": "💬 Ответить", "callback_data": answerCallback},
+			},
+		},
+	}
 }
