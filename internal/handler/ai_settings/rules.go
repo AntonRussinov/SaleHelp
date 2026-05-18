@@ -12,7 +12,27 @@ import (
 )
 
 // CreateRule добавляет правило бренда или запрещённое слово.
-// Лимит правил определяется тарифом пользователя.
+// @Summary Добавить правило AI
+// @Description Добавляет правило бренда или запрещённое слово для AI автоответов.
+// @Description Лимит правил зависит от тарифа пользователя.
+// @Description
+// @Description **Типы правил (`ruleType`):**
+// @Description - `rule` — инструкция для AI (например: "Всегда упоминай гарантию 1 год")
+// @Description - `forbidden_word` — слово/фраза, которую AI не должен использовать
+// @Description
+// @Description `orderIndex` — порядок применения правил (0 = первое).
+// @Tags ai-settings
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param shopId path int true "ID магазина"
+// @Param request body api.CreateAIRuleRequest true "Данные правила"
+// @Success 201 {object} api.AIRuleResponse
+// @Failure 400 {object} api.HTTPError "Невалидное тело или недопустимый тип правила"
+// @Failure 401 {object} api.HTTPError
+// @Failure 403 {object} api.HTTPError "Нет доступа к магазину или достигнут лимит правил тарифа"
+// @Failure 500 {object} api.HTTPError
+// @Router /v1/shops/{shopId}/ai-settings/rules [post]
 func (h *Handler) CreateRule(c echo.Context) error {
 	shopID, shop, err := h.ensureShopAccess(c)
 	if err != nil {
@@ -56,6 +76,23 @@ func (h *Handler) CreateRule(c echo.Context) error {
 }
 
 // UpdateRule обновляет правило.
+// @Summary Обновить правило AI
+// @Description Обновляет текст, тип и порядок существующего правила AI.
+// @Description Правило должно принадлежать настройкам этого магазина.
+// @Tags ai-settings
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param shopId path int true "ID магазина"
+// @Param ruleId path int true "ID правила"
+// @Param request body api.UpdateAIRuleRequest true "Обновлённые данные правила"
+// @Success 200 {object} api.AIRuleResponse
+// @Failure 400 {object} api.HTTPError "Невалидное тело или недопустимый ruleId"
+// @Failure 401 {object} api.HTTPError
+// @Failure 403 {object} api.HTTPError
+// @Failure 404 {object} api.HTTPError "AI-настройки магазина не найдены"
+// @Failure 500 {object} api.HTTPError
+// @Router /v1/shops/{shopId}/ai-settings/rules/{ruleId} [put]
 func (h *Handler) UpdateRule(c echo.Context) error {
 	shopID, _, err := h.ensureShopAccess(c)
 	if err != nil {
@@ -103,6 +140,20 @@ func (h *Handler) UpdateRule(c echo.Context) error {
 }
 
 // DeleteRule удаляет правило.
+// @Summary Удалить правило AI
+// @Description Удаляет правило бренда или запрещённое слово по его ID.
+// @Tags ai-settings
+// @Produce json
+// @Security BearerAuth
+// @Param shopId path int true "ID магазина"
+// @Param ruleId path int true "ID правила"
+// @Success 204 "Правило удалено"
+// @Failure 400 {object} api.HTTPError "Невалидный ruleId"
+// @Failure 401 {object} api.HTTPError
+// @Failure 403 {object} api.HTTPError
+// @Failure 404 {object} api.HTTPError "Правило или AI-настройки не найдены"
+// @Failure 500 {object} api.HTTPError
+// @Router /v1/shops/{shopId}/ai-settings/rules/{ruleId} [delete]
 func (h *Handler) DeleteRule(c echo.Context) error {
 	shopID, _, err := h.ensureShopAccess(c)
 	if err != nil {

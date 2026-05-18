@@ -812,6 +812,427 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/shops/{shopId}/ai-settings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает полные настройки AI автоответов на отзывы: основные параметры, правила бренда и шаблоны по категориям.\nЕсли настройки ещё не созданы — возвращает дефолтные значения (не 404), чтобы фронт мог сразу показать форму.\n\n**Поля ответа:**\n- ` + "`" + `isActive` + "`" + ` — включён ли AI автоответ для этого магазина\n- ` + "`" + `toneOfVoice` + "`" + ` — тональность: ` + "`" + `standard` + "`" + ` | ` + "`" + `friendly` + "`" + ` | ` + "`" + `official` + "`" + ` | ` + "`" + `empathic` + "`" + ` | ` + "`" + `minimalist` + "`" + `\n- ` + "`" + `responseLength` + "`" + ` — длина ответа: ` + "`" + `short` + "`" + ` | ` + "`" + `medium` + "`" + ` | ` + "`" + `long` + "`" + `\n- ` + "`" + `addressing` + "`" + ` — обращение: ` + "`" + `vy` + "`" + ` (вы) | ` + "`" + `ty` + "`" + ` (ты)\n- ` + "`" + `emojiMode` + "`" + ` — эмодзи: ` + "`" + `none` + "`" + ` | ` + "`" + `minimal` + "`" + ` | ` + "`" + `expressive` + "`" + `\n- ` + "`" + `rules` + "`" + ` — список правил бренда и запрещённых слов (см. ` + "`" + `/ai-settings/rules` + "`" + `)\n- ` + "`" + `templates` + "`" + ` — шаблоны по категориям отзывов: ` + "`" + `positive` + "`" + ` | ` + "`" + `neutral` + "`" + ` | ` + "`" + `negative` + "`" + `",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ai-settings"
+                ],
+                "summary": "Получить AI-настройки магазина",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AISettingsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создаёт или обновляет основные параметры AI автоответов для магазина.\nВозвращает полный объект настроек включая существующие правила и шаблоны.\n\n**Допустимые значения полей:**\n- ` + "`" + `toneOfVoice` + "`" + `: ` + "`" + `standard` + "`" + ` | ` + "`" + `friendly` + "`" + ` | ` + "`" + `official` + "`" + ` | ` + "`" + `empathic` + "`" + ` | ` + "`" + `minimalist` + "`" + `\n- ` + "`" + `responseLength` + "`" + `: ` + "`" + `short` + "`" + ` | ` + "`" + `medium` + "`" + ` | ` + "`" + `long` + "`" + `\n- ` + "`" + `addressing` + "`" + `: ` + "`" + `vy` + "`" + ` (Вы) | ` + "`" + `ty` + "`" + ` (ты)\n- ` + "`" + `emojiMode` + "`" + `: ` + "`" + `none` + "`" + ` | ` + "`" + `minimal` + "`" + ` | ` + "`" + `expressive` + "`" + `\n- ` + "`" + `brandName` + "`" + ` — макс. 100 символов\n- ` + "`" + `brandDescription` + "`" + ` — макс. 500 символов\n- ` + "`" + `representativeName` + "`" + ` — имя представителя в ответах, макс. 50 символов\n- ` + "`" + `signature` + "`" + ` — подпись в конце ответа, макс. 200 символов",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ai-settings"
+                ],
+                "summary": "Сохранить AI-настройки магазина",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Настройки AI",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpsertAISettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AISettingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Невалидное тело запроса или недопустимое значение поля",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shops/{shopId}/ai-settings/rules": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Добавляет правило бренда или запрещённое слово для AI автоответов.\nЛимит правил зависит от тарифа пользователя.\n\n**Типы правил (` + "`" + `ruleType` + "`" + `):**\n- ` + "`" + `rule` + "`" + ` — инструкция для AI (например: \"Всегда упоминай гарантию 1 год\")\n- ` + "`" + `forbidden_word` + "`" + ` — слово/фраза, которую AI не должен использовать\n\n` + "`" + `orderIndex` + "`" + ` — порядок применения правил (0 = первое).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ai-settings"
+                ],
+                "summary": "Добавить правило AI",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные правила",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateAIRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.AIRuleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Невалидное тело или недопустимый тип правила",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет доступа к магазину или достигнут лимит правил тарифа",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shops/{shopId}/ai-settings/rules/{ruleId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновляет текст, тип и порядок существующего правила AI.\nПравило должно принадлежать настройкам этого магазина.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ai-settings"
+                ],
+                "summary": "Обновить правило AI",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID правила",
+                        "name": "ruleId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Обновлённые данные правила",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateAIRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AIRuleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Невалидное тело или недопустимый ruleId",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "AI-настройки магазина не найдены",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Удаляет правило бренда или запрещённое слово по его ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ai-settings"
+                ],
+                "summary": "Удалить правило AI",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID правила",
+                        "name": "ruleId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Правило удалено"
+                    },
+                    "400": {
+                        "description": "Невалидный ruleId",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Правило или AI-настройки не найдены",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/shops/{shopId}/ai-settings/templates/{category}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создаёт или обновляет шаблон для категории отзыва: дополнительные инструкции для AI и переопределение тональности.\n\n**Категории (` + "`" + `category` + "`" + ` в пути):**\n- ` + "`" + `positive` + "`" + ` — положительные отзывы (4–5 звёзд)\n- ` + "`" + `neutral` + "`" + ` — нейтральные отзывы (3 звезды)\n- ` + "`" + `negative` + "`" + ` — негативные отзывы (1–2 звезды)\n\n**Поля запроса:**\n- ` + "`" + `customPrompt` + "`" + ` — дополнительные инструкции для AI (макс. 500 символов). Например: \"Упомяни программу лояльности\"\n- ` + "`" + `toneVoiceOverride` + "`" + ` — переопределить тональность для этой категории: ` + "`" + `standard` + "`" + ` | ` + "`" + `friendly` + "`" + ` | ` + "`" + `official` + "`" + ` | ` + "`" + `empathic` + "`" + ` | ` + "`" + `minimalist` + "`" + `. Пустая строка = использовать глобальную настройку\n- ` + "`" + `enabled` + "`" + ` — включить/выключить шаблон для этой категории (по умолчанию ` + "`" + `true` + "`" + `)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ai-settings"
+                ],
+                "summary": "Сохранить шаблон AI по категории отзыва",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID магазина",
+                        "name": "shopId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "positive",
+                            "neutral",
+                            "negative"
+                        ],
+                        "type": "string",
+                        "description": "Категория отзыва",
+                        "name": "category",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные шаблона",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpsertAITemplateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AITemplateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Невалидная категория или тело запроса",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/shops/{shopId}/alerts": {
             "get": {
                 "security": [
@@ -1514,6 +1935,104 @@ const docTemplate = `{
                 }
             }
         },
+        "api.AIRuleResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "orderIndex": {
+                    "type": "integer"
+                },
+                "ruleText": {
+                    "type": "string",
+                    "example": "Всегда упоминай гарантию 1 год"
+                },
+                "ruleType": {
+                    "type": "string",
+                    "example": "rule"
+                }
+            }
+        },
+        "api.AISettingsResponse": {
+            "type": "object",
+            "properties": {
+                "addressing": {
+                    "type": "string"
+                },
+                "brandDescription": {
+                    "type": "string"
+                },
+                "brandName": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "emojiMode": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "representativeName": {
+                    "type": "string"
+                },
+                "responseLength": {
+                    "type": "string"
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.AIRuleResponse"
+                    }
+                },
+                "shopId": {
+                    "type": "integer"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "templates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.AITemplateResponse"
+                    }
+                },
+                "toneOfVoice": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.AITemplateResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "example": "positive"
+                },
+                "customPrompt": {
+                    "type": "string",
+                    "example": "Упомяни программу лояльности"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "toneVoiceOverride": {
+                    "type": "string",
+                    "example": ""
+                }
+            }
+        },
         "api.AlertResponse": {
             "type": "object",
             "properties": {
@@ -1567,6 +2086,33 @@ const docTemplate = `{
                 "type": {
                     "type": "string",
                     "example": "price_drop"
+                }
+            }
+        },
+        "api.CreateAIRuleRequest": {
+            "type": "object",
+            "required": [
+                "ruleText",
+                "ruleType"
+            ],
+            "properties": {
+                "orderIndex": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 0
+                },
+                "ruleText": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "Всегда упоминай гарантию 1 год"
+                },
+                "ruleType": {
+                    "type": "string",
+                    "enum": [
+                        "rule",
+                        "forbidden_word"
+                    ],
+                    "example": "rule"
                 }
             }
         },
@@ -1803,6 +2349,30 @@ const docTemplate = `{
                 }
             }
         },
+        "api.UpdateAIRuleRequest": {
+            "type": "object",
+            "required": [
+                "ruleText",
+                "ruleType"
+            ],
+            "properties": {
+                "orderIndex": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "ruleText": {
+                    "type": "string",
+                    "maxLength": 200
+                },
+                "ruleType": {
+                    "type": "string",
+                    "enum": [
+                        "rule",
+                        "forbidden_word"
+                    ]
+                }
+            }
+        },
         "api.UpdateAlertRequest": {
             "type": "object",
             "properties": {
@@ -1861,6 +2431,100 @@ const docTemplate = `{
                 "wbReportTimezone": {
                     "type": "string",
                     "example": "Asia/Almaty"
+                }
+            }
+        },
+        "api.UpsertAISettingsRequest": {
+            "type": "object",
+            "required": [
+                "addressing",
+                "emojiMode",
+                "responseLength",
+                "toneOfVoice"
+            ],
+            "properties": {
+                "addressing": {
+                    "type": "string",
+                    "enum": [
+                        "ty",
+                        "vy"
+                    ],
+                    "example": "vy"
+                },
+                "brandDescription": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "Производим эко-товары для дома"
+                },
+                "brandName": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "example": "МойБренд"
+                },
+                "emojiMode": {
+                    "type": "string",
+                    "enum": [
+                        "none",
+                        "minimal",
+                        "expressive"
+                    ],
+                    "example": "minimal"
+                },
+                "isActive": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "representativeName": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "example": "Иван"
+                },
+                "responseLength": {
+                    "type": "string",
+                    "enum": [
+                        "short",
+                        "medium",
+                        "long"
+                    ],
+                    "example": "medium"
+                },
+                "signature": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "С уважением, команда МойБренд"
+                },
+                "toneOfVoice": {
+                    "type": "string",
+                    "enum": [
+                        "standard",
+                        "friendly",
+                        "official",
+                        "empathic",
+                        "minimalist"
+                    ],
+                    "example": "friendly"
+                }
+            }
+        },
+        "api.UpsertAITemplateRequest": {
+            "type": "object",
+            "properties": {
+                "customPrompt": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "toneVoiceOverride": {
+                    "type": "string",
+                    "enum": [
+                        "standard",
+                        "friendly",
+                        "official",
+                        "empathic",
+                        "minimalist"
+                    ]
                 }
             }
         },

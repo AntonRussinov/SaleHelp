@@ -10,6 +10,31 @@ import (
 )
 
 // UpsertAISettings создаёт или обновляет базовые настройки AI магазина.
+// @Summary Сохранить AI-настройки магазина
+// @Description Создаёт или обновляет основные параметры AI автоответов для магазина.
+// @Description Возвращает полный объект настроек включая существующие правила и шаблоны.
+// @Description
+// @Description **Допустимые значения полей:**
+// @Description - `toneOfVoice`: `standard` | `friendly` | `official` | `empathic` | `minimalist`
+// @Description - `responseLength`: `short` | `medium` | `long`
+// @Description - `addressing`: `vy` (Вы) | `ty` (ты)
+// @Description - `emojiMode`: `none` | `minimal` | `expressive`
+// @Description - `brandName` — макс. 100 символов
+// @Description - `brandDescription` — макс. 500 символов
+// @Description - `representativeName` — имя представителя в ответах, макс. 50 символов
+// @Description - `signature` — подпись в конце ответа, макс. 200 символов
+// @Tags ai-settings
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param shopId path int true "ID магазина"
+// @Param request body api.UpsertAISettingsRequest true "Настройки AI"
+// @Success 200 {object} api.AISettingsResponse
+// @Failure 400 {object} api.HTTPError "Невалидное тело запроса или недопустимое значение поля"
+// @Failure 401 {object} api.HTTPError
+// @Failure 403 {object} api.HTTPError
+// @Failure 500 {object} api.HTTPError
+// @Router /v1/shops/{shopId}/ai-settings [put]
 func (h *Handler) UpsertAISettings(c echo.Context) error {
 	shopID, shop, err := h.ensureShopAccess(c)
 	if err != nil {

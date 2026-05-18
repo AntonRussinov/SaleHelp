@@ -50,6 +50,72 @@ definitions:
     required:
     - confirmation
     type: object
+  api.AIRuleResponse:
+    properties:
+      id:
+        type: integer
+      orderIndex:
+        type: integer
+      ruleText:
+        example: Всегда упоминай гарантию 1 год
+        type: string
+      ruleType:
+        example: rule
+        type: string
+    type: object
+  api.AISettingsResponse:
+    properties:
+      addressing:
+        type: string
+      brandDescription:
+        type: string
+      brandName:
+        type: string
+      createdAt:
+        type: string
+      emojiMode:
+        type: string
+      id:
+        type: integer
+      isActive:
+        type: boolean
+      representativeName:
+        type: string
+      responseLength:
+        type: string
+      rules:
+        items:
+          $ref: '#/definitions/api.AIRuleResponse'
+        type: array
+      shopId:
+        type: integer
+      signature:
+        type: string
+      templates:
+        items:
+          $ref: '#/definitions/api.AITemplateResponse'
+        type: array
+      toneOfVoice:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  api.AITemplateResponse:
+    properties:
+      category:
+        example: positive
+        type: string
+      customPrompt:
+        example: Упомяни программу лояльности
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: integer
+      toneVoiceOverride:
+        example: ""
+        type: string
+    type: object
   api.AlertResponse:
     properties:
       aiRecommendationId:
@@ -90,6 +156,26 @@ definitions:
       type:
         example: price_drop
         type: string
+    type: object
+  api.CreateAIRuleRequest:
+    properties:
+      orderIndex:
+        example: 0
+        minimum: 0
+        type: integer
+      ruleText:
+        example: Всегда упоминай гарантию 1 год
+        maxLength: 200
+        type: string
+      ruleType:
+        enum:
+        - rule
+        - forbidden_word
+        example: rule
+        type: string
+    required:
+    - ruleText
+    - ruleType
     type: object
   api.CreateAlertRequest:
     properties:
@@ -257,6 +343,23 @@ definitions:
         example: business
         type: string
     type: object
+  api.UpdateAIRuleRequest:
+    properties:
+      orderIndex:
+        minimum: 0
+        type: integer
+      ruleText:
+        maxLength: 200
+        type: string
+      ruleType:
+        enum:
+        - rule
+        - forbidden_word
+        type: string
+    required:
+    - ruleText
+    - ruleType
+    type: object
   api.UpdateAlertRequest:
     properties:
       payload:
@@ -297,6 +400,78 @@ definitions:
     properties:
       wbReportTimezone:
         example: Asia/Almaty
+        type: string
+    type: object
+  api.UpsertAISettingsRequest:
+    properties:
+      addressing:
+        enum:
+        - ty
+        - vy
+        example: vy
+        type: string
+      brandDescription:
+        example: Производим эко-товары для дома
+        maxLength: 500
+        type: string
+      brandName:
+        example: МойБренд
+        maxLength: 100
+        type: string
+      emojiMode:
+        enum:
+        - none
+        - minimal
+        - expressive
+        example: minimal
+        type: string
+      isActive:
+        example: true
+        type: boolean
+      representativeName:
+        example: Иван
+        maxLength: 50
+        type: string
+      responseLength:
+        enum:
+        - short
+        - medium
+        - long
+        example: medium
+        type: string
+      signature:
+        example: С уважением, команда МойБренд
+        maxLength: 200
+        type: string
+      toneOfVoice:
+        enum:
+        - standard
+        - friendly
+        - official
+        - empathic
+        - minimalist
+        example: friendly
+        type: string
+    required:
+    - addressing
+    - emojiMode
+    - responseLength
+    - toneOfVoice
+    type: object
+  api.UpsertAITemplateRequest:
+    properties:
+      customPrompt:
+        maxLength: 500
+        type: string
+      enabled:
+        type: boolean
+      toneVoiceOverride:
+        enum:
+        - standard
+        - friendly
+        - official
+        - empathic
+        - minimalist
         type: string
     type: object
   api.ValidationError:
@@ -996,6 +1171,323 @@ paths:
       summary: Создать магазин
       tags:
       - shops
+  /v1/shops/{shopId}/ai-settings:
+    get:
+      description: |-
+        Возвращает полные настройки AI автоответов на отзывы: основные параметры, правила бренда и шаблоны по категориям.
+        Если настройки ещё не созданы — возвращает дефолтные значения (не 404), чтобы фронт мог сразу показать форму.
+
+        **Поля ответа:**
+        - `isActive` — включён ли AI автоответ для этого магазина
+        - `toneOfVoice` — тональность: `standard` | `friendly` | `official` | `empathic` | `minimalist`
+        - `responseLength` — длина ответа: `short` | `medium` | `long`
+        - `addressing` — обращение: `vy` (вы) | `ty` (ты)
+        - `emojiMode` — эмодзи: `none` | `minimal` | `expressive`
+        - `rules` — список правил бренда и запрещённых слов (см. `/ai-settings/rules`)
+        - `templates` — шаблоны по категориям отзывов: `positive` | `neutral` | `negative`
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AISettingsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Получить AI-настройки магазина
+      tags:
+      - ai-settings
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Создаёт или обновляет основные параметры AI автоответов для магазина.
+        Возвращает полный объект настроек включая существующие правила и шаблоны.
+
+        **Допустимые значения полей:**
+        - `toneOfVoice`: `standard` | `friendly` | `official` | `empathic` | `minimalist`
+        - `responseLength`: `short` | `medium` | `long`
+        - `addressing`: `vy` (Вы) | `ty` (ты)
+        - `emojiMode`: `none` | `minimal` | `expressive`
+        - `brandName` — макс. 100 символов
+        - `brandDescription` — макс. 500 символов
+        - `representativeName` — имя представителя в ответах, макс. 50 символов
+        - `signature` — подпись в конце ответа, макс. 200 символов
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: Настройки AI
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpsertAISettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AISettingsResponse'
+        "400":
+          description: Невалидное тело запроса или недопустимое значение поля
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Сохранить AI-настройки магазина
+      tags:
+      - ai-settings
+  /v1/shops/{shopId}/ai-settings/rules:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Добавляет правило бренда или запрещённое слово для AI автоответов.
+        Лимит правил зависит от тарифа пользователя.
+
+        **Типы правил (`ruleType`):**
+        - `rule` — инструкция для AI (например: "Всегда упоминай гарантию 1 год")
+        - `forbidden_word` — слово/фраза, которую AI не должен использовать
+
+        `orderIndex` — порядок применения правил (0 = первое).
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: Данные правила
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateAIRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.AIRuleResponse'
+        "400":
+          description: Невалидное тело или недопустимый тип правила
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Нет доступа к магазину или достигнут лимит правил тарифа
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Добавить правило AI
+      tags:
+      - ai-settings
+  /v1/shops/{shopId}/ai-settings/rules/{ruleId}:
+    delete:
+      description: Удаляет правило бренда или запрещённое слово по его ID.
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: ID правила
+        in: path
+        name: ruleId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Правило удалено
+        "400":
+          description: Невалидный ruleId
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "404":
+          description: Правило или AI-настройки не найдены
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Удалить правило AI
+      tags:
+      - ai-settings
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Обновляет текст, тип и порядок существующего правила AI.
+        Правило должно принадлежать настройкам этого магазина.
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: ID правила
+        in: path
+        name: ruleId
+        required: true
+        type: integer
+      - description: Обновлённые данные правила
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateAIRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AIRuleResponse'
+        "400":
+          description: Невалидное тело или недопустимый ruleId
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "404":
+          description: AI-настройки магазина не найдены
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Обновить правило AI
+      tags:
+      - ai-settings
+  /v1/shops/{shopId}/ai-settings/templates/{category}:
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Создаёт или обновляет шаблон для категории отзыва: дополнительные инструкции для AI и переопределение тональности.
+
+        **Категории (`category` в пути):**
+        - `positive` — положительные отзывы (4–5 звёзд)
+        - `neutral` — нейтральные отзывы (3 звезды)
+        - `negative` — негативные отзывы (1–2 звезды)
+
+        **Поля запроса:**
+        - `customPrompt` — дополнительные инструкции для AI (макс. 500 символов). Например: "Упомяни программу лояльности"
+        - `toneVoiceOverride` — переопределить тональность для этой категории: `standard` | `friendly` | `official` | `empathic` | `minimalist`. Пустая строка = использовать глобальную настройку
+        - `enabled` — включить/выключить шаблон для этой категории (по умолчанию `true`)
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: Категория отзыва
+        enum:
+        - positive
+        - neutral
+        - negative
+        in: path
+        name: category
+        required: true
+        type: string
+      - description: Данные шаблона
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpsertAITemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AITemplateResponse'
+        "400":
+          description: Невалидная категория или тело запроса
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Сохранить шаблон AI по категории отзыва
+      tags:
+      - ai-settings
   /v1/shops/{shopId}/alerts:
     get:
       description: Получает список алертов с фильтрацией и пагинацией. Доступ только
