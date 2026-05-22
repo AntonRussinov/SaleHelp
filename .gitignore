@@ -34,3 +34,6 @@ go.work
 # Output for generated files related to CI/CD
 data/*
 
+# Private planning and documentation (not for commit)
+/_private/
+

@@ -30,12 +30,10 @@ func (r *Repository) Upsert(ctx context.Context, d *domain.AISettings) error {
 	if m.CreatedAt.IsZero() {
 		m.CreatedAt = d.UpdatedAt
 	}
-	result := r.DB.WithContext(ctx).
-		Where(model.AISettings{ShopID: d.ShopID}).
-		Assign(m).
-		FirstOrCreate(m)
-	if result.Error != nil {
-		return fmt.Errorf("ai_settings upsert: %w", result.Error)
+	// Save: UPDATE by PK when ID != 0, INSERT when ID == 0.
+	// FirstOrCreate(m) was buggy: GORM overwrites m with the found record before applying Assign.
+	if err := r.DB.WithContext(ctx).Save(m).Error; err != nil {
+		return fmt.Errorf("ai_settings upsert: %w", err)
 	}
 	d.ID = m.ID
 	d.CreatedAt = m.CreatedAt
