@@ -23,7 +23,7 @@ func TestInitHandlers(t *testing.T) {
 	assert.NotNil(t, prov.Handlers.Product)
 	assert.NotNil(t, prov.Handlers.Subscription)
 	assert.NotNil(t, prov.Handlers.Alert)
-	assert.NotNil(t, prov.Handlers.ShopAISettings)
+	assert.NotNil(t, prov.Handlers.AISettings)
 
 	// Опциональные хэндлеры (AuthGoogle, NotificationSettings) зависят от внешних ключей,
 	// не проверяем их без реального конфига.

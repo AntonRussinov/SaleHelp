@@ -27,7 +27,7 @@ func (r *Repository) ListTemplates(ctx context.Context, settingsID int) ([]*doma
 
 func (r *Repository) UpsertTemplate(ctx context.Context, d *domain.AITemplate) error {
 	now := time.Now()
-	m := &model.AITemplate{
+	attrs := model.AITemplate{
 		AISettingsID:      d.AISettingsID,
 		Category:          d.Category,
 		CustomPrompt:      d.CustomPrompt,
@@ -35,16 +35,18 @@ func (r *Repository) UpsertTemplate(ctx context.Context, d *domain.AITemplate) e
 		Enabled:           d.Enabled,
 		UpdatedAt:         now,
 	}
+	var out model.AITemplate
+	// attrs and out are separate: GORM loads found record into out without overwriting attrs.
 	err := r.DB.WithContext(ctx).
 		Where("ai_settings_id = ? AND category = ?", d.AISettingsID, d.Category).
-		Assign(m).
-		FirstOrCreate(m).Error
+		Assign(attrs).
+		FirstOrCreate(&out).Error
 	if err != nil {
 		return fmt.Errorf("ai_templates upsert: %w", err)
 	}
-	d.ID = m.ID
-	d.CreatedAt = m.CreatedAt
-	d.UpdatedAt = m.UpdatedAt
+	d.ID = out.ID
+	d.CreatedAt = out.CreatedAt
+	d.UpdatedAt = out.UpdatedAt
 	return nil
 }
 
