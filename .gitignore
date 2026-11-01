@@ -37,3 +37,16 @@ data/*
 # Private planning and documentation (not for commit)
 /_private/
 
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Local build output
+/bin/
+/salehelp
+/main
+coverage.out
+coverage.html
