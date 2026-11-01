@@ -67,9 +67,8 @@ func TestNew(t *testing.T) {
 	}
 }
 
+// Not parallel: it temporarily replaces the global os.Stdout.
 func TestDefaultLogger(t *testing.T) {
-	t.Parallel()
-
 	tmpFile, err := os.CreateTemp("", "log_test")
 	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())

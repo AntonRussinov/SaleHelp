@@ -5,6 +5,7 @@ import (
 	"context"
 	"log"
 	"log/slog"
+	"os"
 	"salehelp/pkg/logger/handlers/prettylog"
 	"testing"
 	"time"
@@ -36,11 +37,12 @@ func TestColorize(t *testing.T) {
 	assert.Equal(t, expected, coloredText)
 }
 
+// Not parallel: it redirects the global std logger and shares one buffer between subtests.
 func TestHandle(t *testing.T) {
-	t.Parallel()
-
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
+
+	defer log.SetOutput(os.Stderr)
 
 	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
 	handler := prettylog.NewHandler(opts)
@@ -58,7 +60,6 @@ func TestHandle(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			t.Parallel()
 			buf.Reset()
 
 			rec := slog.NewRecord(time.Now(), testcase.level, "Test message", 0)
