@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0 # needed by only-new-issues to diff against the base
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: go.mod
+      # .golangci.yml uses the v1 schema (enable-all), so pin the v1 line.
+      # Only issues introduced by the change are reported; the legacy code base
+      # has not been cleaned up for every linter yet.
+      - uses: golangci/golangci-lint-action@v6.5.2
+        with:
+          version: v1.64.8
+          only-new-issues: true
+
+  test:
+    name: Build, vet, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+      # Repository tests use go-sqlmock, so no Postgres service is required.
+      - name: Test (race)
+        run: go test ./... -race
