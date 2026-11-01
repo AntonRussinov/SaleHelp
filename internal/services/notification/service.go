@@ -36,6 +36,7 @@ type ProductsRepo interface {
 
 type ProductSizesRepo interface {
 	GetByIDs(ctx context.Context, ids []int) (map[int]*domain.ProductSize, error)
+	ListByProductIDs(ctx context.Context, productIDs []int) ([]*domain.ProductSize, error)
 }
 
 type EndpointsRepo interface {

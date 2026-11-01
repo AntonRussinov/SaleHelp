@@ -24,6 +24,17 @@ func (r *Repository) CountActive(ctx context.Context) (int, error) {
 	return int(cnt), nil
 }
 
+func (r *Repository) CountByUser(ctx context.Context, userID int) (int, error) {
+	var cnt int64
+	if err := r.DB.WithContext(ctx).
+		Table("shops").
+		Where("user_id = ?", userID).
+		Count(&cnt).Error; err != nil {
+		return 0, fmt.Errorf("count shops by user: %w", err)
+	}
+	return int(cnt), nil
+}
+
 func (r *Repository) CountByLastSyncStatusCode(ctx context.Context, code int) (int, error) {
 	var cnt int64
 	if err := r.DB.WithContext(ctx).

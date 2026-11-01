@@ -43,7 +43,7 @@ func TestWBWarehouseRepositoryGetByWBID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "wb_warehouses" WHERE wb_id = \$1`).
-				WithArgs(w.WBID).
+				WithArgs(w.WBID, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 

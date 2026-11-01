@@ -11,8 +11,9 @@ const (
 )
 
 type Message struct {
-	Title string
-	Text  string
+	Title         string
+	Text          string
+	InlineKeyboard map[string]any // optional; при наличии Telegram отправляет последний фрагмент с reply_markup
 }
 
 type Recipient struct {

@@ -3,11 +3,17 @@ package di
 import (
 	"fmt"
 	"reflect"
+	accounthandler "salehelp/internal/handler/account"
 	"salehelp/internal/handler"
+	"salehelp/internal/handler/alert"
+	auth_google_handler "salehelp/internal/handler/auth_google"
+	notification_settings "salehelp/internal/handler/notification_settings"
 	"salehelp/internal/handler/product"
-	"salehelp/internal/handler/shop"
+	aisettingshandler "salehelp/internal/handler/ai_settings"
+	"salehelp/internal/handler/subscription"
 	"salehelp/internal/handler/telegram"
 	"salehelp/internal/middleware"
+	"strings"
 
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo/v4"
@@ -28,6 +34,8 @@ func (prov *Provider) InitRouter() {
 	prov.registerRootMiddlewares(router)
 	prov.registerSwaggerRoutes(router)
 
+	router.GET("/health", handler.Health)
+
 	api := router.Group("/api")
 	api.GET("/version", handler.HealthCheck)
 	api.Static("/assets", "assets")
@@ -39,20 +47,35 @@ func (prov *Provider) InitRouter() {
 }
 
 func (prov *Provider) registerRootMiddlewares(router *echo.Echo) {
+	corsCfg := echomw.CORSConfig{
+		AllowOrigins: prov.cfg.AllowedOrigins,
+		AllowMethods: echomw.DefaultCORSConfig.AllowMethods,
+		AllowHeaders: []string{
+			echo.HeaderAuthorization, echo.HeaderAccept,
+			echo.HeaderOrigin, echo.HeaderContentType,
+			"Accesstoken",
+		},
+		AllowCredentials: true,
+	}
+
+	// Для локальной разработки разрешаем localhost/127.0.0.1 и ngrok-хосты,
+	// чтобы preflight не падал из-за смены порта/домена.
+	if prov.cfg.Environment == "local" {
+		corsCfg.AllowOriginFunc = func(origin string) (bool, error) {
+			if strings.HasPrefix(origin, "http://localhost:") ||
+				strings.HasPrefix(origin, "http://127.0.0.1:") ||
+				strings.HasSuffix(origin, ".ngrok-free.dev") ||
+				strings.HasSuffix(origin, ".ngrok.app") {
+				return true, nil
+			}
+			return false, nil
+		}
+	}
+
 	router.Use(
 		echomw.Recover(),
-		echomw.CORSWithConfig(
-			echomw.CORSConfig{
-				AllowOrigins: prov.cfg.AllowedOrigins,
-				AllowMethods: echomw.DefaultCORSConfig.AllowMethods,
-				AllowHeaders: []string{
-					echo.HeaderAuthorization, echo.HeaderAccept,
-					echo.HeaderOrigin, echo.HeaderContentType,
-					"Accesstoken",
-				},
-				AllowCredentials: true,
-			},
-		),
+		echomw.RateLimiter(echomw.NewRateLimiterMemoryStore(20)),
+		echomw.CORSWithConfig(corsCfg),
 		echomw.RequestID(),
 	)
 }
@@ -61,7 +84,7 @@ func (prov *Provider) registerSwaggerRoutes(router *echo.Echo) {
 	if prov.cfg.Environment != "production" {
 		router.GET("/swagger/*", echoswag.WrapHandler)
 		router.Debug = true
-		router.Use(echomw.Logger())
+		router.Use(echomw.RequestLogger())
 	}
 }
 
@@ -121,7 +144,7 @@ func RegisterValidator(echo *echo.Echo) {
 // 	if cfg.Environment != "production" {
 // 		router.GET("/swagger/*", echoswag.WrapHandler)
 // 		router.Debug = true
-// 		router.Use(echomw.Logger())
+// 		router.Use(echomw.RequestLogger())
 // 	}
 
 // 	apiGroup := router.Group("/api")
@@ -151,15 +174,78 @@ func (prov *Provider) registerV1Routes(group *echo.Group) {
 	//protected := group.Group("", handlers.Auth.HeaderMiddleware())
 
 	registerTagRoutes(group, handlers.Product)
-	registerUserShopRoutes(group, handlers.Shop)
+	registerAuthGoogleRoutes(group, prov)
 	registerTelegramRoutes(group, handlers.TelegramBot)
 }
 
-func registerUserShopRoutes(e *echo.Group, shopHandler *shop.Handler) {
-	e.POST("/shop/:id/sync", shopHandler.SyncShopByID)
+func registerSubscriptionStatusRoute(e *echo.Group, subHandler *subscription.Handler) {
+	if subHandler == nil {
+		return
+	}
+	shopSub := e.Group("/shop/:id")
+	shopSub.GET("/subscription/status", subHandler.GetSubscriptionStatusByShopID)
+}
+
+func registerSubscriptionGrantRoute(e *echo.Group, subHandler *subscription.Handler) {
+	if subHandler == nil {
+		return
+	}
+	shopSub := e.Group("/shop/:id")
+	shopSub.POST("/subscription/grant", subHandler.GrantSubscriptionByShopID)
+}
+
+func registerAuthGoogleRoutes(e *echo.Group, prov *Provider) {
+	if prov.Handlers.AuthGoogle == nil || prov.Services.AuthGoogle == nil {
+		return
+	}
+	authLimiter := echomw.RateLimiter(echomw.NewRateLimiterMemoryStore(5))
+	e.POST("/auth/google", prov.Handlers.AuthGoogle.LoginGoogle, authLimiter)
+	e.POST("/auth/register", prov.Handlers.AuthGoogle.Register, authLimiter)
+	e.POST("/auth/login", prov.Handlers.AuthGoogle.LoginEmail, authLimiter)
+
+	// TEMP (local only): отключаем обязательную JWT-авторизацию для ускорения веб-интеграции.
+	// Быстрый откат: вернуть строку ниже и удалить ветку с localDevUserMiddleware().
+	// protected := e.Group("", middleware.JWTAuth(prov.Services.AuthGoogle, auth_google_handler.SetJWTContext))
+	protected := e.Group("")
+	if prov.cfg.Environment == "local" {
+		protected.Use(localDevUserMiddleware())
+	} else {
+		protected.Use(middleware.JWTAuth(prov.Services.AuthGoogle, auth_google_handler.SetJWTContext))
+	}
+
+	protected.GET("/me", prov.Handlers.AuthGoogle.Me)
+	protected.POST("/auth/logout", prov.Handlers.AuthGoogle.Logout)
+	protected.POST("/auth/link-telegram", prov.Handlers.AuthGoogle.LinkTelegram)
+	protected.POST("/auth/confirm-telegram-link", prov.Handlers.AuthGoogle.ConfirmTelegramLink)
+	protected.GET("/shops", prov.Handlers.Shop.ListShops)
+	protected.POST("/shops", prov.Handlers.Shop.CreateShop)
+	protected.GET("/shops/:shopId/products", prov.Handlers.Shop.ListShopProducts)
+	protected.POST("/shop/:id/sync", prov.Handlers.Shop.SyncShopByID)
+	protected.PATCH("/shop/:id", prov.Handlers.Shop.UpdateShop)
+	registerAlertRoutes(protected, prov.Handlers.Alert)
+	registerAISettingsRoutes(protected, prov.Handlers.AISettings)
+	registerNotificationSettingsRoutes(protected, prov.Handlers.NotificationSettings)
+	registerSubscriptionStatusRoute(protected, prov.Handlers.Subscription)
+	registerAccountRoutes(protected, prov.Handlers.Account)
+	adminProtected := e.Group("", middleware.AdminAuth(prov.Services.AuthGoogle, auth_google_handler.SetJWTContext))
+	registerSubscriptionGrantRoute(adminProtected, prov.Handlers.Subscription)
+}
+
+// localDevUserMiddleware проставляет тестового пользователя в контекст.
+// Нужен только для локальной разработки, чтобы обходить JWT на protected-роутах.
+func localDevUserMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.SetRequest(auth_google_handler.SetJWTContext(c.Request(), 4, "local-dev@salehelp"))
+			return next(c)
+		}
+	}
 }
 
 func registerTagRoutes(e *echo.Group, tagHandler *product.Handler) {
+	if tagHandler == nil {
+		return
+	}
 	e.GET("/products", tagHandler.GetProductByMerchantID,
 		middleware.Pagination(),
 		middleware.OrderBy(),
@@ -169,4 +255,48 @@ func registerTagRoutes(e *echo.Group, tagHandler *product.Handler) {
 
 func registerTelegramRoutes(e *echo.Group, telegramHandler *telegram.Handler) {
 	e.POST("/telegram/webhook", telegramHandler.Webhook)
+}
+
+func registerAlertRoutes(e *echo.Group, alertHandler *alert.Handler) {
+	shops := e.Group("/shops/:shopId")
+
+	alerts := shops.Group("/alerts")
+	alerts.POST("", alertHandler.CreateAlert)
+	alerts.GET("", alertHandler.ListAlerts)
+	alerts.GET("/:alertId", alertHandler.GetAlert)
+	alerts.PUT("/:alertId", alertHandler.UpdateAlert)
+	alerts.DELETE("/:alertId", alertHandler.DeleteAlert)
+}
+
+func registerAISettingsRoutes(e *echo.Group, h *aisettingshandler.Handler) {
+	if h == nil {
+		return
+	}
+	shops := e.Group("/shops/:shopId")
+	ai := shops.Group("/ai-settings")
+	ai.GET("", h.GetAISettings)
+	ai.PUT("", h.UpsertAISettings)
+	ai.POST("/rules", h.CreateRule)
+	ai.PUT("/rules/:ruleId", h.UpdateRule)
+	ai.DELETE("/rules/:ruleId", h.DeleteRule)
+	ai.PUT("/templates/:category", h.UpsertTemplate)
+}
+
+func registerNotificationSettingsRoutes(e *echo.Group, h *notification_settings.Handler) {
+	if h == nil {
+		return
+	}
+	shops := e.Group("/shops/:shopId")
+	grp := shops.Group("/notification-settings")
+	grp.GET("", h.ListSettings)
+	grp.PUT("", h.UpdateSettings)
+}
+
+func registerAccountRoutes(e *echo.Group, h *accounthandler.Handler) {
+	if h == nil {
+		return
+	}
+	acc := e.Group("/account")
+	acc.GET("/status", h.GetStatus)
+	acc.DELETE("", h.DeleteAccount)
 }

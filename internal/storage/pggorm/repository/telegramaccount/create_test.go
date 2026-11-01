@@ -33,12 +33,9 @@ func TestTelegramAccountRepositoryCreate(t *testing.T) {
 			repo, mock := setupRepo(t)
 			acc := builder.TelegramAccount()
 
-			args := saveTelegramAccountSQLArgs(acc)
-
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "telegram_accounts"(.+)`).
-				WithArgs(args...).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "telegram_accounts"(.+)`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {

@@ -65,6 +65,7 @@ func (b *DataBuilder) WarehouseRowValues(w domain.SellerWarehouse) []driver.Valu
 		w.ID,
 		w.ShopID,
 		w.WBOfficeID,
+		w.WBID,
 		w.Name,
 		w.CargoType,
 		w.DeliveryType,

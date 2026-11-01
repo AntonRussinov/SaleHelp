@@ -1,6 +1,10 @@
 package dto
 
-import "time"
+import (
+	"encoding/json"
+	"fmt"
+	"time"
+)
 
 type GetCardsRequest struct {
 	Settings Settings `json:"settings"`
@@ -92,11 +96,46 @@ type Dimensions struct {
 	IsValid      bool    `json:"isValid"`
 }
 
+// CharacteristicValue — value в ответе WB может быть числом или массивом строк.
+type CharacteristicValue []string
+
+func (v *CharacteristicValue) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 {
+		*v = nil
+		return nil
+	}
+	switch data[0] {
+	case '[':
+		var s []string
+		if err := json.Unmarshal(data, &s); err != nil {
+			return err
+		}
+		*v = s
+		return nil
+	case '"':
+		var s string
+		if err := json.Unmarshal(data, &s); err != nil {
+			return err
+		}
+		*v = []string{s}
+		return nil
+	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		var n json.Number
+		if err := json.Unmarshal(data, &n); err != nil {
+			return err
+		}
+		*v = []string{n.String()}
+		return nil
+	default:
+		return fmt.Errorf("characteristic value: unexpected type (first byte %q)", data[0])
+	}
+}
+
 // Характеристики (атрибуты)
 type Characteristic struct {
-	ID    int      `json:"id"`
-	Name  string   `json:"name"`
-	Value []string `json:"value"`
+	ID    int                `json:"id"`
+	Name  string             `json:"name"`
+	Value CharacteristicValue `json:"value"`
 }
 
 // Размеры / вариации

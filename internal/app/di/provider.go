@@ -5,9 +5,11 @@ import (
 	"log/slog"
 	"net/http"
 	wbclient "salehelp/internal/adapter/wb/client"
+	wbdto "salehelp/internal/adapter/wb/dto"
 	"salehelp/internal/config"
 	"salehelp/internal/scheduler"
 	"salehelp/pkg/extendedvalidator"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/robfig/cron/v3"
@@ -24,11 +26,16 @@ type Provider struct {
 	Handlers     Handlers
 	Router       *echo.Echo
 	Validator    *extendedvalidator.Validator
-	scheduler    *scheduler.Scheduler
+	scheduler       *scheduler.Scheduler
+	schedulerLoc    *time.Location
+	telegramAdapter interface{ SendMessage(context.Context, int64, string) error }
 	// AccessManager  *access.Manager
-	// KaspiAPI       kaspiAPI.API
-	// KaspiPortalAPI portalAPI.PortalAPI
 	WBClient *wbclient.Client
+}
+
+// TelegramAdapter возвращает адаптер для отправки сообщений в Telegram (для cron-задач).
+func (prov *Provider) TelegramAdapter() interface{ SendMessage(context.Context, int64, string) error } {
+	return prov.telegramAdapter
 }
 
 func NewProvider(log *slog.Logger, cfg *config.ServiceConfig) *Provider {
@@ -49,8 +56,21 @@ func (prov *Provider) GetCron() *cron.Cron {
 func (prov *Provider) initWBClient() {
 	httpClient := &http.Client{}
 
-	// Создаём WB-клиент (New возвращает *Client)
-	prov.WBClient = wbclient.New(httpClient)
+	// Часовой пояс для отчётов WB (sales, orders): в каком поясе WB отдаёт даты и ждёт dateFrom.
+	reportTZ := prov.cfg.WBReportTimezone
+	if reportTZ == "" {
+		reportTZ = "Europe/Moscow"
+	}
+	loc, err := time.LoadLocation(reportTZ)
+	if err != nil {
+		prov.log.Warn("wb report timezone load failed, using Moscow", "tz", reportTZ, "err", err)
+		loc, _ = time.LoadLocation("Europe/Moscow")
+		if loc == nil {
+			loc = time.FixedZone("MSK", 3*3600)
+		}
+	}
+	wbdto.SetWBReportLocation(loc)
+	prov.WBClient = wbclient.New(httpClient, loc, prov.cfg.WBXClientSecret)
 }
 
 func (prov *Provider) Init(ctx context.Context) error {
@@ -70,7 +90,6 @@ func (prov *Provider) Init(ctx context.Context) error {
 	prov.InitServices()
 	prov.InitPresenters()
 
-	// prov.InitKaspiPortalAPI(prov.Repositories.Merchant)
 	// err = prov.InitCronRunner(ctx)
 	// if err != nil {
 	// 	return err

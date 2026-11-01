@@ -41,8 +41,8 @@ func TestProductSnapshotRepositoryGetLastByProductID(t *testing.T) {
 				rows.AddRow(builder.ProductSnapshotRowValues(snap)...)
 			}
 
-			mock.ExpectQuery(`SELECT (.+) FROM "product_snapshots" WHERE product_id = \$1 ORDER BY snapshot_time DESC LIMIT 1`).
-				WithArgs(tt.productID).
+			mock.ExpectQuery(`SELECT (.+) FROM "product_snapshots" WHERE product_id = \$1 ORDER BY snapshot_time DESC LIMIT \$2`).
+				WithArgs(tt.productID, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 

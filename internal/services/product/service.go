@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"salehelp/domain"
-	"salehelp/internal/adapter/kaspi/portal/portal_models"
 	"salehelp/pkg/logger/sl"
 )
 
@@ -39,23 +38,17 @@ type (
 	// CityPriceRepo interface {
 	// 	Save(ctx context.Context, cityPrice *domain.CityPrice) error
 	// }
-	PortalAPI interface {
-		GetAllProducts(ctx context.Context, merchantID string) (*portal_models.Products, error)
-	}
-
 	Service struct {
 		log          *slog.Logger
 		ProductRepo  ProductRepo
 		MerchantRepo MerchantRepo
 		ImageRepo    ImageRepo
-		portalAPI    PortalAPI
 	}
 )
 
 func NewService(log *slog.Logger,
 	ProductRepo ProductRepo,
 	MerchantRepo MerchantRepo, ImageRepo ImageRepo,
-	portalAPI PortalAPI,
 ) *Service {
 	return &Service{
 		log: log.With(sl.Module("ProductsService")),
@@ -64,7 +57,6 @@ func NewService(log *slog.Logger,
 
 		MerchantRepo: MerchantRepo,
 		ImageRepo:    ImageRepo,
-		portalAPI:    portalAPI,
 	}
 }
 

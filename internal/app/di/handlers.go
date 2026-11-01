@@ -2,17 +2,27 @@ package di
 
 import (
 	"errors"
+	accounthandler "salehelp/internal/handler/account"
+	"salehelp/internal/handler/alert"
+	auth_google_handler "salehelp/internal/handler/auth_google"
+	notification_settings "salehelp/internal/handler/notification_settings"
 	"salehelp/internal/handler/product"
 	"salehelp/internal/handler/shop"
+	aisettingshandler "salehelp/internal/handler/ai_settings"
 	"salehelp/internal/handler/subscription"
 	"salehelp/internal/handler/telegram"
 )
 
 type Handlers struct {
-	Product      *product.Handler
-	TelegramBot  *telegram.Handler
-	Shop         *shop.Handler
-	Subscription *subscription.Handler
+	Product              *product.Handler
+	TelegramBot          *telegram.Handler
+	Shop                 *shop.Handler
+	Subscription         *subscription.Handler
+	Alert                *alert.Handler
+	AISettings           *aisettingshandler.Handler
+	AuthGoogle           *auth_google_handler.Handler
+	NotificationSettings *notification_settings.Handler
+	Account              *accounthandler.Handler
 }
 
 var ErrInitHandlerss = errors.New("failed to initialize Handlerss")
@@ -28,9 +38,24 @@ func (prov *Provider) InitHandlers() error {
 	// temporary
 	// prov.Handlers.Product = product.NewHandler(prov.Services.Product, prov.Presenters.Product)
 
-	prov.Handlers.Shop = shop.NewHandler(prov.Services.Monitoring)
+	prov.Handlers.Shop = shop.NewHandler(prov.Services.Monitoring, prov.Services.Shop, prov.Repositories.Shop, prov.Repositories.Product, prov.Repositories.Subscription)
 	prov.Handlers.TelegramBot = telegram.NewHandler(prov.Services.TelegramBot, prov.cfg.TelegramSecret)
-	//prov.Handlers.Product = product.NewHandler(prov.Services.Product, prov.Presenters.Product)
-	prov.Handlers.Subscription = subscription.NewHandler(prov.Services.Subscription)
+	prov.Handlers.Product = product.NewHandler(prov.Services.ProductList, nil)
+	prov.Handlers.Subscription = subscription.NewHandler(prov.Services.Subscription, prov.Repositories.Shop)
+	prov.Handlers.Alert = alert.NewHandler(prov.Services.AlertService, prov.Repositories.Shop, prov.log)
+	prov.Handlers.AISettings = aisettingshandler.NewHandler(prov.Repositories.AISettings, prov.Repositories.Shop, prov.Repositories.Subscription)
+	if prov.Services.NotificationSettings != nil {
+		prov.Handlers.NotificationSettings = notification_settings.NewHandler(prov.Services.NotificationSettings, prov.Repositories.Shop)
+	}
+	if prov.Services.AuthGoogle != nil {
+		prov.Handlers.AuthGoogle = auth_google_handler.NewHandler(prov.Services.AuthGoogle, prov.cfg.TelegramBotUsername)
+	}
+	prov.Handlers.Account = accounthandler.NewHandler(
+		prov.log,
+		prov.Repositories.Subscription,
+		prov.Repositories.Shop,
+		prov.Repositories.AIPackages,
+		prov.Repositories.User,
+	)
 	return nil
 }

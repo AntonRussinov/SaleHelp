@@ -35,8 +35,8 @@ func TestNotificationEndpointRepositoryUpsert(t *testing.T) {
 			e := builder.Endpoint()
 
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "shop_notification_endpoints"`).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "shop_notification_endpoints"`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {

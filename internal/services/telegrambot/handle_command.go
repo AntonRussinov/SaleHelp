@@ -15,12 +15,17 @@ func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) 
 		s.handleJoin(ctx, chatID, token)
 		return
 
+	case len(cmd) > 1 && cmd[0] == "/start" && strings.HasPrefix(cmd[1], "link_"):
+		code := strings.TrimPrefix(cmd[1], "link_")
+		s.handleLink(ctx, chatID, code)
+		return
+
 	case len(cmd) > 0 && cmd[0] == "/start":
 		_ = s.tg.SendMessageWithKeyboard(
 			ctx,
 			chatID,
-			"Привет! 👋\n\nВыбери действие:",
-			mainMenuKeyboard(),
+			"Привет! 👋\n\nКоманды — в меню (☰ рядом с полем ввода).",
+			removeKeyboard(),
 		)
 		return
 
@@ -30,7 +35,7 @@ func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) 
 			ctx,
 			chatID,
 			"Ок, отменил. Можешь начать заново.",
-			mainMenuKeyboard(),
+			removeKeyboard(),
 		)
 		return
 
@@ -40,6 +45,10 @@ func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) 
 
 	case len(cmd) > 0 && cmd[0] == "/myshops":
 		_ = s.handleMyShops(ctx, chatID)
+		return
+
+	case len(cmd) > 0 && cmd[0] == "/alerts":
+		_ = s.handleAlertSettingsEntry(ctx, chatID)
 		return
 
 	case len(cmd) > 0 && cmd[0] == "/invite":
@@ -60,6 +69,22 @@ func (s *Service) handleCommand(ctx context.Context, chatID int64, text string) 
 
 	case len(cmd) == 2 && cmd[0] == "/chats":
 		s.handleChats(ctx, chatID, cmd[1])
+		return
+
+	case len(cmd) >= 1 && cmd[0] == "/orders":
+		s.handleOrders(ctx, chatID)
+		return
+
+	case len(cmd) >= 1 && cmd[0] == "/abc_now":
+		s.handleABCNow(ctx, chatID, cmd)
+		return
+
+	case len(cmd) >= 2 && cmd[0] == "/link":
+		s.handleLink(ctx, chatID, strings.Join(cmd[1:], " "))
+		return
+
+	case len(cmd) > 0 && cmd[0] == "/link_email":
+		s.startLinkEmail(ctx, chatID)
 		return
 
 	case len(cmd) > 0 && cmd[0] == "/admin_stats":

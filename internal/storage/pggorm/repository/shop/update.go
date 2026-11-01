@@ -82,6 +82,10 @@ func (r *Repository) UpdateSyncStatus(ctx context.Context, shopID int, upd model
 	}
 	if upd.LastSyncOkAt != nil {
 		updates["last_sync_ok_at"] = *upd.LastSyncOkAt
+		// успешный синк — очищаем ошибки предыдущего упавшего синка
+		updates["last_sync_error"] = nil
+		updates["last_sync_status_code"] = 0
+		updates["last_sync_failed_at"] = nil
 	}
 
 	// если нечего обновлять — это ок
@@ -96,5 +100,53 @@ func (r *Repository) UpdateSyncStatus(ctx context.Context, shopID int, upd model
 		return fmt.Errorf("update shops sync status: %w", err)
 	}
 
+	return nil
+}
+
+// UpdateHeavySyncState сохраняет результат тяжёлого синка: timestamp и курсор карточек WB.
+func (r *Repository) UpdateHeavySyncState(ctx context.Context, shopID int, upd model.HeavySyncUpdate) error {
+	if shopID <= 0 {
+		return fmt.Errorf("shopID is required")
+	}
+
+	updates := map[string]any{}
+	if upd.LastHeavySyncAt != nil {
+		updates["last_heavy_sync_at"] = *upd.LastHeavySyncAt
+	}
+	if upd.CardsCursorUpdatedAt != nil {
+		updates["cards_cursor_updated_at"] = *upd.CardsCursorUpdatedAt
+	}
+	if upd.CardsCursorNmID != nil {
+		updates["cards_cursor_nmid"] = *upd.CardsCursorNmID
+	}
+	if upd.LastFullCardsSyncAt != nil {
+		updates["last_full_cards_sync_at"] = *upd.LastFullCardsSyncAt
+	}
+
+	if len(updates) == 0 {
+		return nil
+	}
+
+	if err := r.DB.WithContext(ctx).
+		Table("shops").
+		Where("id = ?", shopID).
+		Updates(updates).Error; err != nil {
+		return fmt.Errorf("update shops heavy sync state: %w", err)
+	}
+	return nil
+}
+
+// ReassignShopsToUser переносит все магазины от fromUserID к toUserID (для объединения аккаунтов).
+func (r *Repository) ReassignShopsToUser(ctx context.Context, fromUserID, toUserID int) error {
+	if fromUserID <= 0 || toUserID <= 0 || fromUserID == toUserID {
+		return fmt.Errorf("from_user_id and to_user_id must be distinct positive")
+	}
+	res := r.DB.WithContext(ctx).
+		Model(&model.Shop{}).
+		Where("user_id = ?", fromUserID).
+		Update("user_id", toUserID)
+	if res.Error != nil {
+		return fmt.Errorf("shops reassign to user: %w", res.Error)
+	}
 	return nil
 }

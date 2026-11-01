@@ -7,7 +7,41 @@ import (
 	"salehelp/internal/storage/pggorm/model"
 
 	"github.com/jackc/pgtype"
+	"gorm.io/gorm"
 )
+
+func (r *Repository) GetByID(ctx context.Context, id int) (*domain.ProductSnapshot, error) {
+	var m model.ProductSnapshot
+	if err := r.DB.WithContext(ctx).First(&m, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("product_snapshot get by id: %w", err)
+	}
+	return m.ToDomain(), nil
+}
+
+// GetPreviousBySnapshotID возвращает снапшот того же товара, непосредственно предшествующий данному по snapshot_time.
+func (r *Repository) GetPreviousBySnapshotID(ctx context.Context, snapshotID int) (*domain.ProductSnapshot, error) {
+	var m model.ProductSnapshot
+	err := r.DB.WithContext(ctx).
+		Raw(`
+			SELECT ps.* FROM product_snapshots ps
+			INNER JOIN product_snapshots curr ON curr.id = ?
+			WHERE ps.product_id = curr.product_id
+			  AND ps.snapshot_time < curr.snapshot_time
+			ORDER BY ps.snapshot_time DESC
+			LIMIT 1
+		`, snapshotID).
+		Scan(&m).Error
+	if err != nil {
+		return nil, fmt.Errorf("product_snapshot get previous by snapshot_id: %w", err)
+	}
+	if m.ID == 0 {
+		return nil, nil
+	}
+	return m.ToDomain(), nil
+}
 
 func (r *Repository) GetLastByProductID(ctx context.Context, productID int) (*domain.ProductSnapshot, error) {
 	var m model.ProductSnapshot
@@ -93,7 +127,7 @@ func (r *Repository) GetLatestByProductIDs(ctx context.Context, productIDs []int
 			SELECT DISTINCT ON (product_id)
 				*
 			FROM product_snapshots
-			WHERE product_id = ANY (?)
+			WHERE product_id IN (?)
 			ORDER BY product_id, snapshot_time DESC
 		`, productIDs).
 		Scan(&rows).Error; err != nil {

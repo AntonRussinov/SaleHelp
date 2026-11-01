@@ -117,6 +117,22 @@ func (r *Repository) ListActiveIDs(ctx context.Context, limit, offset int) ([]in
 	return ids, nil
 }
 
+// GetByExternalID возвращает магазин по WB seller ID (sid из JWT).
+// Возвращает nil, nil если не найден.
+func (r *Repository) GetByExternalID(ctx context.Context, externalID string) (*domain.Shop, error) {
+	var m model.Shop
+
+	if err := r.DB.WithContext(ctx).
+		First(&m, "external_id = ?", externalID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("shop get by external_id: %w", err)
+	}
+
+	return m.ToDomain(), nil
+}
+
 func (r *Repository) ListByTelegramChat(
 	ctx context.Context,
 	chatID int64,
@@ -124,6 +140,7 @@ func (r *Repository) ListByTelegramChat(
 	var models []model.Shop
 
 	err := r.DB.WithContext(ctx).
+		Select("shops.*").
 		Joins(`
 			JOIN shop_notification_endpoints e
 			  ON e.shop_id = shops.id

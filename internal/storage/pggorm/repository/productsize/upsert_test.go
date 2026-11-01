@@ -36,11 +36,13 @@ func TestProductSizeRepositoryUpsert(t *testing.T) {
 			mock.ExpectBegin()
 			mock.ExpectQuery(`INSERT INTO "product_sizes"`).
 				WithArgs(
-					sqlmock.AnyArg(), // created_at
-					sqlmock.AnyArg(), // updated_at
 					ps.ProductID,
 					ps.ExternalID,
 					ps.TechSizeName,
+					sqlmock.AnyArg(), // created_at
+					sqlmock.AnyArg(), // updated_at
+					sqlmock.AnyArg(), // DO UPDATE SET tech_size_name
+					sqlmock.AnyArg(), // DO UPDATE SET updated_at
 				).
 				WillReturnRows(
 					sqlmock.NewRows([]string{"id"}).AddRow(10),

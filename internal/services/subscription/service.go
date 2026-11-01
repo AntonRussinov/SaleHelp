@@ -6,82 +6,56 @@ import (
 	"time"
 )
 
-const (
-	PlanBasic              = "basic"
-	StatusActive           = "active"
-	AddonTelegramExtraChat = "telegram_extra_chat"
-)
-
 type SubscriptionsRepo interface {
 	Create(ctx context.Context, s *domain.Subscription) error
-	GetActiveByShopID(ctx context.Context, shopID int, now time.Time) (*domain.Subscription, error)
-	GetLatestByShopID(ctx context.Context, shopID int) (*domain.Subscription, error)
-	ExpireActiveByShopID(ctx context.Context, shopID int) (int64, error)
+	GetActiveByUserID(ctx context.Context, userID int) (*domain.Subscription, error)
+	GetLatestByUserID(ctx context.Context, userID int) (*domain.Subscription, error)
+	ExpireActiveByUserID(ctx context.Context, userID int) error
+	ListExpiringBetween(ctx context.Context, from, to time.Time) ([]*domain.Subscription, error)
+	IncrementAIUsed(ctx context.Context, userID int) (bool, error)
+	ResetMonthlyQuota(ctx context.Context, now time.Time) error
 }
 
-type AddonsRepo interface {
-	Upsert(ctx context.Context, a *domain.SubscriptionAddon) error
-	ListBySubscriptionID(ctx context.Context, subscriptionID int) ([]domain.SubscriptionAddon, error)
+type AIPackagesRepo interface {
+	ConsumeOne(ctx context.Context, userID int) (packageID int, ok bool, err error)
+	TotalRemaining(ctx context.Context, userID int) (int, error)
 }
 
-// TransactionRunner — абстракция транзакции (реализация живёт в storage).
-// Внутри fn выдаём репозитории, уже привязанные к tx.
-type TransactionRunner interface {
-	WithinTx(ctx context.Context, fn func(ctx context.Context, deps TxDeps) error) error
-}
-
-type EndpointsRepo interface {
-	CountEnabledByShopAndChannel(ctx context.Context, shopID int, channel string) (int, error)
-}
-
-type TxDeps interface {
-	Subscriptions() SubscriptionsRepo
-	Addons() AddonsRepo
+// ShopsRepo allows resolving shopID → userID.
+type ShopsRepo interface {
+	GetByID(ctx context.Context, id int) (*domain.Shop, error)
 }
 
 type Service struct {
-	tx                TransactionRunner
 	subscriptionsRepo SubscriptionsRepo
-	addonsRepo        AddonsRepo
+	aiPackagesRepo    AIPackagesRepo
+	shopsRepo         ShopsRepo
 	now               func() time.Time
-	endpoints         EndpointsRepo
 }
 
-func New(tx TransactionRunner,
-	SubscriptionsRepo SubscriptionsRepo,
-	AddonsRepo AddonsRepo,
-	EndpointsRepo EndpointsRepo,
+func New(
+	subscriptionsRepo SubscriptionsRepo,
+	aiPackagesRepo AIPackagesRepo,
+	shopsRepo ShopsRepo,
 ) *Service {
 	return &Service{
-		tx:                tx,
-		subscriptionsRepo: SubscriptionsRepo,
-		addonsRepo:        AddonsRepo,
+		subscriptionsRepo: subscriptionsRepo,
+		aiPackagesRepo:    aiPackagesRepo,
+		shopsRepo:         shopsRepo,
 		now:               time.Now,
-		endpoints:         EndpointsRepo,
 	}
 }
 
 func (s *Service) SetNow(fn func() time.Time) { s.now = fn }
 
-// type GrantInput struct {
-// 	ShopID int
-
-// 	PeriodMonths int // 1|3|6
-
-// 	BaseAmountMinor int64
-// 	CurrencyCode    string
-
-// 	ExtraTelegramChats       int
-// 	TelegramAddonAmountMinor int64
-
-// 	PaidAt  *time.Time
-// 	Source  string
-// 	Comment *string
-// }
-
-// type GrantResult struct {
-// 	SubscriptionID       int
-// 	ValidFrom            time.Time
-// 	ValidTo              time.Time
-// 	AllowedTelegramChats int
-// }
+// userIDByShopID resolves shopID → userID via shops repo.
+func (s *Service) userIDByShopID(ctx context.Context, shopID int) (int, error) {
+	shop, err := s.shopsRepo.GetByID(ctx, shopID)
+	if err != nil {
+		return 0, err
+	}
+	if shop == nil {
+		return 0, nil
+	}
+	return shop.UserID, nil
+}

@@ -3,20 +3,21 @@ package monitoring
 import (
 	"context"
 	"fmt"
-	"time"
+
+	"salehelp/pkg/wbtoken"
 )
 
-func (s *Service) CheckWBToken(ctx context.Context, token string) error {
+// CheckWBToken декодирует и валидирует WB JWT-токен без сетевых запросов.
+// Возвращает *wbtoken.ValidationError с русским текстом для показа пользователю.
+func (s *Service) CheckWBToken(_ context.Context, token string) error {
 	if token == "" {
-		return fmt.Errorf("wb token is empty")
+		return fmt.Errorf("токен не может быть пустым")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	if err := s.wbClient.CheckToken(ctx, token); err != nil {
+	claims, err := wbtoken.Decode(token)
+	if err != nil {
 		return err
 	}
 
-	return nil
+	return wbtoken.Validate(claims)
 }

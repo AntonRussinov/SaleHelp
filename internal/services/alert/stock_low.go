@@ -3,6 +3,8 @@ package alert
 import (
 	"context"
 	"fmt"
+	"strconv"
+
 	"salehelp/domain"
 )
 
@@ -13,6 +15,7 @@ func (e *AlertEngine) evalStockLowEffective(
 	snapshotsByProduct map[int][]*domain.ProductSnapshot,
 	global *domain.Alert,
 	overrides map[int]*domain.Alert,
+	aProductIDs map[int]bool,
 ) error {
 
 	// парсим конфиг глобального один раз
@@ -64,6 +67,10 @@ func (e *AlertEngine) evalStockLowEffective(
 		latestStock := derefInt(latest.StockTotal)
 		prevStock := derefInt(prev.StockTotal)
 
+		if latestStock == 0 {
+			continue
+		}
+
 		// cfg
 		var cfg stockLowCfg
 		if useOverride {
@@ -85,12 +92,25 @@ func (e *AlertEngine) evalStockLowEffective(
 			cfg = globalCfg
 		}
 
+		effectiveThreshold := cfg.Threshold
+		if aProductIDs[p.ID] {
+			// A-товары: порог выше (раньше предупреждать)
+			if effectiveThreshold < 10 {
+				effectiveThreshold = 10
+			}
+			effectiveThreshold += 10
+		}
 		// edge: пересекли порог сверху вниз
-		if !(prevStock > cfg.Threshold && latestStock <= cfg.Threshold) {
+		if !(prevStock > effectiveThreshold && latestStock <= effectiveThreshold) {
 			continue
 		}
 
-		msg := fmt.Sprintf("Stock is low: %d (threshold %d)", latestStock, cfg.Threshold)
+		var msg string
+		if aProductIDs[p.ID] {
+			msg = "⚠️ A-товар заканчивается! " + p.Title + " — осталось " + strconv.Itoa(latestStock) + " шт"
+		} else {
+			msg = fmt.Sprintf("Stock is low: %d (threshold %d)", latestStock, effectiveThreshold)
+		}
 
 		tr := domain.AlertTriggered{
 			AlertID:    a.ID,
@@ -101,7 +121,7 @@ func (e *AlertEngine) evalStockLowEffective(
 			Message:    msg,
 		}
 
-		_, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
+		ID, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
 		if err != nil {
 			return err
 		}
@@ -111,7 +131,7 @@ func (e *AlertEngine) evalStockLowEffective(
 		}
 
 		// ВОТ ТУТ fanout
-		if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, tr.ID, tr.ShopID); err != nil {
+		if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, ID, tr.ShopID); err != nil {
 			return err
 		}
 	}
@@ -126,6 +146,7 @@ func (e *AlertEngine) evalStockLowSizesEffective(
 	sizeSnapsBySize map[int][]*domain.ProductSizeSnapshot,
 	global *domain.Alert,
 	overrides map[int]*domain.Alert,
+	aProductIDs map[int]bool,
 ) error {
 
 	var globalCfg stockLowCfg
@@ -202,11 +223,28 @@ func (e *AlertEngine) evalStockLowSizesEffective(
 			latestStock := derefInt(latest.Stock)
 			prevStock := derefInt(prev.Stock)
 
-			if !(prevStock > cfg.Threshold && latestStock <= cfg.Threshold) {
+			// priority: if stock is zero -> only stock_zero should fire
+			if latestStock == 0 {
 				continue
 			}
 
-			msg := fmt.Sprintf("Низкий остаток: %d шт (порог %d)", latestStock, cfg.Threshold)
+			effectiveThreshold := cfg.Threshold
+			if aProductIDs[p.ID] {
+				if effectiveThreshold < 10 {
+					effectiveThreshold = 10
+				}
+				effectiveThreshold += 10
+			}
+			if !(prevStock > effectiveThreshold && latestStock <= effectiveThreshold) {
+				continue
+			}
+
+			var msg string
+			if aProductIDs[p.ID] {
+				msg = "⚠️ A-товар заканчивается! " + p.Title + " — осталось " + strconv.Itoa(latestStock) + " шт"
+			} else {
+				msg = fmt.Sprintf("Низкий остаток: %d шт (порог %d)", latestStock, effectiveThreshold)
+			}
 
 			tr := domain.AlertTriggered{
 				AlertID:       a.ID,
@@ -218,7 +256,7 @@ func (e *AlertEngine) evalStockLowSizesEffective(
 				Message:       msg,
 			}
 
-			_, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
+			ID, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
 			if err != nil {
 				return err
 			}
@@ -229,7 +267,7 @@ func (e *AlertEngine) evalStockLowSizesEffective(
 			// fanout/deliveries создавай по tr.ID (как у тебя уже сделано)
 
 			// ВОТ ТУТ fanout
-			if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, tr.ID, tr.ShopID); err != nil {
+			if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, ID, tr.ShopID); err != nil {
 				return err
 			}
 		}

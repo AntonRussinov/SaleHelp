@@ -23,11 +23,31 @@ type (
 		productSizeSKUsRepo    ProductSizeSKURepository
 		wbWarehousesRepo       WBWarehousesRepository
 		sellerWarehousesRepo   SellerWarehousesRepository
+		fbsOrdersRepo          FBSOrderRepository
+		dbwOrdersRepo          DBWOrderRepository
+		dbsOrdersRepo          DBSOrderRepository
+		saleEventsRepo         SaleEventRepository
+		orderRefusalsRepo      OrderRefusalRepository
+		wbOrdersRepo           WBOrdersRepository
+		orderSyncCursorRepo    OrderSyncCursorRepository
+		wbFeedbacksRepo        WBFeedbackRepository
+		wbQuestionsRepo        WBQuestionRepository
+		endpointsRepo          EndpointsRepo
 		userRepo               UserRepo
 
-		tg       TelegramAPI
-		wbClient WBClient
-		log      *slog.Logger
+		tg                TelegramAPI
+		wbClient          WBClient
+		defaultReportLoc  *time.Location // пояс по умолчанию для отчётов WB (из конфига), если у магазина не задан wb_report_timezone
+		adminChatID       int64
+		log               *slog.Logger
+	}
+
+	WBFeedbackRepository interface {
+		Create(ctx context.Context, f *domain.WBFeedback) error
+	}
+
+	WBQuestionRepository interface {
+		Create(ctx context.Context, q *domain.WBQuestion) error
 	}
 
 	// Локальный интерфейс под нужды сервиса
@@ -37,11 +57,13 @@ type (
 		UpdateLastSyncAt(ctx context.Context, shopID int, t time.Time) error
 		UpdateSyncStatus(ctx context.Context, shopID int, update model.SyncStatusUpdate) error
 		UpdateFirstSyncNotifiedAt(ctx context.Context, shopID int, t time.Time) error
+		UpdateHeavySyncState(ctx context.Context, shopID int, upd model.HeavySyncUpdate) error
 	}
 
 	ProductRepository interface {
 		Upsert(ctx context.Context, p *domain.Product) error
 		ListIDsByShopID(ctx context.Context, shopID int) ([]int, error)
+		ListByShop(ctx context.Context, shopID, limit, offset int) ([]*domain.Product, error)
 		CountByShop(ctx context.Context, shopID int) (int, error)
 	}
 
@@ -86,20 +108,75 @@ type (
 		ListByShop(ctx context.Context, shopID int) ([]*domain.SellerWarehouse, error)
 	}
 
+	FBSOrderRepository interface {
+		Create(ctx context.Context, o *domain.FBSOrder) error
+		ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.FBSOrder, error)
+		MarkNotified(ctx context.Context, orderIDs []int, at time.Time) error
+	}
+
+	DBWOrderRepository interface {
+		Create(ctx context.Context, o *domain.DBWOrder) error
+		ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.DBWOrder, error)
+		MarkNotified(ctx context.Context, orderIDs []int, at time.Time) error
+	}
+
+	DBSOrderRepository interface {
+		Create(ctx context.Context, o *domain.DBSOrder) error
+		ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.DBSOrder, error)
+		MarkNotified(ctx context.Context, orderIDs []int, at time.Time) error
+	}
+
+	SaleEventRepository interface {
+		Create(ctx context.Context, e *domain.SaleEvent) error
+		CreateBatch(ctx context.Context, events []*domain.SaleEvent) error
+		ListUnnotifiedByShop(ctx context.Context, shopID int, limit int) ([]*domain.SaleEvent, error)
+		MarkNotified(ctx context.Context, eventIDs []int, at time.Time) error
+		MarkAllNotifiedByShop(ctx context.Context, shopID int, at time.Time) error
+		GetMaxLastChangeDateByShop(ctx context.Context, shopID int) (time.Time, error)
+	}
+
+	OrderRefusalRepository interface {
+		CreateBatch(ctx context.Context, refusals []*domain.OrderRefusal) error
+		MarkAllNotifiedByShop(ctx context.Context, shopID int, at time.Time) error
+	}
+
+	OrderSyncCursorRepository interface {
+		Get(ctx context.Context, shopID int) (time.Time, error)
+		Set(ctx context.Context, shopID int, lastChangeDate time.Time) error
+	}
+
+	WBOrdersRepository interface {
+		UpsertBatch(ctx context.Context, rows []*model.WBOrder) error
+		CountByShop(ctx context.Context, shopID int) (int, error)
+	}
+
 	UserRepo interface {
 		GetByID(ctx context.Context, id int) (*domain.User, error)
 	}
 
+	EndpointsRepo interface {
+		ListEnabledTelegramChatIDsByShopID(ctx context.Context, shopID int) ([]int64, error)
+	}
+
 	// Локальный интерфейс под WB-клиент
 	WBClient interface {
+		SetTokenType(apiKey, tokenType string)
 		GetCards(ctx context.Context, apiKey string, req dto.GetCardsRequest) (*dto.GetCardsResponse, error)
-		GetAllCards(ctx context.Context, apiKey string, baseReq dto.GetCardsRequest) ([]dto.Card, error)
+		GetAllCards(ctx context.Context, apiKey string, baseReq dto.GetCardsRequest, startCursor *dto.ResponseCursor) ([]dto.Card, *dto.ResponseCursor, error)
 		GetPrices(ctx context.Context, token string, req dto.GetPricesRequest) (*dto.GetPricesResponse, error)
 		GetPricesByNmIDs(ctx context.Context, apiKey string, nmIDs []int64) ([]dto.PriceGood, error)
 		GetStocks(ctx context.Context, apiKey string, warehouseID int64, req dto.GetStocksRequest) (*dto.GetStocksResponse, error)
 		GetStocksByChrtIDs(ctx context.Context, apiKey string, warehouseID int64, chrtIDs []int64) ([]dto.StockItem, error)
+		GetNewOrders(ctx context.Context, apiKey string) (*dto.GetNewOrdersResponse, error)
+		GetNewDBWOrders(ctx context.Context, apiKey string) (*dto.GetNewDBWOrdersResponse, error)
+		GetNewDBSOrders(ctx context.Context, apiKey string) (*dto.GetNewDBSOrdersResponse, error)
+		GetSales(ctx context.Context, apiKey string, dateFrom time.Time, flag int, reportLoc *time.Location) (dto.GetSalesResponse, error)
+		GetOrders(ctx context.Context, apiKey string, dateFrom time.Time, flag int, reportLoc *time.Location) (dto.GetOrdersResponse, error)
+		GetSupplierStocks(ctx context.Context, apiKey string, dateFrom time.Time) (dto.GetSupplierStocksResponse, error)
 		GetWBWarehouses(ctx context.Context, apiKey string) ([]dto.WBWarehouse, error)
 		GetSellerWarehouses(ctx context.Context, apiKey string) ([]dto.SellerWarehouse, error)
+		GetFeedbacks(ctx context.Context, apiKey string, isAnswered bool, take, skip int, order string, dateFrom, dateTo *int64) (*dto.GetFeedbacksResponse, error)
+		GetQuestions(ctx context.Context, apiKey string, isAnswered bool, take, skip int, order string, dateFrom, dateTo *int64) (*dto.GetQuestionsResponse, error)
 		CheckToken(ctx context.Context, token string) error
 	}
 
@@ -118,9 +195,21 @@ func NewMonitoringService(
 	productSizeSKUs ProductSizeSKURepository,
 	wbWarehousesRepo WBWarehousesRepository,
 	sellerWarehousesRepo SellerWarehousesRepository,
+	fbsOrdersRepo FBSOrderRepository,
+	dbwOrdersRepo DBWOrderRepository,
+	dbsOrdersRepo DBSOrderRepository,
+	saleEventsRepo SaleEventRepository,
+	orderRefusalsRepo OrderRefusalRepository,
+	wbOrdersRepo WBOrdersRepository,
+	orderSyncCursorRepo OrderSyncCursorRepository,
+	wbFeedbacksRepo WBFeedbackRepository,
+	wbQuestionsRepo WBQuestionRepository,
+	endpointsRepo EndpointsRepo,
 	userRepo UserRepo,
 	tg TelegramAPI,
 	wb WBClient,
+	defaultReportLoc *time.Location,
+	adminChatID int64,
 	log *slog.Logger,
 ) *Service {
 	return &Service{
@@ -133,11 +222,35 @@ func NewMonitoringService(
 		productSizeSKUsRepo:    productSizeSKUs,
 		wbWarehousesRepo:       wbWarehousesRepo,
 		sellerWarehousesRepo:   sellerWarehousesRepo,
+		fbsOrdersRepo:          fbsOrdersRepo,
+		dbwOrdersRepo:          dbwOrdersRepo,
+		dbsOrdersRepo:          dbsOrdersRepo,
+		saleEventsRepo:         saleEventsRepo,
+		orderRefusalsRepo:      orderRefusalsRepo,
+		wbOrdersRepo:           wbOrdersRepo,
+		orderSyncCursorRepo:    orderSyncCursorRepo,
+		wbFeedbacksRepo:        wbFeedbacksRepo,
+		wbQuestionsRepo:        wbQuestionsRepo,
+		endpointsRepo:          endpointsRepo,
 		userRepo:               userRepo,
 		tg:                     tg,
 		wbClient:               wb,
+		defaultReportLoc:       defaultReportLoc,
+		adminChatID:            adminChatID,
 		log:                    log,
 	}
+}
+
+// shopReportLocation возвращает часовой пояс для отчётов WB по магазину: shop.WBReportTimezone или defaultReportLoc.
+func (s *Service) shopReportLocation(shop *domain.Shop) *time.Location {
+	if shop != nil && shop.WBReportTimezone != "" {
+		loc, err := time.LoadLocation(shop.WBReportTimezone)
+		if err == nil {
+			return loc
+		}
+		s.log.Warn("shop wb_report_timezone load failed, using default", "shop_id", shop.ID, "tz", shop.WBReportTimezone, "err", err)
+	}
+	return s.defaultReportLoc
 }
 
 func wbStatusCode(err error) (int, bool) {

@@ -34,13 +34,9 @@ func TestProductRepositoryCreate(t *testing.T) {
 
 			product := builder.Product()
 
-			// аргументы insert в том порядке, как GORM их передаст
-			args := saveProductSQLArgs(product)
-
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "products"(.+)`).
-				WithArgs(args...).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "products"(.+)`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {

@@ -6,26 +6,28 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// GetUsershopByUserID
-// @id           GetUsershopByUserID
-// @Summary      Get user shop data by userid
-// @Description  Get user shop data by userid
-// @Security     sandstorm-backend
-// @Tags         config, access
-// @Produce      json
-// @Param        id               path      string  true  "User ID"
-// @Success      204                  {object}
-// @Failure      400,401,403,404,500  {object}  api.HTTPError
-// @Router       /v1/shop/{id}/sync  [post]
+// SyncShopByID запускает синхронизацию данных магазина с WB. Доступ только у владельца магазина (JWT).
+//
+// @Summary     Синхронизация магазина
+// @Description Запуск синка по ID магазина (товары, заказы, остатки и т.д.)
+// @Tags        shops
+// @Security    BearerAuth
+// @Param       id path int true "ID магазина"
+// @Success     204 "No Content"
+// @Failure     400 {object} api.HTTPError
+// @Failure     401 {object} api.HTTPError
+// @Failure     403 {object} api.HTTPError
+// @Failure     500 {object} api.HTTPError
+// @Router      /v1/shop/{id}/sync [post]
 func (hand *Handler) SyncShopByID(c echo.Context) error {
 	const op = "handler.Usershop.SyncShopByID"
 
-	id, err := hand.getIDFromParam(c)
+	shopID, err := hand.ensureShopAccessByID(c)
 	if err != nil {
-		return echo.ErrNotFound
+		return err
 	}
 
-	err = hand.service.SyncShop(c.Request().Context(), id)
+	err = hand.service.SyncShop(c.Request().Context(), shopID)
 	if err != nil {
 		return handler.WrapError(op, err)
 	}

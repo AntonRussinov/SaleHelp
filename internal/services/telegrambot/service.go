@@ -3,19 +3,26 @@ package telegrambot
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
-	"salehelp/domain" // или куда ты положил Update DTO
+	"salehelp/domain"
+	wbdto "salehelp/internal/adapter/wb/dto"
+	"salehelp/internal/services/notification_settings"
+	"salehelp/internal/services/price_restore"
 	"salehelp/internal/services/subscription"
 	"salehelp/internal/storage/pggorm/model"
 	"salehelp/pkg/logger/sl"
 )
 
 type (
-	// TelegramAPI — низкоуровневый клиент Telegram (sendMessage).
+	// TelegramAPI — низкоуровневый клиент Telegram (sendMessage, inline-кнопки, callback).
 	TelegramAPI interface {
 		SendMessage(ctx context.Context, chatID int64, text string) error
 		SendMessageWithKeyboard(ctx context.Context, chatID int64, text string, keyboard map[string]any) error
+		SendMessageWithInlineKeyboard(ctx context.Context, chatID int64, text string, inlineKeyboard map[string]any) error
+		AnswerCallbackQuery(ctx context.Context, callbackQueryID string) error
+		EditMessageReplyMarkup(ctx context.Context, chatID int64, messageID int, replyMarkup any) error
 	}
 
 	// TelegramChatStatesRepo — твой репозиторий состояний мастера.
@@ -35,19 +42,30 @@ type (
 	ShopsRepo interface {
 		Create(ctx context.Context, s *domain.Shop) error
 		GetByID(ctx context.Context, id int) (*domain.Shop, error)
+		GetByExternalID(ctx context.Context, externalID string) (*domain.Shop, error)
 		GetLastSyncAtMap(ctx context.Context, shopIDs []int) (map[int]*time.Time, error)
 		ListByUser(ctx context.Context, userID int, limit, offset int) ([]*domain.Shop, error)
 		ListByTelegramChat(ctx context.Context, chatID int64) ([]*domain.Shop, error)
 		SetActive(ctx context.Context, shopID int, active bool) error
+		ReassignShopsToUser(ctx context.Context, fromUserID, toUserID int) error
 
 		CountAll(ctx context.Context) (int, error)
 		CountActive(ctx context.Context) (int, error)
-		CountByLastSyncStatusCode(ctx context.Context, code int) (int, error) // ты уже добавлял
-
+		CountByLastSyncStatusCode(ctx context.Context, code int) (int, error)
 	}
 
 	UsersRepo interface {
 		EnsureByTelegramChatID(ctx context.Context, chatID int64) (*domain.User, error)
+		GetByTelegramChatID(ctx context.Context, chatID int64) (*domain.User, error)
+		GetByEmail(ctx context.Context, email string) (*domain.User, error)
+		SetTelegramChatID(ctx context.Context, userID int, chatID int64) error
+		ClearTelegramChatID(ctx context.Context, userID int) error
+		Update(ctx context.Context, u *domain.User) error
+	}
+
+	LinkTokensRepo interface {
+		Consume(ctx context.Context, token string, now time.Time) (userID int, err error)
+		CreateFromTelegram(ctx context.Context, chatID int64) (code string, expiresAt time.Time, err error)
 	}
 
 	ShopNotificationEndpointsRepo interface {
@@ -75,19 +93,60 @@ type (
 		SumRevenueGraceByCurrency(ctx context.Context, now time.Time) ([]model.MoneyByCurrency, error)
 	}
 
+	// ABCReportService — для команды /abc_now (отчёт по магазину за 30 дней).
+	ABCReportService interface {
+		SaveSnapshot(ctx context.Context, shopID, periodDays int) (*domain.ABCSnapshot, error)
+		GetTwoLatestSnapshots(ctx context.Context, shopID, periodDays int) ([]*domain.ABCSnapshot, error)
+	}
+
+	ProductsRepoForABC interface {
+		ListByShop(ctx context.Context, shopID int, limit, offset int) ([]*domain.Product, error)
+	}
+
+	// PriceRestoreService — восстановление цен по пакету (кнопка «Вернуть цены назад»).
+	PriceRestoreService interface {
+		Restore(ctx context.Context, batchID int) price_restore.RestoreResult
+	}
+
+	// PriceRestoreBatchRepo — проверка restored_at при нажатии «Вернуть цены назад».
+	PriceRestoreBatchRepo interface {
+		GetByID(ctx context.Context, id int) (*domain.PriceRestoreBatch, error)
+		TrySetRestoring(ctx context.Context, batchID int) (bool, error)
+		SetRestoreFailed(ctx context.Context, batchID int) error
+	}
+
+	WBClient interface {
+		GetNewOrders(ctx context.Context, apiKey string) (*wbdto.GetNewOrdersResponse, error)
+		GetNewDBWOrders(ctx context.Context, apiKey string) (*wbdto.GetNewDBWOrdersResponse, error)
+		AnswerQuestion(ctx context.Context, apiKey string, questionID string, answerText string) error
+	}
+
+	WBQuestionsRepo interface {
+		GetByWBQuestionID(ctx context.Context, shopID int, wbQuestionID string) (*domain.WBQuestion, error)
+	}
+
 	Service struct {
 		log              *slog.Logger
 		tg               TelegramAPI
 		statesRepo       TelegramChatStatesRepo
 		invitesRepo      ShopInviteTokensRepo
 		usersRepo        UsersRepo
+		linkTokensRepo   LinkTokensRepo
 		endpointsRepo    ShopNotificationEndpointsRepo
 		shopsRepo        ShopsRepo
 		monitoring       MonitoringService
 		subEntitlements  SubscriptionEntitlementsService
 		subscriptionRepo SubscriptionRepo
+		abcSvc           ABCReportService
+		productsRepo     ProductsRepoForABC
+		wbClient         WBClient
+		wbQuestionsRepo  WBQuestionsRepo
+		priceRestore     PriceRestoreService
+		restoreBatchRepo PriceRestoreBatchRepo
+		notifSettings    *notification_settings.Service
 		botUsername      string
 		adminChatID      int64
+		ordersRateLimit  sync.Map // chatID int64 -> time.Time последнего запроса
 	}
 )
 
@@ -97,13 +156,21 @@ func NewService(
 	statesRepo TelegramChatStatesRepo,
 	invitesRepo ShopInviteTokensRepo,
 	usersRepo UsersRepo,
+	linkTokensRepo LinkTokensRepo,
 	endpointsRepo ShopNotificationEndpointsRepo,
 	shopsRepo ShopsRepo,
 	monitoring MonitoringService,
 	botUsername string,
 	subEntitlements SubscriptionEntitlementsService,
 	subscriptionRepo SubscriptionRepo,
+	abcSvc ABCReportService,
+	productsRepo ProductsRepoForABC,
+	wbClient WBClient,
+	priceRestore PriceRestoreService,
+	restoreBatchRepo PriceRestoreBatchRepo,
+	notifSettings *notification_settings.Service,
 	adminChatID int64,
+	wbQuestionsRepo WBQuestionsRepo,
 ) *Service {
 	return &Service{
 		log:              log.With(sl.Module("TelegramBotService")),
@@ -111,12 +178,20 @@ func NewService(
 		statesRepo:       statesRepo,
 		invitesRepo:      invitesRepo,
 		usersRepo:        usersRepo,
+		linkTokensRepo:   linkTokensRepo,
 		endpointsRepo:    endpointsRepo,
 		shopsRepo:        shopsRepo,
 		monitoring:       monitoring,
 		botUsername:      botUsername,
 		subEntitlements:  subEntitlements,
 		subscriptionRepo: subscriptionRepo,
+		abcSvc:           abcSvc,
+		productsRepo:     productsRepo,
+		wbClient:         wbClient,
+		wbQuestionsRepo:  wbQuestionsRepo,
+		priceRestore:     priceRestore,
+		restoreBatchRepo: restoreBatchRepo,
+		notifSettings:    notifSettings,
 		adminChatID:      adminChatID,
 	}
 }

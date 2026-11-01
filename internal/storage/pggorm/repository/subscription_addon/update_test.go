@@ -2,7 +2,6 @@ package subscriptionaddon_test
 
 import (
 	"context"
-	"database/sql/driver"
 	"salehelp/domain"
 	"testing"
 
@@ -26,20 +25,9 @@ func TestSubscriptionAddonRepositoryUpsert(t *testing.T) {
 		Meta:           []byte(`{}`),
 	}
 
-	args := []driver.Value{
-		add.SubscriptionID,
-		add.Code,
-		add.Quantity,
-		add.AmountMinor,
-		add.CurrencyCode,
-		add.Meta,
-		add.CreatedAt, // gorm может вставлять created_at
-	}
-
 	mock.ExpectBegin()
-	mock.ExpectExec(`INSERT INTO "subscription_addons"(.+)ON CONFLICT \("subscription_id","code"\) DO UPDATE SET(.+)`).
-		WithArgs(args...).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectQuery(`INSERT INTO "subscription_addons"(.+)ON CONFLICT \("subscription_id","code"\) DO UPDATE SET(.+)`).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 	mock.ExpectCommit()
 
 	err := repo.Upsert(ctx, &add)

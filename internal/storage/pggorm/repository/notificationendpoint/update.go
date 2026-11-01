@@ -29,6 +29,22 @@ func (r *Repository) DisableByID(ctx context.Context, id int) error {
 	return nil
 }
 
+// UpdateAddressByUser меняет address (chat_id) в эндпоинтах пользователя.
+// Используется при перепривязке Telegram: все эндпоинты со старым chat_id обновляются на новый.
+func (r *Repository) UpdateAddressByUser(ctx context.Context, userID int, channel, oldAddress, newAddress string) error {
+	err := r.DB.WithContext(ctx).Exec(`
+		UPDATE shop_notification_endpoints
+		SET address = ?
+		WHERE channel = ? AND address = ?
+		  AND shop_id IN (SELECT id FROM shops WHERE user_id = ?)`,
+		newAddress, channel, oldAddress, userID,
+	).Error
+	if err != nil {
+		return fmt.Errorf("endpoint update address by user: %w", err)
+	}
+	return nil
+}
+
 func (r *Repository) SetEnabledByShopAndAddress(
 	ctx context.Context,
 	shopID int,

@@ -41,7 +41,7 @@ func TestProductSizeRepositoryGetByID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "product_sizes" WHERE id = \$1`).
-				WithArgs(1).
+				WithArgs(1, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 
@@ -106,7 +106,7 @@ func TestProductSizeRepositoryFindByProductAndExternalID(t *testing.T) {
 		AddRow(builder.RowValues(ps)...)
 
 	mock.ExpectQuery(`SELECT (.+) FROM "product_sizes" WHERE product_id = \$1 AND external_id = \$2`).
-		WithArgs(ps.ProductID, ps.ExternalID).
+		WithArgs(ps.ProductID, ps.ExternalID, 1).
 		WillReturnRows(rows)
 
 	got, err := repo.FindByProductAndExternalID(ctx, ps.ProductID, ps.ExternalID)

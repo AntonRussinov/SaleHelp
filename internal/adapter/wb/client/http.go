@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,9 @@ import (
 	"strings"
 	"time"
 )
+
+// errRetry429 — после 429 и успешного sleep продолжаем цикл retry, не возвращаем успех.
+var errRetry429 = errors.New("retry after 429")
 
 func (c *Client) doJSON(
 	ctx context.Context,
@@ -59,6 +63,9 @@ func (c *Client) doJSON(
 		if apiKey != "" {
 			req.Header.Set("Authorization", apiKey)
 		}
+		if c.xClientSecret != "" {
+			req.Header.Set("X-Client-Secret", c.xClientSecret)
+		}
 
 		// 4) Выполняем запрос
 		resp, err := c.httpClient.Do(req)
@@ -79,10 +86,13 @@ func (c *Client) doJSON(
 
 				retryAfter := parseRetryAfter(resp.Header)
 				if retryAfter <= 0 {
-					retryAfter = 20 // safe fallback // возможно 20 слишком много, но лучше перестраховаться так как в некоторых API такой срок
+					retryAfter = 20 // safe fallback
 				}
-
-				err = sleepWithContext(ctx, time.Duration(retryAfter)*time.Second)
+				if sleepErr := sleepWithContext(ctx, time.Duration(retryAfter)*time.Second); sleepErr != nil {
+					err = sleepErr
+					return
+				}
+				err = errRetry429 // не возвращать успех — продолжить цикл и повторить запрос
 				return
 			}
 
@@ -112,12 +122,13 @@ func (c *Client) doJSON(
 		if err == nil {
 			return nil
 		}
-
-		// если err != nil — либо retry (429), либо выходим выше
+		if errors.Is(err, errRetry429) {
+			continue // 429 + sleep успешен — повторяем запрос
+		}
+		return err // 4xx/5xx или rate limited на последней попытке
 	}
 
-	// сюда по логике мы не дойдём
-	return fmt.Errorf("unreachable")
+	return fmt.Errorf("request failed after %d attempts", maxAttempts)
 }
 
 func parseRetryAfter(h http.Header) int {

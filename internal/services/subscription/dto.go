@@ -2,48 +2,33 @@ package subscription
 
 import "time"
 
-// GrantInput — вход для Service.GrantSubscription (не домен, а handler-level DTO).
+// GrantInput — admin endpoint: grant a subscription to the user who owns the given shop.
 type GrantInput struct {
-	ShopID int
-
-	PeriodMonths int    `json:"period_months"` // 1|3|6
-	CurrencyCode string `json:"currency_code"` // "RUB"|"KZT"|...
-
-	// База за период (в minor units: копейки/тиыны)
-	BaseAmountMinor int64 `json:"base_amount_minor"`
-
-	// Сколько доп. телеграм чатов купить (помимо 1 базового)
-	ExtraTelegramChats int `json:"extra_telegram_chats"`
-
-	// Цена аддона за весь период (minor units).
-	// Например: 2 доп чата на 1 месяц * 500₽ = 100000 (копеек)
-	TelegramAddonAmountMinor int64 `json:"telegram_addon_amount_minor"`
-
-	PaidAt  *time.Time `json:"paid_at"` // опционально
-	Source  string     `json:"source"`  // manual|...
-	Comment *string    `json:"comment"` // опционально
+	ShopID       int
+	Tier         string  `json:"tier"          example:"business"` // start|business|pro
+	PeriodMonths int     `json:"period_months" example:"1"`        // 1|3|6|12
+	PriceMinor   int     `json:"price_minor"   example:"299000"`   // monthly price in kopecks
+	Comment      *string `json:"comment"       example:"manual grant"`
 }
 
+// GrantResult — response from GrantSubscription.
 type GrantResult struct {
-	SubscriptionID int       `json:"subscription_id"`
-	ValidFrom      time.Time `json:"valid_from"`
-	ValidTo        time.Time `json:"valid_to"`
-
-	AllowedTelegramChats int `json:"allowed_telegram_chats"`
+	SubscriptionID int       `json:"subscription_id" example:"7"`
+	UserID         int       `json:"user_id"         example:"3"`
+	Tier           string    `json:"tier"            example:"business"`
+	ExpiresAt      time.Time `json:"expires_at"      example:"2026-06-11T00:00:00Z"`
+	AIQuota        int       `json:"ai_quota"        example:"200"`
+	MaxShops       int       `json:"max_shops"       example:"2"`
 }
 
-// StatusResult — то, что удобно смотреть в Postman.
+// StatusResult — subscription status for display.
 type StatusResult struct {
-	HasActiveSubscription bool       `json:"has_active_subscription"`
-	Plan                  *string    `json:"plan,omitempty"`
-	Status                *string    `json:"status,omitempty"`
-	ValidFrom             *time.Time `json:"valid_from,omitempty"`
-	ValidTo               *time.Time `json:"valid_to,omitempty"`
-
-	CurrencyCode    *string `json:"currency_code,omitempty"`
-	BaseAmountMinor *int64  `json:"base_amount_minor,omitempty"`
-	PeriodMonths    *int    `json:"period_months,omitempty"`
-
-	AllowedTelegramChats int `json:"allowed_telegram_chats"`
-	EnabledTelegramChats int `json:"enabled_telegram_chats"`
+	HasActiveSubscription bool       `json:"has_active_subscription" example:"true"`
+	Tier                  *string    `json:"tier,omitempty"          example:"business"`
+	Status                *string    `json:"status,omitempty"        example:"active"`
+	ExpiresAt             *time.Time `json:"expires_at,omitempty"    example:"2026-06-11T00:00:00Z"`
+	AIQuota               int        `json:"ai_quota"                example:"200"`
+	AIUsed                int        `json:"ai_used"                 example:"12"`
+	MaxShops              int        `json:"max_shops"               example:"2"`
+	AllowedTelegramChats  int        `json:"allowed_telegram_chats"  example:"3"`
 }

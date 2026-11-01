@@ -7,7 +7,17 @@ import (
 )
 
 func (s *Service) HandleUpdate(ctx context.Context, upd *dto.Update) {
-	if upd == nil || upd.Message == nil {
+	if upd == nil {
+		return
+	}
+
+	// Нажатие на inline-кнопку (например выбор магазина для ABC)
+	if upd.CallbackQuery != nil {
+		s.handleCallbackQuery(ctx, upd.CallbackQuery)
+		return
+	}
+
+	if upd.Message == nil {
 		return
 	}
 

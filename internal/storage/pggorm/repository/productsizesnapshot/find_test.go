@@ -66,7 +66,7 @@ func TestProductSizeSnapshotRepositoryGetByID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "product_size_snapshots" WHERE id = \$1`).
-				WithArgs(1).
+				WithArgs(1, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 

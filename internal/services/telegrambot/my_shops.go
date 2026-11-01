@@ -86,11 +86,11 @@ func (s *Service) handleMyShops(ctx context.Context, chatID int64) error {
 		level, sub, subErr := s.subEntitlements.GetShopAccessLevel(ctx, sh.ID)
 		if subErr == nil && sub != nil {
 			// показываем valid_to и level
-			subLine = fmt.Sprintf("%s, до %s", level, sub.ValidTo.Format("02.01.2006"))
+			subLine = fmt.Sprintf("%s, до %s", level, sub.ExpiresAt.Format("02.01.2006"))
 			if level == "blocked" {
 				subLine = fmt.Sprintf("%s (sync остановлен)", subLine)
 			} else if level == "grace" {
-				graceUntil := sub.ValidTo.Add(72 * time.Hour)
+				graceUntil := sub.ExpiresAt.Add(72 * time.Hour)
 				subLine = fmt.Sprintf("истекла, grace до %s", graceUntil.Format("02.01.2006"))
 			}
 		}

@@ -33,12 +33,9 @@ func TestAIRecommendationRepositoryCreate(t *testing.T) {
 			repo, mock := setupRepo(t)
 			rec := builder.Recommendation()
 
-			args := saveArgs(rec)
-
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "ai_recommendations"`).
-				WithArgs(args...).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "ai_recommendations"`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {

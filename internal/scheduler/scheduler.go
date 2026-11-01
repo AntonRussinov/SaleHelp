@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/robfig/cron/v3"
 )
@@ -12,32 +13,54 @@ type Logger interface {
 	Error(msg string, args ...any)
 }
 
-type Scheduler struct {
-	c   *cron.Cron
-	log Logger
+type jobMeta struct {
+	name string
+	spec string
 }
 
-func New(log Logger) *Scheduler {
+type Scheduler struct {
+	c    *cron.Cron
+	log  Logger
+	loc  *time.Location
+	jobs map[cron.EntryID]jobMeta
+}
+
+func New(log Logger, loc *time.Location) *Scheduler {
+	if loc == nil {
+		loc = time.Local
+	}
 	c := cron.New(
+		cron.WithLocation(loc),
 		cron.WithChain(
 			cron.Recover(cron.DefaultLogger),
 		),
 	)
-	return &Scheduler{c: c, log: log}
+	return &Scheduler{
+		c:    c,
+		log:  log,
+		loc:  loc,
+		jobs: make(map[cron.EntryID]jobMeta),
+	}
 }
 
 func (s *Scheduler) Register(ctx context.Context, spec, name string, fn func(ctx context.Context)) error {
-	_, err := s.c.AddFunc(spec, func() { fn(ctx) })
+	id, err := s.c.AddFunc(spec, func() { fn(ctx) })
 	if err != nil {
 		return fmt.Errorf("register job %s (%s): %w", name, spec, err)
 	}
+	s.jobs[id] = jobMeta{name: name, spec: spec}
 	s.log.Info("scheduler: registered job", "name", name, "spec", spec)
 	return nil
 }
 
 func (s *Scheduler) Start() {
 	s.c.Start()
-	s.log.Info("scheduler: started")
+	s.log.Info("scheduler: started", "location", s.loc.String())
+	for id, meta := range s.jobs {
+		e := s.c.Entry(id)
+		// Next = zero, если расписание не может быть рассчитано (или уже остановлено).
+		s.log.Info("scheduler: next run", "name", meta.name, "spec", meta.spec, "next", e.Next.Format(time.RFC3339))
+	}
 }
 
 func (s *Scheduler) Stop(ctx context.Context) error {

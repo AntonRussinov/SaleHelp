@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
+
 	"salehelp/domain"
 )
 
@@ -29,21 +32,37 @@ func extractShopIDs(shops []*domain.Shop) []int {
 	return ids
 }
 
-func mainMenuKeyboard() map[string]any {
+// inlineKeyboardABCShops строит inline-клавиатуру "выбор магазина для ABC".
+// callback_data: "abc_shop_<id>".
+func inlineKeyboardABCShops(shopsByID map[int]*domain.Shop) map[string]any {
+	// Упорядочиваем по ID для стабильного отображения
+	ids := make([]int, 0, len(shopsByID))
+	for id := range shopsByID {
+		ids = append(ids, id)
+	}
+	sort.Ints(ids)
+
+	row := make([]map[string]string, 0, len(ids))
+	for _, id := range ids {
+		sh := shopsByID[id]
+		name := sh.Name
+		if name == "" {
+			name = "Магазин " + strconv.Itoa(id)
+		}
+		row = append(row, map[string]string{
+			"text":          name,
+			"callback_data": "abc_shop_" + strconv.Itoa(id),
+		})
+	}
 	return map[string]any{
-		"keyboard": [][]map[string]string{
-			{
-				{"text": "/addshop"},
-				{"text": "/myshops"},
-			},
-			{
-				{"text": "/invite"},
-			},
-			{
-				{"text": "/cancel"},
-			},
-		},
-		"resize_keyboard": true,
+		"inline_keyboard": [][]map[string]string{row},
+	}
+}
+
+// removeKeyboard — убирает reply-клавиатуру. Команды доступны через меню бота (☰).
+func removeKeyboard() map[string]any {
+	return map[string]any{
+		"remove_keyboard": true,
 	}
 }
 
@@ -51,8 +70,8 @@ func (s *Service) sendMainMenu(ctx context.Context, chatID int64) {
 	_ = s.tg.SendMessageWithKeyboard(
 		ctx,
 		chatID,
-		"Главное меню:",
-		mainMenuKeyboard(),
+		"Команды доступны в меню (☰ рядом с полем ввода).",
+		removeKeyboard(),
 	)
 }
 

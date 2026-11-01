@@ -76,7 +76,7 @@ func (e *AlertEngine) evalPriceDropEffective(
 		}
 
 		msg := fmt.Sprintf(
-			"Price dropped: %.2f → %.2f (-%.2f, %.2f%%)",
+			"Цена упала: %.2f → %.2f (-%.2f, %.2f%%)",
 			prevPrice, latestPrice, delta, percent,
 		)
 
@@ -89,7 +89,7 @@ func (e *AlertEngine) evalPriceDropEffective(
 			Message:    msg,
 		}
 
-		id, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
+		ID, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
 		if err != nil {
 			return err
 		}
@@ -99,7 +99,7 @@ func (e *AlertEngine) evalPriceDropEffective(
 		}
 
 		// ВОТ ТУТ fanout
-		if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, id, tr.ShopID); err != nil {
+		if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, ID, tr.ShopID); err != nil {
 			return err
 		}
 

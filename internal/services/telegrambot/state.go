@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"salehelp/domain"
+	"salehelp/pkg/wbtoken"
 	"strings"
 	"time"
 )
@@ -14,6 +15,7 @@ const (
 	StateWaitWBToken      = "wait_wb_token"
 	StateWaitShopName     = "wait_shop_name"
 	StateInviteChooseShop = "invite_choose_shop"
+	StateWaitEmailForLink = "wait_email_for_link"
 )
 
 const (
@@ -45,6 +47,12 @@ func (s *Service) handleState(ctx context.Context, chatID int64, text string) {
 	case StateInviteChooseShop:
 		s.handleInviteChooseShop(ctx, chatID, text, st)
 		return
+	case StateWaitEmailForLink:
+		s.stepEmailForLink(ctx, chatID, text)
+		return
+	case StateWaitQuestionAnswer:
+		s.stepQuestionAnswer(ctx, chatID, text)
+		return
 	default:
 		_ = s.statesRepo.Clear(ctx, chatID)
 		_ = s.tg.SendMessage(ctx, chatID, "Состояние сбилось. Напиши /addshop чтобы начать заново.")
@@ -66,13 +74,24 @@ func (s *Service) stepWBToken(ctx context.Context, chatID int64, st *domain.Tele
 		return
 	}
 
-	if err := s.monitoring.CheckWBToken(ctx, token); err != nil {
+	claims, err := wbtoken.Decode(token)
+	if err != nil {
+		_ = s.tg.SendMessage(ctx, chatID, "❌ "+err.Error())
+		return
+	}
+	if err := wbtoken.Validate(claims); err != nil {
+		_ = s.tg.SendMessage(ctx, chatID, "❌ "+err.Error())
+		return
+	}
+
+	// Проверка на дубликат: этот продавец уже зарегистрирован?
+	existing, dbErr := s.shopsRepo.GetByExternalID(ctx, claims.SID)
+	if dbErr != nil {
+		s.log.Warn("stepWBToken: GetByExternalID failed", "err", dbErr)
+		// не блокируем — проверим повторно при создании
+	} else if existing != nil {
 		_ = s.tg.SendMessage(ctx, chatID,
-			"❌ Токен не подходит.\n\n"+
-				"Проверь:\n"+
-				"• что токен скопирован полностью\n"+
-				"• что он из кабинета WB\n"+
-				"• что у него есть доступ к карточкам",
+			"❌ Этот магазин уже подключён к системе. Если это твой магазин — войди в тот аккаунт, к которому он привязан.",
 		)
 		return
 	}
@@ -122,6 +141,28 @@ func (s *Service) stepShopName(ctx context.Context, chatID int64, st *domain.Tel
 		return
 	}
 
+	// Декодируем токен повторно (без сети, быстро) — нужны SID и тип токена.
+	claims, err := wbtoken.Decode(wbToken)
+	if err != nil {
+		_ = s.statesRepo.Clear(ctx, chatID)
+		_ = s.tg.SendMessage(ctx, chatID, "Токен повреждён. Напиши /addshop чтобы начать заново.")
+		s.sendMainMenu(ctx, chatID)
+		return
+	}
+
+	// Финальная проверка на дубликат (на случай гонки).
+	existing, dbErr := s.shopsRepo.GetByExternalID(ctx, claims.SID)
+	if dbErr != nil {
+		s.log.Warn("stepShopName: GetByExternalID failed", "err", dbErr)
+	} else if existing != nil {
+		_ = s.statesRepo.Clear(ctx, chatID)
+		_ = s.tg.SendMessage(ctx, chatID,
+			"❌ Этот магазин уже подключён к системе. Если это твой магазин — войди в тот аккаунт, к которому он привязан.",
+		)
+		s.sendMainMenu(ctx, chatID)
+		return
+	}
+
 	u, err := s.ensureUserByChatID(ctx, chatID)
 	if err != nil {
 		s.log.Error("ensure user failed", "chat_id", chatID, "err", err)
@@ -133,7 +174,8 @@ func (s *Service) stepShopName(ctx context.Context, chatID int64, st *domain.Tel
 	shop := &domain.Shop{
 		UserID:      u.ID,
 		Marketplace: "wildberries",
-		ExternalID:  "",
+		ExternalID:  claims.SID,
+		TokenType:   claims.TokenType(),
 		Name:        name,
 		APIToken:    wbToken,
 		IsActive:    true,
@@ -176,7 +218,7 @@ func (s *Service) stepShopName(ctx context.Context, chatID int64, st *domain.Tel
 	_ = s.tg.SendMessageWithKeyboard(ctx, chatID,
 		"Готово ✅ Магазин подключен.\n\n"+
 			"В ближайший час придёт первый sync/алерты (если они сработают).",
-		mainMenuKeyboard(),
+		removeKeyboard(),
 	)
 }
 

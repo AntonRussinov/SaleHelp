@@ -41,7 +41,7 @@ func TestUserRepositoryGetByID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "users" WHERE id = \$1(.+)`).
-				WithArgs(u.ID).
+				WithArgs(u.ID, 1).
 				WillReturnRows(rows).
 				WillReturnError(tc.sqlErr)
 
@@ -97,7 +97,7 @@ func TestUserRepositoryGetByEmail(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "users" WHERE email = \$1(.+)`).
-				WithArgs(u.Email).
+				WithArgs(u.Email, 1).
 				WillReturnRows(rows).
 				WillReturnError(tc.sqlErr)
 

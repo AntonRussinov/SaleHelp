@@ -27,6 +27,10 @@ type MonitoringService interface {
 	SyncShop(ctx context.Context, shopID int) error
 }
 
+type AlertEngine interface {
+	RunShop(ctx context.Context, shopID int) error
+}
+
 type ShopLeaseLocker interface {
 	TryLease(ctx context.Context, shopID int, leasedBy string, ttl time.Duration) (bool, error)
 	Release(ctx context.Context, shopID int, leasedBy string) error
@@ -44,6 +48,13 @@ type SyncActiveShopsConfig struct {
 	LeasedBy               string
 	BatchSize              int
 	SubscriptionNotifySpec string
+	StockReplenishSpec     string // cron для ежедневной рассылки о пополнении склада, напр. "0 10 * * *" (10:00)
+	AIReplySpec            string // cron для генерации AI-ответов на отзывы, напр. "0/30 * * * *" (каждые 30 мин)
+	AIReplySendSpec        string // cron для отправки сгенерированных ответов в WB, напр. "0/12 * * * *" (каждые 12 мин = лимит WB 5/час)
+	RefusalDigestSpec      string // cron для суточного дайджеста отказов (не забрали), напр. "0 7 * * *" (07:00)
+	SyncStatsDailySpec     string // cron для ежедневного синка продаж+отказов из WB, напр. "0 6 * * *" (06:00)
+	SalesDigestSpec        string // cron для суточного дайджеста выкупов/возвратов, напр. "0 7 * * *" (07:00)
+	AIQuotaResetSpec       string // cron для сброса ежемесячной AI-квоты, напр. "0 0 1 * *" (1-го числа в 00:00)
 }
 
 type SyncActiveShopsJob struct {
@@ -51,6 +62,7 @@ type SyncActiveShopsJob struct {
 	cfg                SyncActiveShopsConfig
 	shops              ShopRepo
 	mon                MonitoringService
+	alerts             AlertEngine
 	subsriptionService SubscriptionService
 	lock               ShopLeaseLocker
 	pool               *runner.Pool
@@ -58,18 +70,12 @@ type SyncActiveShopsJob struct {
 	running atomic.Bool
 }
 
-var (
-	okCount       int64
-	failCount     int64
-	skipCount     int64
-	leaseErrCount int64
-)
-
 func NewSyncActiveShopsJob(
 	log Logger,
 	cfg SyncActiveShopsConfig,
 	shops ShopRepo,
 	mon MonitoringService,
+	alerts AlertEngine,
 	lock ShopLeaseLocker,
 	subsriptionService SubscriptionService,
 ) *SyncActiveShopsJob {
@@ -82,12 +88,15 @@ func NewSyncActiveShopsJob(
 		cfg:                cfg,
 		shops:              shops,
 		mon:                mon,
+		alerts:             alerts,
 		lock:               lock,
 		pool:               runner.New(cfg.Concurrency),
 		subsriptionService: subsriptionService,
 	}
 }
 
+// Run выполняет синк магазинов и сразу после каждого успешного синка запускает AlertEngine.RunShop.
+// Это гарантирует, что алерты отправляются сразу после записи данных в БД, без задержки.
 func (j *SyncActiveShopsJob) Run(ctx context.Context) {
 	if !j.running.CompareAndSwap(false, true) {
 		j.log.Warn("sync_active_shops: previous run still active, skipping")
@@ -97,6 +106,13 @@ func (j *SyncActiveShopsJob) Run(ctx context.Context) {
 
 	start := time.Now()
 	j.log.Info("sync_active_shops: started")
+
+	var (
+		okCount       int64
+		failCount     int64
+		skipCount     int64
+		leaseErrCount int64
+	)
 
 	offset := 0
 	total := 0
@@ -138,6 +154,7 @@ func (j *SyncActiveShopsJob) Run(ctx context.Context) {
 				}
 				if !leased {
 					atomic.AddInt64(&skipCount, 1)
+					j.log.Info("sync_shop: skipped, lease taken", "shop_id", id)
 					return
 				}
 				defer func() { _ = j.lock.Release(parent, id, j.cfg.LeasedBy) }()
@@ -162,6 +179,12 @@ func (j *SyncActiveShopsJob) Run(ctx context.Context) {
 					atomic.AddInt64(&failCount, 1)
 					j.log.Error("sync_shop: failed", "shop_id", id, "err", err)
 					return
+				}
+
+				if j.alerts != nil {
+					if err := j.alerts.RunShop(shopCtx, id); err != nil {
+						j.log.Error("sync_shop: alerts failed", "shop_id", id, "err", err)
+					}
 				}
 
 				atomic.AddInt64(&okCount, 1)

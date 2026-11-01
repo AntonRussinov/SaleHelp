@@ -23,10 +23,15 @@ func CardToProduct(card dto.Card, shopID int, productURLBase string) domain.Prod
 		imageURL = card.Photos[0].Big
 	}
 
+	title := card.Title
+	if strings.TrimSpace(title) == "" {
+		title = card.SubjectName
+	}
+
 	return domain.Product{
 		ShopID:      shopID,
-		ExternalID:  strconv.Itoa(card.NmID), // можно заменить на card.NmUUID, если захочешь
-		Title:       card.Title,
+		ExternalID:  strconv.Itoa(card.NmID),
+		Title:       title,
 		URL:         productURL,
 		ImageURL:    imageURL,
 		Brand:       card.Brand,

@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+
+	_ "salehelp/docs" // Swagger-документация (генерируется: make swagger)
 )
 
 const shutdownTimeout = 15 * time.Second
@@ -51,8 +53,7 @@ func main() {
 
 	applogger.Info("application started")
 	// 1) запускаем воркеры СРАЗУ (они крутятся пока ctx жив)
-	go prov.Services.Notifier.Run(ctx)    // deliveries -> telegram
-	go prov.Services.AlertWorker.Run(ctx) // shops -> engine -> triggered+fanout
+	go prov.Services.Notifier.Run(ctx) // deliveries -> telegram
 
 	applogger.Info("workers started")
 

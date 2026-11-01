@@ -6,8 +6,8 @@ type Presenters struct {
 	Product *product.Presenter
 }
 
-func (prov *Provider) InitPresenters() *Presenters {
-	return &Presenters{
+func (prov *Provider) InitPresenters() {
+	prov.Presenters = Presenters{
 		Product: product.NewPresenter(),
 	}
 }

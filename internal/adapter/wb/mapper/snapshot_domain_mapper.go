@@ -47,7 +47,11 @@ func ToSnapshots(
 			clubPrice = goods.Sizes[0].ClubDiscountedPrice
 		}
 
-		totalStock := stockByNm[goods.NmID]
+		var totalStockPtr *int
+		if stockByNm != nil {
+			totalStock := stockByNm[goods.NmID]
+			totalStockPtr = ptr(totalStock)
+		}
 
 		snap := domain.ProductSnapshot{
 			ProductID:    p.ID,
@@ -62,7 +66,9 @@ func ToSnapshots(
 			Discount:     ptr(goods.Discount),
 			ClubDiscount: ptr(goods.ClubDiscount),
 
-			StockTotal: ptr(totalStock),
+			// Если stockByNm == nil, значит stocks недоступен (ошибка WB) и сток неизвестен.
+			// Нельзя превращать "нет данных" в "0" — это ломает алерты.
+			StockTotal: totalStockPtr,
 
 			IsBadTurnover:     ptr(goods.IsBadTurnover),
 			EditableSizePrice: ptr(goods.EditableSizePrice),

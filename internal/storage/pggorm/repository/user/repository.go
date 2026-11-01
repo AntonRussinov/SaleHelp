@@ -27,11 +27,17 @@ func toModel(u *domain.User) *model.User {
 		return nil
 	}
 
+	role := u.Role
+	if role == "" {
+		role = "user"
+	}
 	return &model.User{
 		ID:             u.ID,
 		Email:          u.Email,
 		PasswordHash:   u.PasswordHash,
+		GoogleID:       u.GoogleID,
 		TelegramChatID: u.TelegramChatID,
+		Role:           role,
 		CreatedAt:      u.CreatedAt,
 		UpdatedAt:      u.UpdatedAt,
 	}

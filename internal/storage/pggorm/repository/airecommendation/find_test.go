@@ -41,7 +41,7 @@ func TestAIRecommendationRepositoryGetByID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "ai_recommendations" WHERE id = \$1(.+)`).
-				WithArgs(rec.ID).
+				WithArgs(rec.ID, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 

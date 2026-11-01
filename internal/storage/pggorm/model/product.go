@@ -24,7 +24,6 @@ func ProductColumns() []string {
 		"id",
 		"shop_id",
 		"external_id",
-		"sku",
 		"title",
 		"url",
 		"image_url",

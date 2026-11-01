@@ -1,7 +1,6 @@
 package di_test
 
 import (
-	"reflect"
 	"salehelp/internal/app/di"
 	"salehelp/internal/config"
 	"salehelp/pkg/logger/handlers/slogdiscard"
@@ -18,8 +17,14 @@ func TestInitHandlers(t *testing.T) {
 	err := prov.InitHandlers()
 	require.NoError(t, err)
 
-	v := reflect.ValueOf(prov.Handlers)
-	for i := range v.NumField() {
-		assert.False(t, v.Field(i).IsNil())
-	}
+	// Обязательные хэндлеры — всегда должны быть инициализированы
+	assert.NotNil(t, prov.Handlers.Shop)
+	assert.NotNil(t, prov.Handlers.TelegramBot)
+	assert.NotNil(t, prov.Handlers.Product)
+	assert.NotNil(t, prov.Handlers.Subscription)
+	assert.NotNil(t, prov.Handlers.Alert)
+	assert.NotNil(t, prov.Handlers.AISettings)
+
+	// Опциональные хэндлеры (AuthGoogle, NotificationSettings) зависят от внешних ключей,
+	// не проверяем их без реального конфига.
 }

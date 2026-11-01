@@ -43,7 +43,7 @@ func TestSellerWarehouseRepositoryGetByShopAndWBOfficeID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "seller_warehouses" WHERE shop_id = \$1 AND wb_office_id = \$2`).
-				WithArgs(w.ShopID, w.WBOfficeID).
+				WithArgs(w.ShopID, w.WBOfficeID, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 

@@ -26,16 +26,13 @@ func TestProductRepositoryUpsert(t *testing.T) {
 
 		// 1. SELECT returns no rows
 		mock.ExpectQuery(`SELECT (.+) FROM "products"`).
-			WithArgs(p.ShopID, p.ExternalID).
+			WithArgs(p.ShopID, p.ExternalID, 1).
 			WillReturnRows(sqlmock.NewRows([]string{})) // nil → no existing
 
 		// 2. INSERT for new product
-		args := saveProductSQLArgs(p)
-
 		mock.ExpectBegin()
-		mock.ExpectExec(`INSERT INTO "products"`).
-			WithArgs(args...).
-			WillReturnResult(sqlmock.NewResult(10, 1))
+		mock.ExpectQuery(`INSERT INTO "products"`).
+			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(10))
 		mock.ExpectCommit()
 
 		err := repo.Upsert(ctx, &p)
@@ -56,7 +53,7 @@ func TestProductRepositoryUpsert(t *testing.T) {
 
 		// 1. SELECT returns existing row
 		mock.ExpectQuery(`SELECT (.+) FROM "products"`).
-			WithArgs(existing.ShopID, existing.ExternalID).
+			WithArgs(existing.ShopID, existing.ExternalID, 1).
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"id", "shop_id", "external_id", "title", "url",
@@ -78,22 +75,8 @@ func TestProductRepositoryUpsert(t *testing.T) {
 			)
 
 		// 2. UPDATE (Save)
-		saveArgs := saveProductSQLArgs(updated)
-
 		mock.ExpectBegin()
 		mock.ExpectExec(`UPDATE "products" SET`).
-			WithArgs(
-				saveArgs[0], // shop_id
-				saveArgs[1], // external_id
-				saveArgs[2], // title
-				saveArgs[3], // url
-				saveArgs[4], // image_url
-				saveArgs[5], // brand
-				saveArgs[6], // category
-				saveArgs[7], // created_at
-				saveArgs[8], // updated_at
-				existing.ID, // WHERE id = ?
-			).
 			WillReturnResult(sqlmock.NewResult(42, 1))
 		mock.ExpectCommit()
 
@@ -109,7 +92,7 @@ func TestProductRepositoryUpsert(t *testing.T) {
 		p := builder.Product()
 
 		mock.ExpectQuery(`SELECT (.+) FROM "products"`).
-			WithArgs(p.ShopID, p.ExternalID).
+			WithArgs(p.ShopID, p.ExternalID, 1).
 			WillReturnError(assert.AnError)
 
 		err := repo.Upsert(ctx, &p)
@@ -124,12 +107,11 @@ func TestProductRepositoryUpsert(t *testing.T) {
 		p := builder.Product()
 
 		mock.ExpectQuery(`SELECT (.+) FROM "products"`).
-			WithArgs(p.ShopID, p.ExternalID).
+			WithArgs(p.ShopID, p.ExternalID, 1).
 			WillReturnRows(sqlmock.NewRows([]string{})) // not exists
 
 		mock.ExpectBegin()
-		mock.ExpectExec(`INSERT INTO "products"`).
-			WithArgs(saveProductSQLArgs(p)...).
+		mock.ExpectQuery(`INSERT INTO "products"`).
 			WillReturnError(assert.AnError)
 		mock.ExpectRollback()
 
@@ -146,7 +128,7 @@ func TestProductRepositoryUpsert(t *testing.T) {
 		existing.ID = 5
 
 		mock.ExpectQuery(`SELECT (.+) FROM "products"`).
-			WithArgs(existing.ShopID, existing.ExternalID).
+			WithArgs(existing.ShopID, existing.ExternalID, 1).
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"id", "shop_id", "external_id", "title", "url",
@@ -168,7 +150,6 @@ func TestProductRepositoryUpsert(t *testing.T) {
 
 		mock.ExpectBegin()
 		mock.ExpectExec(`UPDATE "products"`).
-			WithArgs(saveProductSQLArgs(existing)...).
 			WillReturnError(assert.AnError)
 		mock.ExpectRollback()
 

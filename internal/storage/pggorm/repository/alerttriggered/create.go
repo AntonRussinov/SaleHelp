@@ -42,7 +42,7 @@ func (r *Repository) CreateIfNotExists(
 				{Name: "alert_id"},
 				{Name: "product_id"},
 				{Name: "snapshot_id"},
-				{Name: "product_size_id"},
+				{Name: "product_size_key"},
 			},
 			DoNothing: true,
 		}).

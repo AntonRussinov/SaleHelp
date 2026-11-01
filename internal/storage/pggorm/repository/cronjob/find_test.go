@@ -41,7 +41,7 @@ func TestCronJobRepositoryGetByID(t *testing.T) {
 			}
 
 			mock.ExpectQuery(`SELECT (.+) FROM "cron_jobs" WHERE id = \$1(.+)`).
-				WithArgs(job.ID).
+				WithArgs(job.ID, 1).
 				WillReturnRows(rows).
 				WillReturnError(tt.sqlErr)
 
@@ -82,8 +82,8 @@ func TestCronJobRepositoryGetLastByName(t *testing.T) {
 	rows := sqlmock.NewRows(JoinedColumns()).
 		AddRow(builder.CronJobRowValues(job)...)
 
-	mock.ExpectQuery(`SELECT (.+) FROM "cron_jobs" WHERE name = \$1 ORDER BY started_at DESC LIMIT 1`).
-		WithArgs(name).
+	mock.ExpectQuery(`SELECT (.+) FROM "cron_jobs" WHERE name = \$1 ORDER BY started_at DESC LIMIT \$2`).
+		WithArgs(name, 1).
 		WillReturnRows(rows)
 
 	got, err := repo.GetLastByName(ctx, name)

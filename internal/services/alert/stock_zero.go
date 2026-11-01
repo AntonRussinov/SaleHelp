@@ -16,7 +16,6 @@ func (e *AlertEngine) evalStockZeroEffective(
 ) error {
 
 	for _, p := range products {
-		// effective alert
 		a := global
 		if ov, ok := overrides[p.ID]; ok && ov != nil {
 			a = ov
@@ -32,22 +31,33 @@ func (e *AlertEngine) evalStockZeroEffective(
 		}
 
 		snaps := snapshotsByProduct[p.ID]
-		if len(snaps) < 2 { // prev==nil -> не триггерим
+		// Нужно минимум 3 снэпшота: текущий + предыдущий + позапрошлый.
+		// Два consecutive нуля подряд после ненулевого — подтверждение реального обнуления.
+		// Это защищает от ложных алертов при временном сбое WB API (isolated zero).
+		if len(snaps) < 3 {
 			continue
 		}
 
 		latest := snaps[0]
 		prev := snaps[1]
+		prevPrev := snaps[2]
 
-		latestStock := derefInt(latest.StockTotal)
-		prevStock := derefInt(prev.StockTotal)
-
-		// edge: >0 -> 0
-		if !(prevStock > 0 && latestStock == 0) {
+		// nil = данные не были получены от WB, не трактуем как 0.
+		if latest.StockTotal == nil || prev.StockTotal == nil || prevPrev.StockTotal == nil {
 			continue
 		}
 
-		msg := fmt.Sprintf("Stock is ZERO: %d → %d", prevStock, latestStock)
+		latestStock := derefInt(latest.StockTotal)
+		prevStock := derefInt(prev.StockTotal)
+		prevPrevStock := derefInt(prevPrev.StockTotal)
+
+		// Требуем: два нуля подряд после ненулевого значения.
+		// latest=0, prev=0, prevPrev>0 → первый "подтверждённый" тик обнуления.
+		if !(latestStock == 0 && prevStock == 0 && prevPrevStock > 0) {
+			continue
+		}
+
+		msg := fmt.Sprintf("Stock is ZERO: %d → %d → %d", prevPrevStock, prevStock, latestStock)
 
 		tr := domain.AlertTriggered{
 			AlertID:    a.ID,
@@ -58,7 +68,7 @@ func (e *AlertEngine) evalStockZeroEffective(
 			Message:    msg,
 		}
 
-		_, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
+		ID, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
 		if err != nil {
 			return err
 		}
@@ -67,8 +77,7 @@ func (e *AlertEngine) evalStockZeroEffective(
 			continue
 		}
 
-		// ВОТ ТУТ fanout
-		if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, tr.ID, tr.ShopID); err != nil {
+		if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, ID, tr.ShopID); err != nil {
 			return err
 		}
 
@@ -111,21 +120,27 @@ func (e *AlertEngine) evalStockZeroSizesEffective(
 			}
 
 			snaps := sizeSnapsBySize[sz.ID]
-			if len(snaps) < 2 {
+			if len(snaps) < 3 {
 				continue
 			}
 
 			latest := snaps[0]
 			prev := snaps[1]
+			prevPrev := snaps[2]
 
-			latestStock := derefInt(latest.Stock)
-			prevStock := derefInt(prev.Stock)
-
-			if !(prevStock > 0 && latestStock == 0) {
+			if latest.Stock == nil || prev.Stock == nil || prevPrev.Stock == nil {
 				continue
 			}
 
-			msg := fmt.Sprintf("Размер закончился: %d → %d", prevStock, latestStock)
+			latestStock := derefInt(latest.Stock)
+			prevStock := derefInt(prev.Stock)
+			prevPrevStock := derefInt(prevPrev.Stock)
+
+			if !(latestStock == 0 && prevStock == 0 && prevPrevStock > 0) {
+				continue
+			}
+
+			msg := fmt.Sprintf("Размер закончился: %d → %d → %d", prevPrevStock, prevStock, latestStock)
 
 			tr := domain.AlertTriggered{
 				AlertID:       a.ID,
@@ -137,7 +152,7 @@ func (e *AlertEngine) evalStockZeroSizesEffective(
 				Message:       msg,
 			}
 
-			_, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
+			ID, inserted, err := e.alertsTriggeredRepo.CreateIfNotExists(ctx, &tr)
 			if err != nil {
 				return err
 			}
@@ -145,8 +160,7 @@ func (e *AlertEngine) evalStockZeroSizesEffective(
 				continue
 			}
 
-			// ВОТ ТУТ fanout
-			if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, tr.ID, tr.ShopID); err != nil {
+			if err := e.deliveriesFanoutRepo.CreateDeliveriesForTriggered(ctx, ID, tr.ShopID); err != nil {
 				return err
 			}
 		}

@@ -60,6 +60,8 @@ func (b *DataBuilder) MerchantRowValues(merch domain.Merchant) []driver.Value {
 	return []driver.Value{
 		merch.MerchantUID,
 		merch.CompanyName,
+		merch.Login,
+		merch.Password,
 		merch.IsEnabled,
 		b.faker.Date(),
 		b.faker.Date(),

@@ -10,7 +10,8 @@ import (
 )
 
 func (prov *Provider) initScheduler(ctx context.Context) error {
-	prov.scheduler = scheduler.New(prov.log)
+	// schedulerLoc выставляется в InitServices() (Europe/Moscow). Если по какой-то причине nil — fallback на Local внутри scheduler.New.
+	prov.scheduler = scheduler.New(prov.log, prov.schedulerLoc)
 
 	leasedBy := prov.cfg.InstanceID
 	if leasedBy == "" {
@@ -31,6 +32,7 @@ func (prov *Provider) initScheduler(ctx context.Context) error {
 		},
 		prov.Repositories.Shop,
 		prov.Services.Monitoring,
+		prov.Services.AlertEngine,
 		prov.Repositories.ShopSyncLeases,
 		prov.Services.Subscription,
 	)
@@ -38,13 +40,146 @@ func (prov *Provider) initScheduler(ctx context.Context) error {
 	notifyJob := jobs.NewNotifySubscriptionsJob(
 		prov.log,
 		jobs.NotifySubscriptionsConfig{
-			Spec: prov.cfg.Scheduler.SubscriptionNotifySpec, // добавишь в конфиг
+			Spec: prov.cfg.Scheduler.SubscriptionNotifySpec,
 		},
 		prov.Services.SubscriptionMonitor,
 	)
 
 	if err := prov.scheduler.Register(ctx, prov.cfg.Scheduler.SubscriptionNotifySpec, "notify_subscriptions", notifyJob.Run); err != nil {
 		return err
+	}
+
+	stockReplenishJob := jobs.NewStockReplenishJob(
+		prov.log,
+		jobs.StockReplenishConfig{
+			Spec: prov.cfg.Scheduler.StockReplenishSpec,
+		},
+		prov.Services.StockReplenish,
+	)
+
+	if prov.cfg.Scheduler.StockReplenishSpec != "" {
+		if err := prov.scheduler.Register(ctx, prov.cfg.Scheduler.StockReplenishSpec, "stock_replenish", stockReplenishJob.Run); err != nil {
+			return err
+		}
+	}
+
+	// AI Reply: генерация ответов на отзывы (каждые 30 мин)
+	if prov.Services.AIReply != nil && prov.cfg.Scheduler.AIReplySpec != "" {
+		aiReplyJob := jobs.NewAIReplyJob(prov.log, prov.Repositories.AISettings, prov.Services.AIReply, 10)
+		if err := prov.scheduler.Register(ctx, prov.cfg.Scheduler.AIReplySpec, "ai_reply", aiReplyJob.Run); err != nil {
+			return err
+		}
+	}
+
+	// AI Reply Send: отправка сгенерированных ответов в WB (каждые 12 мин = лимит WB 5/час)
+	if prov.Services.AIReply != nil && prov.cfg.Scheduler.AIReplySendSpec != "" {
+		aiReplySendJob := jobs.NewAIReplySendJob(prov.log, prov.Services.AIReply)
+		if err := prov.scheduler.Register(ctx, prov.cfg.Scheduler.AIReplySendSpec, "ai_reply_send", aiReplySendJob.Run); err != nil {
+			return err
+		}
+	}
+
+	// ABC-анализ: еженедельный дайджест (воскресенье 23:00)
+	abcWeeklySpec := prov.cfg.ABCAnalysis.WeeklySchedule
+	if abcWeeklySpec == "" {
+		abcWeeklySpec = "0 23 * * 0"
+	}
+	if prov.Services.ABCAnalysis != nil && abcWeeklySpec != "" {
+		minSales := prov.cfg.ABCAnalysis.MinSalesThreshold
+		if minSales <= 0 {
+			minSales = 10
+		}
+		abcWeeklyJob := jobs.NewABCAnalysisJob(
+			prov.log,
+			jobs.ABCJobConfig{PeriodDays: 7, MinSalesThreshold: minSales, IsWeekly: true},
+			prov.Repositories.Shop,
+			prov.Services.ABCAnalysis,
+			prov.Repositories.ShopABCSettings,
+			prov.Services.Subscription,
+			prov.Repositories.NotificationEndpoint,
+			prov.TelegramAdapter(),
+			prov.Repositories.Product,
+		)
+		if err := prov.scheduler.Register(ctx, abcWeeklySpec, "abc_weekly", abcWeeklyJob.Run); err != nil {
+			return err
+		}
+	}
+
+	// ABC-анализ: месячный отчёт (1-го числа в 01:00)
+	abcMonthlySpec := prov.cfg.ABCAnalysis.MonthlySchedule
+	if abcMonthlySpec == "" {
+		abcMonthlySpec = "0 1 1 * *"
+	}
+	if prov.Services.ABCAnalysis != nil && abcMonthlySpec != "" {
+		minSales := prov.cfg.ABCAnalysis.MinSalesThreshold
+		if minSales <= 0 {
+			minSales = 10
+		}
+		abcMonthlyJob := jobs.NewABCAnalysisJob(
+			prov.log,
+			jobs.ABCJobConfig{PeriodDays: 30, MinSalesThreshold: minSales, IsWeekly: false},
+			prov.Repositories.Shop,
+			prov.Services.ABCAnalysis,
+			prov.Repositories.ShopABCSettings,
+			prov.Services.Subscription,
+			prov.Repositories.NotificationEndpoint,
+			prov.TelegramAdapter(),
+			prov.Repositories.Product,
+		)
+		if err := prov.scheduler.Register(ctx, abcMonthlySpec, "abc_monthly", abcMonthlyJob.Run); err != nil {
+			return err
+		}
+	}
+
+	// Ежедневный синк продаж + отказов из WB (до дайджестов, 06:00 МСК).
+	// supplier/sales и supplier/orders — дорогие WB API вызовы; раз в сутки достаточно для дайджестов.
+	if prov.Services.SalesDigest != nil {
+		syncStatsDailySpec := prov.cfg.Scheduler.SyncStatsDailySpec
+		if syncStatsDailySpec == "" {
+			syncStatsDailySpec = "0 6 * * *"
+		}
+		syncStatsDailyJob := jobs.NewSyncStatsDailyJob(
+			prov.log,
+			prov.Repositories.Shop,
+			prov.Services.Monitoring,
+			prov.cfg.Scheduler.Concurrency,
+			prov.cfg.Scheduler.ShopTimeout,
+		)
+		if err := prov.scheduler.Register(ctx, syncStatsDailySpec, "sync_stats_daily", syncStatsDailyJob.Run); err != nil {
+			return err
+		}
+	}
+
+	// Дайджест выкупов/возвратов: ежедневно в 07:00 МСК (после sync_stats_daily).
+	if prov.Services.SalesDigest != nil {
+		salesDigestSpec := prov.cfg.Scheduler.SalesDigestSpec
+		if salesDigestSpec == "" {
+			salesDigestSpec = "0 7 * * *"
+		}
+		salesDigestJob := jobs.NewSalesDigestJob(prov.log, prov.Services.SalesDigest)
+		if err := prov.scheduler.Register(ctx, salesDigestSpec, "sales_digest", salesDigestJob.Run); err != nil {
+			return err
+		}
+	}
+
+	// Дайджест отказов (не забрали в ПВЗ): ежедневно по расписанию из конфига (по умолчанию 07:00 МСК).
+	if prov.Services.RefusalDigest != nil {
+		refusalDigestSpec := prov.cfg.Scheduler.RefusalDigestSpec
+		if refusalDigestSpec == "" {
+			refusalDigestSpec = "0 7 * * *"
+		}
+		refusalDigestJob := jobs.NewRefusalDigestJob(prov.log, prov.Services.RefusalDigest)
+		if err := prov.scheduler.Register(ctx, refusalDigestSpec, "refusal_digest", refusalDigestJob.Run); err != nil {
+			return err
+		}
+	}
+
+	// Сброс ежемесячной AI-квоты: 1-го числа в 00:00 МСК.
+	if prov.Repositories.Subscription != nil && prov.cfg.Scheduler.AIQuotaResetSpec != "" {
+		quotaResetJob := jobs.NewAIQuotaResetJob(prov.log, prov.Repositories.Subscription)
+		if err := prov.scheduler.Register(ctx, prov.cfg.Scheduler.AIQuotaResetSpec, "ai_quota_reset", quotaResetJob.Run); err != nil {
+			return err
+		}
 	}
 
 	// регистрируем задачу

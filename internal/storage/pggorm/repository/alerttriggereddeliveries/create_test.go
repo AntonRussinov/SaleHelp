@@ -33,8 +33,8 @@ func TestAlertTriggeredDeliveryRepositoryCreate(t *testing.T) {
 			d := builder.Delivery()
 
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "alerts_triggered_deliveries"`).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "alerts_triggered_deliveries"`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tt.sqlErr)
 
 			if tt.sqlErr == nil {

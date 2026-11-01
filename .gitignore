@@ -3,6 +3,7 @@
 
 # Local config
 /configs/config.yml
+/configs/config.prod.yml
 /configs/config-local.yml
 /configs/local.env
 /configs/local-certificates/
@@ -32,4 +33,7 @@ go.work
 
 # Output for generated files related to CI/CD
 data/*
+
+# Private planning and documentation (not for commit)
+/_private/
 

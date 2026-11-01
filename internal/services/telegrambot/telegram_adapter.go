@@ -35,3 +35,20 @@ func (a *TelegramAdapter) SendMessageWithKeyboard(
 ) error {
 	return a.sender.SendWithKeyboard(ctx, chatID, text, keyboard)
 }
+
+func (a *TelegramAdapter) SendMessageWithInlineKeyboard(
+	ctx context.Context,
+	chatID int64,
+	text string,
+	inlineKeyboard map[string]any,
+) error {
+	return a.sender.SendWithInlineKeyboard(ctx, chatID, text, inlineKeyboard)
+}
+
+func (a *TelegramAdapter) AnswerCallbackQuery(ctx context.Context, callbackQueryID string) error {
+	return a.sender.AnswerCallbackQuery(ctx, callbackQueryID)
+}
+
+func (a *TelegramAdapter) EditMessageReplyMarkup(ctx context.Context, chatID int64, messageID int, replyMarkup any) error {
+	return a.sender.EditMessageReplyMarkup(ctx, chatID, messageID, replyMarkup)
+}

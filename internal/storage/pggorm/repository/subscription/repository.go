@@ -26,20 +26,20 @@ func toModel(s *domain.Subscription) *model.Subscription {
 		return nil
 	}
 	return &model.Subscription{
-		ID:              s.ID,
-		ShopID:          s.ShopID,
-		Plan:            s.Plan,
-		Status:          s.Status,
-		ValidFrom:       s.ValidFrom,
-		ValidTo:         s.ValidTo,
-		PeriodMonths:    s.PeriodMonths,
-		BaseAmountMinor: s.BaseAmountMinor,
-		CurrencyCode:    s.CurrencyCode,
-		PaidAt:          s.PaidAt,
-		Source:          s.Source,
-		Comment:         s.Comment,
-		CreatedAt:       s.CreatedAt,
-		UpdatedAt:       s.UpdatedAt,
+		ID:           s.ID,
+		UserID:       s.UserID,
+		Tier:         s.Tier,
+		Status:       s.Status,
+		PeriodMonths: s.PeriodMonths,
+		StartedAt:    s.StartedAt,
+		ExpiresAt:    s.ExpiresAt,
+		TrialEndsAt:  s.TrialEndsAt,
+		AIQuota:      s.AIQuota,
+		AIUsed:       s.AIUsed,
+		AIResetsAt:   s.AIResetsAt,
+		MaxShops:     s.MaxShops,
+		ExtraShops:   s.ExtraShops,
+		PriceMinor:   s.PriceMinor,
 	}
 }
 

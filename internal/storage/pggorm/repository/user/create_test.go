@@ -2,7 +2,6 @@ package user_test
 
 import (
 	"context"
-	"database/sql/driver"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -32,18 +31,9 @@ func TestUserRepositoryCreate(t *testing.T) {
 			repo, mock := setupRepo(t)
 			u := builder.User()
 
-			args := []driver.Value{
-				u.Email,
-				u.PasswordHash,
-				u.TelegramChatID,
-				u.CreatedAt,
-				u.UpdatedAt,
-			}
-
 			mock.ExpectBegin()
-			mock.ExpectExec(`INSERT INTO "users"`).
-				WithArgs(args...).
-				WillReturnResult(sqlmock.NewResult(1, 1)).
+			mock.ExpectQuery(`INSERT INTO "users"`).
+				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)).
 				WillReturnError(tc.sqlErr)
 
 			if tc.sqlErr == nil {

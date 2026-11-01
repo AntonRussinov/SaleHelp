@@ -1,0 +1,1933 @@
+basePath: /api
+consumes:
+- application/json
+definitions:
+  account.AIBalance:
+    properties:
+      packages_remaining:
+        type: integer
+      subscription_remaining:
+        type: integer
+      total_available:
+        type: integer
+    type: object
+  account.AccountStatusResponse:
+    properties:
+      ai_balance:
+        $ref: '#/definitions/account.AIBalance'
+      shops_count:
+        type: integer
+      shops_limit:
+        type: integer
+      subscription:
+        $ref: '#/definitions/account.SubscriptionStatus'
+    type: object
+  account.SubscriptionStatus:
+    properties:
+      ai_quota:
+        type: integer
+      ai_resets_at:
+        type: string
+      ai_used:
+        type: integer
+      days_remaining:
+        type: integer
+      expires_at:
+        type: string
+      extra_shops:
+        type: integer
+      max_shops:
+        type: integer
+      status:
+        type: string
+      tier:
+        type: string
+    type: object
+  account.deleteAccountRequest:
+    properties:
+      confirmation:
+        type: string
+    required:
+    - confirmation
+    type: object
+  api.AIRuleResponse:
+    properties:
+      id:
+        type: integer
+      orderIndex:
+        type: integer
+      ruleText:
+        example: Всегда упоминай гарантию 1 год
+        type: string
+      ruleType:
+        example: rule
+        type: string
+    type: object
+  api.AISettingsResponse:
+    properties:
+      addressing:
+        type: string
+      brandDescription:
+        type: string
+      brandName:
+        type: string
+      createdAt:
+        type: string
+      emojiMode:
+        type: string
+      id:
+        type: integer
+      isActive:
+        type: boolean
+      representativeName:
+        type: string
+      responseLength:
+        type: string
+      rules:
+        items:
+          $ref: '#/definitions/api.AIRuleResponse'
+        type: array
+      shopId:
+        type: integer
+      signature:
+        type: string
+      templates:
+        items:
+          $ref: '#/definitions/api.AITemplateResponse'
+        type: array
+      toneOfVoice:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  api.AITemplateResponse:
+    properties:
+      category:
+        example: positive
+        type: string
+      customPrompt:
+        example: Упомяни программу лояльности
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: integer
+      toneVoiceOverride:
+        example: ""
+        type: string
+    type: object
+  api.AlertResponse:
+    properties:
+      aiRecommendationId:
+        example: 3
+        type: integer
+      id:
+        example: 10
+        type: integer
+      message:
+        example: Снижение цены > 10%
+        type: string
+      payload:
+        type: object
+      productId:
+        example: 42
+        type: integer
+      productSizeId:
+        example: 7
+        type: integer
+      resolvedAt:
+        example: "2024-01-16T08:00:00Z"
+        type: string
+      scope:
+        example: product
+        type: string
+      severity:
+        example: 4
+        type: integer
+      shopId:
+        example: 1
+        type: integer
+      status:
+        example: active
+        type: string
+      triggeredAt:
+        example: "2024-01-15T10:00:00Z"
+        type: string
+      type:
+        example: price_drop
+        type: string
+    type: object
+  api.CreateAIRuleRequest:
+    properties:
+      orderIndex:
+        example: 0
+        minimum: 0
+        type: integer
+      ruleText:
+        example: Всегда упоминай гарантию 1 год
+        maxLength: 200
+        type: string
+      ruleType:
+        enum:
+        - rule
+        - forbidden_word
+        example: rule
+        type: string
+    required:
+    - ruleText
+    - ruleType
+    type: object
+  api.CreateAlertRequest:
+    properties:
+      payload:
+        type: object
+      productId:
+        example: 42
+        minimum: 1
+        type: integer
+      productSizeId:
+        example: 7
+        minimum: 1
+        type: integer
+      type:
+        example: price_drop
+        type: string
+    required:
+    - type
+    type: object
+  api.CreateShopRequest:
+    properties:
+      apiToken:
+        example: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ
+        type: string
+      marketplace:
+        enum:
+        - wildberries
+        example: wildberries
+        type: string
+      name:
+        example: Мой магазин WB
+        maxLength: 255
+        type: string
+      wbReportTimezone:
+        example: Europe/Moscow
+        type: string
+    required:
+    - apiToken
+    - marketplace
+    - name
+    type: object
+  api.GetHealthCheckResponse:
+    properties:
+      built:
+        example: "2024-01-15T10:00:00Z"
+        type: string
+      gitCommit:
+        example: 84b789e
+        type: string
+      goVersion:
+        example: go1.22.0
+        type: string
+      version:
+        example: 1.0.0
+        type: string
+    type: object
+  api.HTTPError:
+    properties:
+      code:
+        example: 400
+        type: integer
+      details:
+        example: ""
+        type: string
+      message:
+        example: invalid body
+        type: string
+      timestamp:
+        example: "2024-01-15T10:00:00Z"
+        type: string
+      validationErrors:
+        items:
+          $ref: '#/definitions/api.ValidationError'
+        type: array
+    type: object
+  api.ListAlertsResponse:
+    properties:
+      alerts:
+        items:
+          $ref: '#/definitions/api.AlertResponse'
+        type: array
+      limit:
+        example: 20
+        type: integer
+      offset:
+        example: 0
+        type: integer
+      total:
+        example: 42
+        type: integer
+    type: object
+  api.ListNotificationSettingsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/api.NotificationSetting'
+        type: array
+    type: object
+  api.NotificationSetting:
+    properties:
+      category:
+        example: orders
+        type: string
+      defaultEnabled:
+        example: true
+        type: boolean
+      description:
+        example: Уведомление о новом сборочном задании FBS
+        type: string
+      enabled:
+        example: true
+        type: boolean
+      key:
+        example: fbs_new_order
+        type: string
+      title:
+        example: Новый заказ FBS
+        type: string
+    required:
+    - key
+    type: object
+  api.ShopResponse:
+    properties:
+      createdAt:
+        example: "2024-01-15T10:00:00Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      isActive:
+        example: true
+        type: boolean
+      lastSyncAt:
+        type: string
+      lastSyncStatusCode:
+        example: 200
+        type: integer
+      marketplace:
+        example: wildberries
+        type: string
+      name:
+        example: Мой магазин WB
+        type: string
+      subscription:
+        $ref: '#/definitions/api.SubscriptionSummary'
+      tokenType:
+        example: basic
+        type: string
+      userId:
+        example: 5
+        type: integer
+      wbReportTimezone:
+        example: Europe/Moscow
+        type: string
+    type: object
+  api.SubscriptionSummary:
+    properties:
+      expiresAt:
+        example: "2025-01-15T00:00:00Z"
+        type: string
+      hasActive:
+        example: true
+        type: boolean
+      tier:
+        example: business
+        type: string
+    type: object
+  api.UpdateAIRuleRequest:
+    properties:
+      orderIndex:
+        minimum: 0
+        type: integer
+      ruleText:
+        maxLength: 200
+        type: string
+      ruleType:
+        enum:
+        - rule
+        - forbidden_word
+        type: string
+    required:
+    - ruleText
+    - ruleType
+    type: object
+  api.UpdateAlertRequest:
+    properties:
+      payload:
+        type: object
+      productId:
+        example: 42
+        minimum: 1
+        type: integer
+      productSizeId:
+        example: 7
+        minimum: 1
+        type: integer
+      status:
+        example: inactive
+        type: string
+    type: object
+  api.UpdateNotificationSettingsItem:
+    properties:
+      enabled:
+        example: false
+        type: boolean
+      key:
+        example: fbs_new_order
+        type: string
+    required:
+    - key
+    type: object
+  api.UpdateNotificationSettingsRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/api.UpdateNotificationSettingsItem'
+        type: array
+    required:
+    - items
+    type: object
+  api.UpdateShopRequest:
+    properties:
+      wbReportTimezone:
+        example: Asia/Almaty
+        type: string
+    type: object
+  api.UpsertAISettingsRequest:
+    properties:
+      addressing:
+        enum:
+        - ty
+        - vy
+        example: vy
+        type: string
+      brandDescription:
+        example: Производим эко-товары для дома
+        maxLength: 500
+        type: string
+      brandName:
+        example: МойБренд
+        maxLength: 100
+        type: string
+      emojiMode:
+        enum:
+        - none
+        - minimal
+        - expressive
+        example: minimal
+        type: string
+      isActive:
+        example: true
+        type: boolean
+      representativeName:
+        example: Иван
+        maxLength: 50
+        type: string
+      responseLength:
+        enum:
+        - short
+        - medium
+        - long
+        example: medium
+        type: string
+      signature:
+        example: С уважением, команда МойБренд
+        maxLength: 200
+        type: string
+      toneOfVoice:
+        enum:
+        - standard
+        - friendly
+        - official
+        - empathic
+        - minimalist
+        example: friendly
+        type: string
+    required:
+    - addressing
+    - emojiMode
+    - responseLength
+    - toneOfVoice
+    type: object
+  api.UpsertAITemplateRequest:
+    properties:
+      customPrompt:
+        maxLength: 500
+        type: string
+      enabled:
+        type: boolean
+      toneVoiceOverride:
+        enum:
+        - standard
+        - friendly
+        - official
+        - empathic
+        - minimalist
+        type: string
+    type: object
+  api.ValidationError:
+    properties:
+      details:
+        example: ""
+        type: string
+      field:
+        example: email
+        type: string
+      message:
+        example: required
+        type: string
+    type: object
+  auth_google.ConfirmTelegramLinkRequest:
+    properties:
+      code:
+        example: A3F7XQ
+        type: string
+    type: object
+  auth_google.LinkTelegramResponse:
+    properties:
+      deepLink:
+        example: https://t.me/salehelp_bot?start=link_A3F7XQ
+        type: string
+      expiresAt:
+        description: RFC3339
+        example: "2024-01-15T10:15:00Z"
+        type: string
+      linkCode:
+        example: A3F7XQ
+        type: string
+    type: object
+  auth_google.LoginByGoogleRequest:
+    properties:
+      idToken:
+        example: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ
+        type: string
+    required:
+    - idToken
+    type: object
+  auth_google.LoginByGoogleResponse:
+    properties:
+      accessToken:
+        example: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZQ
+        type: string
+      user:
+        $ref: '#/definitions/auth_google.UserResponse'
+    type: object
+  auth_google.LoginRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: mypassword123
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth_google.RegisterRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: mypassword123
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth_google.UserResponse:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      id:
+        example: 5
+        type: integer
+    type: object
+  domain.Product:
+    properties:
+      brand:
+        type: string
+      category:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      externalId:
+        type: string
+      id:
+        type: integer
+      imageUrl:
+        type: string
+      shopId:
+        type: integer
+      title:
+        type: string
+      updatedAt:
+        type: string
+      url:
+        type: string
+    type: object
+  subscription.GrantInput:
+    properties:
+      comment:
+        example: manual grant
+        type: string
+      period_months:
+        description: 1|3|6|12
+        example: 1
+        type: integer
+      price_minor:
+        description: monthly price in kopecks
+        example: 299000
+        type: integer
+      shopID:
+        type: integer
+      tier:
+        description: start|business|pro
+        example: business
+        type: string
+    type: object
+  subscription.GrantResult:
+    properties:
+      ai_quota:
+        example: 200
+        type: integer
+      expires_at:
+        example: "2026-06-11T00:00:00Z"
+        type: string
+      max_shops:
+        example: 2
+        type: integer
+      subscription_id:
+        example: 7
+        type: integer
+      tier:
+        example: business
+        type: string
+      user_id:
+        example: 3
+        type: integer
+    type: object
+  subscription.StatusResult:
+    properties:
+      ai_quota:
+        example: 200
+        type: integer
+      ai_used:
+        example: 12
+        type: integer
+      allowed_telegram_chats:
+        example: 3
+        type: integer
+      expires_at:
+        example: "2026-06-11T00:00:00Z"
+        type: string
+      has_active_subscription:
+        example: true
+        type: boolean
+      max_shops:
+        example: 2
+        type: integer
+      status:
+        example: active
+        type: string
+      tier:
+        example: business
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 'API для сервиса SaleHelp: мониторинг магазинов Wildberries, алерты,
+    уведомления, AI-ответы на отзывы.'
+  title: SaleHelp API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: |-
+        Версия приложения, Go, коммит, время сборки
+        Возвращает 200 OK если сервис жив
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Liveness probe
+      tags:
+      - system
+      - system
+  /v1/account:
+    delete:
+      consumes:
+      - application/json
+      description: Необратимо удаляет аккаунт, магазины, AI-настройки и все данные
+        пользователя
+      parameters:
+      - description: Подтверждение (значение должно быть 'DELETE')
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/account.deleteAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Удаление аккаунта
+      tags:
+      - account
+  /v1/account/status:
+    get:
+      description: Текущая подписка, AI-баланс, количество и лимит магазинов
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/account.AccountStatusResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Статус аккаунта
+      tags:
+      - account
+  /v1/auth/confirm-telegram-link:
+    post:
+      consumes:
+      - application/json
+      description: Ввести код, полученный в боте после /link_email. Требует JWT (владелец
+        email).
+      parameters:
+      - description: Код из бота
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth_google.ConfirmTelegramLinkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Подтвердить привязку Telegram (код из бота)
+      tags:
+      - auth
+  /v1/auth/google:
+    post:
+      consumes:
+      - application/json
+      description: Принимает id_token от Google Sign-In, проверяет его, находит или
+        создаёт пользователя, возвращает JWT
+      parameters:
+      - description: Google id_token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth_google.LoginByGoogleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth_google.LoginByGoogleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      summary: Вход через Google
+      tags:
+      - auth
+  /v1/auth/link-telegram:
+    post:
+      description: Генерирует код, который нужно ввести в боте командой /link &lt;код&gt;
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth_google.LinkTelegramResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Код для привязки Telegram
+      tags:
+      - auth
+  /v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Проверяет email и пароль, возвращает JWT и данные пользователя
+      parameters:
+      - description: Email и пароль
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth_google.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth_google.LoginByGoogleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      summary: Вход по email
+      tags:
+      - auth
+  /v1/auth/logout:
+    post:
+      description: Добавляет токен в blocklist до его естественного истечения. После
+        перезапуска сервиса токены из blocklist сбрасываются.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Выход из системы
+      tags:
+      - auth
+  /v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт пользователя по email и паролю (не менее 8 символов), возвращает
+        JWT
+      parameters:
+      - description: Email и пароль
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth_google.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/auth_google.LoginByGoogleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "409":
+          description: email already registered
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      summary: Регистрация
+      tags:
+      - auth
+  /v1/me:
+    get:
+      description: Данные пользователя из JWT (id, email)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth_google.UserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Текущий пользователь
+      tags:
+      - auth
+  /v1/products:
+    get:
+      description: Товары по идентификатору (query). Используйте GET /v1/shops/{shopId}/products
+        для списка по магазину с JWT.
+      parameters:
+      - description: Идентификатор магазина/мерчанта
+        in: query
+        name: id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Product'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      summary: Список товаров
+      tags:
+      - products
+  /v1/shop/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: 'Обновление настроек магазина: часовой пояс отчётов WB. Требует
+        JWT.'
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: Поля для обновления
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateShopRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ShopResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Обновить магазин
+      tags:
+      - shops
+  /v1/shop/{id}/subscription/grant:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт подписку для пользователя, владеющего магазином. Вызывать
+        может только админ.
+      parameters:
+      - description: ID магазина
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Тариф, период, сумма
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/subscription.GrantInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/subscription.GrantResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Выдать/продлить подписку
+      tags:
+      - subscription
+  /v1/shop/{id}/subscription/status:
+    get:
+      description: Активная подписка (если есть), срок, лимиты и использование Telegram-чатов
+      parameters:
+      - description: ID магазина
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/subscription.StatusResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Статус подписки
+      tags:
+      - subscription
+  /v1/shop/{id}/sync:
+    post:
+      description: Запуск синка по ID магазина (товары, заказы, остатки и т.д.)
+      parameters:
+      - description: ID магазина
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Синхронизация магазина
+      tags:
+      - shops
+  /v1/shops:
+    get:
+      description: 'Магазины пользователя (JWT). Query: limit, offset.'
+      parameters:
+      - default: 20
+        description: Лимит
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Смещение
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.ShopResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Список магазинов
+      tags:
+      - shops
+    post:
+      consumes:
+      - application/json
+      description: 'Подключение магазина WB: валидация JWT-токена, создание shop.
+        Требует JWT.'
+      parameters:
+      - description: Название, токен WB, маркетплейс
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateShopRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.ShopResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Создать магазин
+      tags:
+      - shops
+  /v1/shops/{shopId}/ai-settings:
+    get:
+      description: |-
+        Возвращает полные настройки AI автоответов на отзывы: основные параметры, правила бренда и шаблоны по категориям.
+        Если настройки ещё не созданы — возвращает дефолтные значения (не 404), чтобы фронт мог сразу показать форму.
+
+        **Поля ответа:**
+        - `isActive` — включён ли AI автоответ для этого магазина
+        - `toneOfVoice` — тональность: `standard` | `friendly` | `official` | `empathic` | `minimalist`
+        - `responseLength` — длина ответа: `short` | `medium` | `long`
+        - `addressing` — обращение: `vy` (вы) | `ty` (ты)
+        - `emojiMode` — эмодзи: `none` | `minimal` | `expressive`
+        - `rules` — список правил бренда и запрещённых слов (см. `/ai-settings/rules`)
+        - `templates` — шаблоны по категориям отзывов: `positive` | `neutral` | `negative`
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AISettingsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Получить AI-настройки магазина
+      tags:
+      - ai-settings
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Создаёт или обновляет основные параметры AI автоответов для магазина.
+        Возвращает полный объект настроек включая существующие правила и шаблоны.
+
+        **Допустимые значения полей:**
+        - `toneOfVoice`: `standard` | `friendly` | `official` | `empathic` | `minimalist`
+        - `responseLength`: `short` | `medium` | `long`
+        - `addressing`: `vy` (Вы) | `ty` (ты)
+        - `emojiMode`: `none` | `minimal` | `expressive`
+        - `brandName` — макс. 100 символов
+        - `brandDescription` — макс. 500 символов
+        - `representativeName` — имя представителя в ответах, макс. 50 символов
+        - `signature` — подпись в конце ответа, макс. 200 символов
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: Настройки AI
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpsertAISettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AISettingsResponse'
+        "400":
+          description: Невалидное тело запроса или недопустимое значение поля
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Сохранить AI-настройки магазина
+      tags:
+      - ai-settings
+  /v1/shops/{shopId}/ai-settings/rules:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Добавляет правило бренда или запрещённое слово для AI автоответов.
+        Лимит правил зависит от тарифа пользователя.
+
+        **Типы правил (`ruleType`):**
+        - `rule` — инструкция для AI (например: "Всегда упоминай гарантию 1 год")
+        - `forbidden_word` — слово/фраза, которую AI не должен использовать
+
+        `orderIndex` — порядок применения правил (0 = первое).
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: Данные правила
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateAIRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.AIRuleResponse'
+        "400":
+          description: Невалидное тело или недопустимый тип правила
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Нет доступа к магазину или достигнут лимит правил тарифа
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Добавить правило AI
+      tags:
+      - ai-settings
+  /v1/shops/{shopId}/ai-settings/rules/{ruleId}:
+    delete:
+      description: Удаляет правило бренда или запрещённое слово по его ID.
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: ID правила
+        in: path
+        name: ruleId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Правило удалено
+        "400":
+          description: Невалидный ruleId
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "404":
+          description: Правило или AI-настройки не найдены
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Удалить правило AI
+      tags:
+      - ai-settings
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Обновляет текст, тип и порядок существующего правила AI.
+        Правило должно принадлежать настройкам этого магазина.
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: ID правила
+        in: path
+        name: ruleId
+        required: true
+        type: integer
+      - description: Обновлённые данные правила
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateAIRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AIRuleResponse'
+        "400":
+          description: Невалидное тело или недопустимый ruleId
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "404":
+          description: AI-настройки магазина не найдены
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Обновить правило AI
+      tags:
+      - ai-settings
+  /v1/shops/{shopId}/ai-settings/templates/{category}:
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Создаёт или обновляет шаблон для категории отзыва: дополнительные инструкции для AI и переопределение тональности.
+
+        **Категории (`category` в пути):**
+        - `positive` — положительные отзывы (4–5 звёзд)
+        - `neutral` — нейтральные отзывы (3 звезды)
+        - `negative` — негативные отзывы (1–2 звезды)
+
+        **Поля запроса:**
+        - `customPrompt` — дополнительные инструкции для AI (макс. 500 символов). Например: "Упомяни программу лояльности"
+        - `toneVoiceOverride` — переопределить тональность для этой категории: `standard` | `friendly` | `official` | `empathic` | `minimalist`. Пустая строка = использовать глобальную настройку
+        - `enabled` — включить/выключить шаблон для этой категории (по умолчанию `true`)
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: Категория отзыва
+        enum:
+        - positive
+        - neutral
+        - negative
+        in: path
+        name: category
+        required: true
+        type: string
+      - description: Данные шаблона
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpsertAITemplateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AITemplateResponse'
+        "400":
+          description: Невалидная категория или тело запроса
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Сохранить шаблон AI по категории отзыва
+      tags:
+      - ai-settings
+  /v1/shops/{shopId}/alerts:
+    get:
+      description: Получает список алертов с фильтрацией и пагинацией. Доступ только
+        у владельца магазина (JWT).
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: ID товара для фильтрации
+        in: query
+        name: productId
+        type: integer
+      - description: Тип алерта
+        enum:
+        - price_drop
+        - stock_low
+        - stock_zero
+        in: query
+        name: type
+        type: string
+      - description: Статус алерта
+        enum:
+        - active
+        - inactive
+        in: query
+        name: status
+        type: string
+      - description: Лимит записей (по умолчанию 20, максимум 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Смещение (по умолчанию 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ListAlertsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Получить список алертов
+      tags:
+      - alerts
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Создает новый алерт для магазина. Доступ только у владельца магазина (JWT).
+        severity, scope и message вычисляются автоматически.
+        Если productId не передан — алерт работает по всем товарам магазина.
+
+        **Типы алертов и структура payload:**
+
+        `stock_zero` — товар закончился. payload не нужен:
+        `{"type":"stock_zero","productId":42}`
+
+        `stock_low` — мало остатков. threshold — минимум в штуках:
+        `{"type":"stock_low","productId":42,"payload":{"threshold":10}}`
+
+        `price_drop` — снижение цены. percent и/или amount — пороги срабатывания. mode: any|all:
+        `{"type":"price_drop","productId":42,"payload":{"percent":10,"mode":"any"}}`
+        `{"type":"price_drop","payload":{"amount":500,"mode":"any"}}`
+        `{"type":"price_drop","payload":{"percent":10,"amount":500,"mode":"all"}}`
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: Данные алерта
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateAlertRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.AlertResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Создать алерт
+      tags:
+      - alerts
+  /v1/shops/{shopId}/alerts/{alertId}:
+    delete:
+      description: Удаляет алерт по ID. Доступ только у владельца магазина (JWT).
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: ID алерта
+        in: path
+        name: alertId
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Удалить алерт
+      tags:
+      - alerts
+    get:
+      description: Получает алерт по ID. Доступ только у владельца магазина (JWT).
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: ID алерта
+        in: path
+        name: alertId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AlertResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Получить алерт
+      tags:
+      - alerts
+    put:
+      consumes:
+      - application/json
+      description: Обновляет существующий алерт. Доступ только у владельца магазина
+        (JWT).
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: ID алерта
+        in: path
+        name: alertId
+        required: true
+        type: integer
+      - description: Данные для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateAlertRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AlertResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Обновить алерт
+      tags:
+      - alerts
+  /v1/shops/{shopId}/notification-settings:
+    get:
+      description: Возвращает список всех доступных типов уведомлений и их текущее
+        состояние (enabled/disabled) для магазина.
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ListNotificationSettingsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Список настроек уведомлений магазина
+      tags:
+      - notification-settings
+    put:
+      consumes:
+      - application/json
+      description: Обновляет enabled/disabled для указанных типов уведомлений (владелец
+        магазина).
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - description: Список настроек
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateNotificationSettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ListNotificationSettingsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Обновить настройки уведомлений магазина
+      tags:
+      - notification-settings
+  /v1/shops/{shopId}/products:
+    get:
+      description: 'Список товаров по shopId. Проверка доступа по JWT. Query: limit,
+        offset'
+      parameters:
+      - description: ID магазина
+        in: path
+        name: shopId
+        required: true
+        type: integer
+      - default: 20
+        description: Лимит
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Смещение
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: items, total, limit, offset
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Товары магазина
+      tags:
+      - shops
+  /v1/telegram/webhook:
+    post:
+      consumes:
+      - application/json
+      description: Принимает Update от Telegram Bot API. Опционально проверяет заголовок
+        X-Telegram-Bot-Api-Secret-Token.
+      parameters:
+      - description: Telegram Update (JSON)
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "403":
+          description: Forbidden
+      summary: Telegram webhook
+      tags:
+      - telegram
+  /version:
+    get:
+      description: |-
+        Версия приложения, Go, коммит, время сборки
+        Возвращает 200 OK если сервис жив
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Liveness probe
+      tags:
+      - system
+      - system
+produces:
+- application/json
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

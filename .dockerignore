@@ -1,0 +1,8 @@
+.git
+.github
+minikube/
+certs/
+*.md
+.mockery.yaml
+.env
+configs/config.yml
