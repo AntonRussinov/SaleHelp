@@ -152,8 +152,7 @@ make lint       # golangci-lint, configuration in .golangci.yml (enable-all with
 ```
 
 Repository tests run against `go-sqlmock`, so no database is needed to run the test suite.
-CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs build, vet, tests and golangci-lint (new issues only).
-The race-detector step is currently non-blocking: some logger tests share state between parallel subtests.
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs build, vet, `go test -race` and golangci-lint (new issues only).
 
 ## Design notes
 
