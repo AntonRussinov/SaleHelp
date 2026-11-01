@@ -1,0 +1,76 @@
+# Example configuration. Copy to configs/config.yml (git-ignored) and adjust:
+#   cp configs/config.example.yml configs/config.yml
+#
+# Keys are matched to Go struct fields by viper/mapstructure (case-insensitive);
+# fields with an explicit tag use snake_case (see internal/config/config.go).
+# Secrets can be left empty here and supplied via environment variables
+# (see .env.example): DATABASE_URL, TELEGRAM_BOT_TOKEN, OPENAI_API_KEY,
+# JWT_SECRET, WB_X_CLIENT_SECRET. Env values override this file.
+
+# Used by the logger: "local" = pretty console output, anything else = JSON.
+environment: local
+
+service:
+  listen: ":8080"
+  # "production" disables the /swagger/ route. Any other value enables it.
+  environment: local
+  # Optional instance id for the shop lease; defaults to <hostname>-<pid>.
+  instanceid: ""
+  allowedorigins:
+    - http://localhost:3000
+
+  # --- Telegram -------------------------------------------------------------
+  telegramtoken: ""            # env: TELEGRAM_BOT_TOKEN
+  telegramsecret: ""           # expected in X-Telegram-Bot-Api-Secret-Token on /telegram/webhook; empty = no check
+  telegrambotusername: "example_bot"
+  telegramadminid: 0           # Telegram user id allowed to use admin commands
+
+  # --- Auth -----------------------------------------------------------------
+  jwt_secret: ""               # env: JWT_SECRET. Empty = /api/v1/auth/* routes are not registered
+  google_auth:
+    client_id: ""              # Google OAuth2 Client ID (also read from env GOOGLE_CLIENT_ID)
+
+  # --- Wildberries ----------------------------------------------------------
+  wb_x_client_secret: ""       # env: WB_X_CLIENT_SECRET. Empty = header is not sent
+  wb_report_timezone: "Europe/Moscow"  # default IANA timezone for sales/orders reports
+
+  # --- Database -------------------------------------------------------------
+  db:
+    # Matches docker-compose.yml. Env DATABASE_URL overrides it.
+    connstring: "postgres://salehelp:salehelp@localhost:5432/salehelp?sslmode=disable"
+    pool:
+      maxopenconns: 30
+      maxidleconns: 5
+      connmaxlifetime: 1h
+      connmaxidletime: 15m
+
+  # --- Scheduler (cron specs, 5 fields; timezone is set in code) ------------
+  scheduler:
+    spec: "*/30 * * * *"                # shop sync
+    concurrency: 4                      # shops synced in parallel
+    shoptimeout: 5m
+    leasettl: 10m                       # per-shop DB lease, protects against multiple instances
+    batchsize: 100
+    subscriptionnotifyspec: "0 10 * * *"
+    stockreplenishspec: "0 10 * * *"
+    aireplyspec: "0/30 * * * *"         # generate AI replies
+    aireplysendspec: "0/12 * * * *"     # send generated replies to WB
+    refusaldigestspec: "0 7 * * *"
+    syncstatsdailyspec: "0 6 * * *"
+    salesdigestspec: "0 7 * * *"
+    aiquotaresetspec: "0 0 1 * *"
+
+  # --- AI replies (OpenAI) --------------------------------------------------
+  ai:
+    api_key: ""                # env: OPENAI_API_KEY. Without a key AI replies are disabled
+    model_positive: ""         # 4-5 star reviews; empty = built-in default
+    model_mid: ""              # 3 star reviews
+    model_other: ""            # 1-2 star reviews
+    included_limit: 50         # free AI replies per month when the plan does not define one
+
+  # --- ABC analysis ---------------------------------------------------------
+  abc_analysis:
+    weekly_schedule: "0 23 * * 0"
+    monthly_schedule: "0 1 1 * *"
+    min_sales_threshold: 10
+    default_period_days: 30

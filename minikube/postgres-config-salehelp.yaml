@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgres-config-salehelp
+# Local minikube development only. Do not reuse these credentials anywhere else.
 data:
   POSTGRES_DB: "salehelp"
   POSTGRES_USER: "postgres"

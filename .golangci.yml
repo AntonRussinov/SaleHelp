@@ -6,7 +6,6 @@ output:
   formats:
     - format: tab
       path: stderr
-  uniq-by-line: false
   sort-results: true
 linters:
   # disable-all: true
@@ -102,6 +101,7 @@ linters-settings:
       - e *echo.Echo
 
 issues:
+  uniq-by-line: false
   max-issues-per-linter: 0
   max-same-issues: 0
   new: false
